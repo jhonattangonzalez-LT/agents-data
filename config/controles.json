@@ -1,0 +1,174 @@
+{
+  "_nota": "Catalogo unico. Todo se MIDE en ingesta y analitica; por grupo cambia si el control decide o informa. RETIRADOS (no se calculan ni aparecen): VG-07, VG-08, ID-07, ID-08. NADA estimado: todo exacto.",
+  "niveles": {
+    "0": "Metadatos: esquema y _delta_log. Segundos. Sin leer dato.",
+    "1": "Pies de parquet / agregados SQL. Minutos. Sin descargar dato (Fabric, Postgres); Stratio HDFS depende de si Rocket acepta Range.",
+    "2": "Dato completo en local, exacto: SHA-256, duplicados, llaves, perfil, contrato. Requiere descarga a la cache."
+  },
+  "criterios": {
+    "igual": "El valor debe ser el mismo en Stratio y en Fabric.",
+    "sin_fallas": "En Fabric no puede quedar en ERROR.",
+    "sin_regresion": "Fabric no puede quedar peor que Stratio (OK -> ALERTA/ERROR es regresion).",
+    "commit_en_ventana": "Cada salida debe tener un commit Delta dentro de la ventana inicio-fin de la corrida citada.",
+    "informativo": "Se mide y se reporta; no aprueba ni rechaza.",
+    "no_aplica": "No se evalua en este grupo.",
+    "igual_o_justificado": "Debe ser igual a Stratio; una ruptura puede aprobarse solo con justificacion (p. ej. varchar <-> string)."
+  },
+  "controles": [
+    {
+      "codigo": "VG-01",
+      "nombre": "Nombres de columna unicos (sin distinguir mayusculas)",
+      "nivel": 0,
+      "ingesta": "sin_fallas",
+      "analitica": "sin_fallas",
+      "orquestador": "no_aplica"
+    },
+    {
+      "codigo": "VG-02",
+      "nombre": "Nombres compatibles con Delta/Parquet/Fabric",
+      "nivel": 0,
+      "ingesta": "sin_fallas",
+      "analitica": "sin_fallas",
+      "orquestador": "no_aplica"
+    },
+    {
+      "codigo": "VG-03",
+      "nombre": "Tipos soportados en el destino",
+      "nivel": 0,
+      "ingesta": "sin_fallas",
+      "analitica": "sin_fallas",
+      "orquestador": "no_aplica"
+    },
+    {
+      "codigo": "VG-04",
+      "nombre": "Precision y escala de decimales valida",
+      "nivel": 0,
+      "ingesta": "sin_fallas",
+      "analitica": "sin_fallas",
+      "orquestador": "no_aplica"
+    },
+    {
+      "codigo": "VG-05",
+      "nombre": "Tipos complejos (anidados)",
+      "nivel": 0,
+      "ingesta": "sin_fallas",
+      "analitica": "sin_fallas",
+      "orquestador": "no_aplica"
+    },
+    {
+      "codigo": "VG-06",
+      "nombre": "Longitud de nombres de columna",
+      "nivel": 0,
+      "ingesta": "sin_fallas",
+      "analitica": "sin_fallas",
+      "orquestador": "no_aplica"
+    },
+    {
+      "codigo": "CP-02",
+      "nombre": "Esquema y tipos",
+      "nivel": 0,
+      "ingesta": "igual",
+      "analitica": "igual",
+      "orquestador": "no_aplica"
+    },
+    {
+      "codigo": "CP-05",
+      "nombre": "Reejecucion: commit de la corrida citada",
+      "nivel": 0,
+      "ingesta": "commit_en_ventana",
+      "analitica": "commit_en_ventana",
+      "orquestador": "no_aplica"
+    },
+    {
+      "codigo": "CP-01",
+      "nombre": "Conteo de filas",
+      "nivel": 1,
+      "ingesta": "igual",
+      "analitica": "informativo",
+      "orquestador": "no_aplica"
+    },
+    {
+      "codigo": "ID-01",
+      "nombre": "Conteo mayor que cero",
+      "nivel": 1,
+      "ingesta": "sin_regresion",
+      "analitica": "sin_regresion",
+      "orquestador": "no_aplica"
+    },
+    {
+      "codigo": "ID-03",
+      "nombre": "Columnas 100 % nulas",
+      "nivel": 1,
+      "ingesta": "sin_regresion",
+      "analitica": "sin_regresion",
+      "orquestador": "no_aplica"
+    },
+    {
+      "codigo": "ID-04",
+      "nombre": "Obligatoriedad (nulos por columna)",
+      "nivel": 1,
+      "ingesta": "sin_regresion",
+      "analitica": "sin_regresion",
+      "orquestador": "no_aplica"
+    },
+    {
+      "codigo": "ID-06",
+      "nombre": "Columnas constantes",
+      "nivel": 1,
+      "ingesta": "sin_regresion",
+      "analitica": "sin_regresion",
+      "orquestador": "no_aplica",
+      "nota": "En nivel 1 sale de min = max en los pies; si una columna no trae estadisticas pasa a nivel 2, no se da por cumplido."
+    },
+    {
+      "codigo": "CP-03",
+      "nombre": "Checksum SHA-256 del dataset",
+      "nivel": 2,
+      "ingesta": "igual",
+      "analitica": "informativo",
+      "orquestador": "no_aplica",
+      "nota": "Obligatorio en ingesta. En analitica se mide siempre y se informa."
+    },
+    {
+      "codigo": "ID-02",
+      "nombre": "Duplicados de fila completa",
+      "nivel": 2,
+      "ingesta": "sin_regresion",
+      "analitica": "sin_regresion",
+      "orquestador": "no_aplica",
+      "nota": "Sale de la misma pasada que CP-03 (hash por fila)."
+    },
+    {
+      "codigo": "ID-05",
+      "nombre": "Candidatas a llave unica",
+      "nivel": 2,
+      "ingesta": "sin_regresion",
+      "analitica": "sin_regresion",
+      "orquestador": "no_aplica"
+    },
+    {
+      "codigo": "CP-04",
+      "nombre": "Muestreo (limit 10, sin orden)",
+      "nivel": 2,
+      "ingesta": "informativo",
+      "analitica": "informativo",
+      "orquestador": "no_aplica"
+    },
+    {
+      "codigo": "VG-09",
+      "nombre": "Conformidad de contrato (el de Stratio, tal cual en Fabric)",
+      "nivel": 2,
+      "ingesta": "igual_o_justificado",
+      "analitica": "igual_o_justificado",
+      "orquestador": "no_aplica",
+      "nota": "El contrato se obtiene en cada medicion (tipos, obligatoriedad, longitudes, llaves candidatas, exactos). En la medicion es informativo; en el cotejo decide."
+    }
+  ],
+  "orquestador": "Se aprueba por ejecucion: estado Completed de la corrida y de cada flujo invocado.",
+  "fuera_del_catalogo": [
+    "VG-07",
+    "VG-08",
+    "ID-07",
+    "ID-08"
+  ]
+}

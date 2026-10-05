@@ -1,0 +1,10 @@
+[{"nombre_fabric": "03-ape-repleg", "nombre_stratio": "03-ape-repleg", "grupo": "analitica", "orquestador": "orq_agrupadoras",
+  "objetos": [{"clave": "agrupadoras_ape_repleg", "stratio": {"tipo": "hdfs", "ruta": "/data/prod/trusted/agrupadoras/ape_repleg"},
+               "fabric": {"tipo": "delta", "ruta": "silver.agrupadoras_ape_repleg"}}]},
+ {"nombre_fabric": "23-landing-globales-ssf-tipo-identificacion", "nombre_stratio": "23-landing-globales-ssf-tipo-identificacion", "grupo": "ingesta",
+  "objetos": [{"clave": "globales_default_ssf_tipo_identificacion",
+               "stratio": {"tipo": "sftp", "ruta": "/home/comfandi/globales/default/SSF_TIPO_IDENTIFICACION", "patron": "\\.csv$"},
+               "fabric": {"tipo": "files", "ruta": "Files/bronze/globales/default/SSF_TIPO_IDENTIFICACION"}}]},
+ {"nombre_fabric": "prueba-pg-cuotas-pacs-anulados", "nombre_stratio": "(prueba de Postgres, sin flujo)", "grupo": "analitica",
+  "objetos": [{"clave": "corporativo_cuotas_pacs_anulados_ssf", "stratio": {"tipo": "pg", "ruta": "corporativo.cuotas_pacs_anulados_ssf"},
+               "fabric": {"tipo": "pg", "ruta": "corporativo.cuotas_pacs_anulados_ssf"}}]}]

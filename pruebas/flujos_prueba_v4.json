@@ -1,0 +1,12 @@
+[{"nombre_fabric": "23-landing-globales-ssf-tipo-identificacion", "nombre_stratio": "23-landing-globales-ssf-tipo-identificacion", "grupo": "ingesta",
+  "objetos": [{"clave": "globales_default_ssf_tipo_identificacion",
+               "stratio": {"tipo": "sftp", "ruta": "/home/comfandi/globales/default/SSF_TIPO_IDENTIFICACION", "patron": "\\.csv$"},
+               "fabric": {"tipo": "files", "ruta": "Files/bronze/globales/default/SSF_TIPO_IDENTIFICACION"}, "llave": ["Codigo"]}]},
+ {"nombre_fabric": "03-moves", "nombre_stratio": "03-moves", "grupo": "analitica", "orquestador": "orq_agrupadoras",
+  "dependencias": ["origenes", "destinos"],
+  "objetos": [{"clave": "agrupadoras_moves_agrup", "fabric": {"tipo": "delta", "ruta": "silver.agrupadoras_moves_agrup"},
+               "stratio": {"tipo": "hdfs", "ruta": "/data/prod/trusted/agrupadoras/moves_agrup"}},
+              {"clave": "agrupadoras_historico_movimiento_alt", "fabric": {"tipo": "delta", "ruta": "silver.agrupadoras_historico_movimiento_alt"},
+               "stratio": {"tipo": "hdfs", "ruta": "/data/prod/trusted/agrupadoras/historico_movimiento_alt"}},
+              {"clave": "agrupadoras_historico_movimiento2", "fabric": {"tipo": "delta", "ruta": "silver.agrupadoras_historico_movimiento2"},
+               "stratio": {"tipo": "hdfs", "ruta": "/data/prod/trusted/agrupadoras/historico_movimiento2"}}]}]

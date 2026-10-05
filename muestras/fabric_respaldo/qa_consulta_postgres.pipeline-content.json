@@ -1,0 +1,76 @@
+{
+ "properties": {
+  "description": "Ejecuta una consulta contra la Postgres de analitica del ambiente y devuelve las filas en la salida de la actividad. Sirve para pruebas de paridad y de ejecucion desde los notebooks: se invoca con la consulta como parametro y se leen los resultados de la corrida.",
+  "activities": [
+   {
+    "name": "Consultar Postgres",
+    "description": "Lookup con firstRowOnly en falso: devuelve todas las filas que produzca la consulta, no solo la primera.",
+    "type": "Lookup",
+    "dependsOn": [],
+    "policy": {
+     "timeout": "0.02:00:00",
+     "retry": 1,
+     "retryIntervalInSeconds": 30,
+     "secureOutput": false,
+     "secureInput": false
+    },
+    "typeProperties": {
+     "source": {
+      "type": "AzurePostgreSqlSource",
+      "query": {
+       "value": "@pipeline().parameters.consulta",
+       "type": "Expression"
+      },
+      "queryTimeout": "02:00:00"
+     },
+     "firstRowOnly": false,
+     "datasetSettings": {
+      "type": "AzurePostgreSqlTable",
+      "typeProperties": {},
+      "schema": [],
+      "externalReferences": {
+       "connection": "2d882b03-c343-489b-847f-e095b32c12c9"
+      },
+      "annotations": []
+     }
+    }
+   },
+   {
+    "name": "Resumen",
+    "description": "Deja en la salida el numero de filas devueltas, para que el notebook lo lea sin recorrer el resultado.",
+    "type": "SetVariable",
+    "dependsOn": [
+     {
+      "activity": "Consultar Postgres",
+      "dependencyConditions": [
+       "Succeeded"
+      ]
+     }
+    ],
+    "policy": {
+     "secureOutput": false,
+     "secureInput": false
+    },
+    "typeProperties": {
+     "variableName": "filas_devueltas",
+     "value": {
+      "value": "@string(activity('Consultar Postgres').output.count)",
+      "type": "Expression"
+     }
+    }
+   }
+  ],
+  "parameters": {
+   "consulta": {
+    "type": "string",
+    "defaultValue": "select current_database() as base, current_user as usuario, version() as version, now() as momento"
+   }
+  },
+  "variables": {
+   "filas_devueltas": {
+    "type": "String"
+   }
+  },
+  "annotations": []
+ }
+}

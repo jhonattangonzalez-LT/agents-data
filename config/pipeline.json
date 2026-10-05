@@ -1,0 +1,78 @@
+{
+  "_nota": "Configuracion unica de la pipeline QA v2. Las credenciales NO van aqui: solo la ruta del archivo que las contiene.",
+  "fabric": {
+    "tenant": "811c10ed-f898-47d0-bcce-ee7b17f6b0ff",
+    "api": "https://api.fabric.microsoft.com/v1",
+    "onelake": "https://onelake.dfs.fabric.microsoft.com",
+    "portal": "https://app.fabric.microsoft.com",
+    "ws_datalake": "f46ef407-ab98-4741-8a4e-25d1d42ab145",
+    "lh_transversal": "eae58d30-8ffe-4de2-b4d4-91e1734d0fd2",
+    "ws_ingesta": "689d798c-2d22-42a1-a970-a19def0881bf",
+    "ws_orquestacion": "52aaec56-102a-4b7a-b3c5-6859f6421308",
+    "pipeline_postgres": "qa_v2_postgres",
+    "notebook_etl": "qa_v2_etl_validator",
+    "notebook_etl_fuente": "fabric/etl_validator_fabric_v9.ipynb",
+    "conexion_postgres_qa": "2d882b03-c343-489b-847f-e095b32c12c9",
+    "assets_flujos": "Files/assets/flows"
+  },
+  "stratio": {
+    "rocket": "https://datafabric.comfandi.com.co/rocket"
+  },
+  "bucket": {
+    "cuenta": "comfqametricsdevqaeus2",
+    "contenedores": {
+      "STRATIO": "metricas-stratio",
+      "FABRIC": "metricas-fabric"
+    },
+    "prefijo": "v3/qa/"
+  },
+  "secretos": {
+    "rocket_cookie": "~/Projects/.rocket_cookie",
+    "stratio_conn": "~/Projects/.stratio_conn.json",
+    "bucket_sas": "~/Projects/.azure_metricas_sas",
+    "_nota_cookies": "Rocket admite 1 a 3 cookies: ~/Projects/.rocket_cookie, .rocket_cookie_2, .rocket_cookie_3 (una por sesion de navegador). Las peticiones se reparten entre ellas.",
+    "_nota": "Rutas de las credenciales (fuera del repo). Si el equipo las guarda en otra carpeta, exportar PC_SECRETOS_DIR=/ruta y se buscan alli con el mismo nombre."
+  },
+  "publicacion": {
+    "_nota": "Se publica solo mediciones, cotejos y cotejo de flujo en OneLake Files/resultados/reportes_v4/ y las dos mediciones al bucket metricas-*/v4/qa/<clave>/ (ver docs/REPORTES_V4.md).",
+    "raiz_onelake": "resultados/reportes_v4"
+  },
+  "paralelismo": {
+    "onelake_hilos": 8,
+    "rocket_objetos_a_la_vez": 1,
+    "rocket_hilos_por_objeto": 8,
+    "pg_stratio_consultas": 2,
+    "pg_fabric_corridas": 3,
+    "medicion_local_objetos": 2,
+    "flujos_etl_a_la_vez": 6,
+    "_nota": "Sin abusar de las plataformas: 8 hilos en Rocket (repartidos entre las cookies disponibles) y 8 en OneLake. Varias tareas en paralelo, cada una con su limite."
+  },
+  "postgres": {
+    "timeout_consulta": "00:30:00",
+    "columnas_por_consulta": 40,
+    "_nota": "Medir sin indisponibilizar: pocas consultas a la vez, timeout corto, columnas por bloques."
+  },
+  "medicion": {
+    "duckdb_memoria": "8GB",
+    "duckdb_hilos": 6,
+    "zona_horaria": "UTC"
+  },
+  "cache": {
+    "raiz": "cache",
+    "max_gb": 400,
+    "margen_libre_gb": 50
+  },
+  "estimacion": {
+    "_nota": "Tasas para estimar el tiempo del nivel 2 antes de lanzarlo. Se ajustan con lo medido (config/tasas_medidas.json).",
+    "onelake_mb_s": 40,
+    "rocket_mb_s": 1.1,
+    "rocket_s_por_archivo": 1.25,
+    "pg_stratio_extraccion_mb_s": 0.8,
+    "pg_fabric_extraccion_mb_s": 8,
+    "grande_filas": 100000000,
+    "grande_gb": 5,
+    "medicion_filas_pasada_s": 3000000,
+    "columnas_por_pasada": 14,
+    "_nota_rocket": "Con 4 hilos se midio 0,55 MB/s y con 32, 2,76 MB/s; con 8 se estima ~1,1 MB/s y ~10 s por archivo repartidos en 8 hilos."
+  }
+}

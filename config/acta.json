@@ -1,0 +1,18 @@
+{
+  "_nota": "Participantes y firmantes del acta. Los firmantes cambian segun lo que se entrega (regla acordada el 2026-10-05): solo ingesta -> CDS (Erick); solo analitica (los orquestadores cuentan como analitica) -> DIA (Diego); ambos grupos -> los dos. Completar nombres y roles exactos aqui; el generador no los inventa.",
+  "titulo": "Proyecto de Migración de la Plataforma de Datos · Stratio → Microsoft Fabric",
+  "autor": "Equipo VMQA · Quind S.A.S.",
+  "participantes_fijos": [
+    ["Equipo VMQA", "Quind S.A.S.", "Pruebas y aseguramiento de calidad"]
+  ],
+  "firmantes": {
+    "ingesta":   {"nombre": "Erick", "rol": "Desarrollo de flujos de ingesta", "org": "CDS · Quind S.A.S."},
+    "analitica": {"nombre": "Diego", "rol": "Desarrollo de flujos de analítica", "org": "DIA · Quind S.A.S."},
+    "qa":        {"nombre": "Equipo VMQA", "rol": "Pruebas y aseguramiento de calidad", "org": "Quind S.A.S."}
+  },
+  "criterio": {
+    "ingesta": "VG, ID y CP · paridad exacta del dato (filas, SHA-256 canónico, esquema y contrato VG-09)",
+    "analitica": "VG e ID · integración: contrato VG-09, VG sin fallas, ID sin regresiones; filas y huella informativas",
+    "orquestador": "por ejecución: la corrida y los flujos que invoca en Completed"
+  }
+}

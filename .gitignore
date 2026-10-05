@@ -1,0 +1,17 @@
+# estado local y descargas: nunca se versionan
+trabajos/
+cache/
+lotes/
+# resultados de pruebas (pueden traer dato real); se versionan solo scripts y definiciones
+pruebas/*.json
+pruebas/*.log
+!pruebas/flujos_*.json
+config/tasas_medidas.json
+__pycache__/
+*.pyc
+*.part
+*.tmp
+# credenciales: viven fuera del repo, pero por si acaso
+.rocket_cookie*
+.stratio_conn.json
+.azure_metricas_sas

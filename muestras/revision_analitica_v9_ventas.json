@@ -1,0 +1,976 @@
+{
+ "corrida_validacion": "20260924T210503",
+ "fecha": "2026-09-24",
+ "ambiente": {
+  "veredicto": "EN_AMBIENTE",
+  "ambiente": "qa",
+  "sufijo": "-qa",
+  "fuera": 0,
+  "detalle": [
+   {
+    "rol": "entrada",
+    "bandera": "transacciones-en-linea-ventas-table",
+    "workspace": "fabric-comfandi-datalake-qa",
+    "lakehouse": "lh_transversal",
+    "correcto": true
+   },
+   {
+    "rol": "entrada",
+    "bandera": "ventas-lakehouse-table",
+    "workspace": "fabric-comfandi-datalake-qa",
+    "lakehouse": "lh_transversal",
+    "correcto": true
+   },
+   {
+    "rol": "control",
+    "bandera": "migrations-history-table",
+    "workspace": "fabric-comfandi-datalake-qa",
+    "lakehouse": "lh_transversal",
+    "correcto": true
+   }
+  ]
+ },
+ "generado_utc": "2026-09-24T21:21:38+00:00",
+ "flujo": "ventas",
+ "veredicto": "REVISAR_TRANSFORMACION",
+ "ejecucion": {
+  "veredicto": "OK",
+  "estado": "Completed",
+  "corrida": "90bbd3e7-7089-4701-8179-9f9825e1671d",
+  "fin": "2026-09-24T18:27:39.0733333"
+ },
+ "variables": {
+  "veredicto": "RESUELTA",
+  "banderas": 4,
+  "con_problema": 0,
+  "detalle": [
+   {
+    "rol": "entrada",
+    "bandera": "transacciones-en-linea-ventas-table",
+    "variable": "transacciones_en_linea_ventas_table",
+    "valor": "silver.mercadeo_transacciones_en_linea_ventas",
+    "problema": []
+   },
+   {
+    "rol": "entrada",
+    "bandera": "ventas-lakehouse-table",
+    "variable": "ventas_lakehouse_table",
+    "valor": "silver.familias_ventas",
+    "problema": []
+   },
+   {
+    "rol": "control",
+    "bandera": "migrations-history-table",
+    "variable": "migrations_history_table",
+    "valor": "lh_transversal.control.migrations_history",
+    "problema": []
+   },
+   {
+    "rol": "codigo",
+    "bandera": "flow-code-zip",
+    "variable": "",
+    "valor": "abfss://f46ef407-ab98-4741-8a4e-25d1d42ab145@onelake.dfs.fabric.microsoft.com/eae58d30-8ffe-4de2-b4d4-91e1734d0fd2/Files/assets/flows/familias/silver/ventas/ventas.zip','",
+    "problema": []
+   }
+  ]
+ },
+ "entradas": [
+  {
+   "valor": "silver.mercadeo_transacciones_en_linea_ventas",
+   "ws": "f46ef407-ab98-4741-8a4e-25d1d42ab145",
+   "ruta": "eae58d30-8ffe-4de2-b4d4-91e1734d0fd2/Tables/silver/mercadeo_transacciones_en_linea_ventas",
+   "existe": true,
+   "archivos": 32,
+   "parquet": 8,
+   "bytes": 2811282181,
+   "mb": 2681.05,
+   "ultima_escritura": "Wed, 23 Sep 2026 20:54:15 GMT",
+   "delta": {
+    "versiones": 4,
+    "archivos": 2,
+    "filas": 30496304,
+    "esquema": [
+     [
+      "pto_venta",
+      "decimal(4,0)",
+      true
+     ],
+     [
+      "terminal",
+      "decimal(4,0)",
+      true
+     ],
+     [
+      "num_transaccion",
+      "decimal(4,0)",
+      true
+     ],
+     [
+      "fecha",
+      "date",
+      true
+     ],
+     [
+      "hora",
+      "integer",
+      true
+     ],
+     [
+      "plu",
+      "integer",
+      true
+     ],
+     [
+      "tipo_unidad",
+      "string",
+      true
+     ],
+     [
+      "departamento",
+      "integer",
+      true
+     ],
+     [
+      "departamento_desc",
+      "string",
+      true
+     ],
+     [
+      "seccion",
+      "decimal(3,0)",
+      true
+     ],
+     [
+      "fecha_hora",
+      "timestamp",
+      true
+     ],
+     [
+      "cantidad",
+      "decimal(21,0)",
+      true
+     ],
+     [
+      "tasa_iva",
+      "integer",
+      true
+     ],
+     [
+      "tasa_impoconsumo",
+      "integer",
+      true
+     ],
+     [
+      "tasa_icui",
+      "integer",
+      true
+     ],
+     [
+      "venta_sin_impuesto",
+      "double",
+      true
+     ],
+     [
+      "impuesto",
+      "double",
+      true
+     ],
+     [
+      "iva",
+      "double",
+      true
+     ],
+     [
+      "nuevo_iva",
+      "double",
+      true
+     ],
+     [
+      "impoconsumo",
+      "decimal(20,0)",
+      true
+     ],
+     [
+      "impuesto_bolsa",
+      "decimal(24,0)",
+      true
+     ],
+     [
+      "icui",
+      "decimal(20,0)",
+      true
+     ],
+     [
+      "venta_bruta",
+      "decimal(18,0)",
+      true
+     ],
+     [
+      "venta",
+      "double",
+      true
+     ],
+     [
+      "venta_antes_iva",
+      "double",
+      true
+     ],
+     [
+      "venta_neta",
+      "double",
+      true
+     ],
+     [
+      "descuento",
+      "double",
+      true
+     ],
+     [
+      "reintegro",
+      "double",
+      true
+     ],
+     [
+      "tipo_transaccion",
+      "string",
+      true
+     ],
+     [
+      "cod_tipo_transaccion",
+      "string",
+      true
+     ],
+     [
+      "id_cliente",
+      "long",
+      true
+     ],
+     [
+      "cod_tipo_persona",
+      "integer",
+      true
+     ],
+     [
+      "tipo_persona",
+      "string",
+      true
+     ],
+     [
+      "tipo_identificacion",
+      "string",
+      true
+     ],
+     [
+      "es_venta_marcada",
+      "boolean",
+      true
+     ],
+     [
+      "Descripcion_pto_vta",
+      "string",
+      true
+     ],
+     [
+      "formato",
+      "string",
+      true
+     ],
+     [
+      "medio_Pago",
+      "string",
+      true
+     ],
+     [
+      "tipo_pago",
+      "string",
+      true
+     ],
+     [
+      "nit",
+      "long",
+      true
+     ],
+     [
+      "minifactura",
+      "integer",
+      true
+     ],
+     [
+      "factura_linea",
+      "string",
+      true
+     ],
+     [
+      "factura_contingencia",
+      "string",
+      true
+     ],
+     [
+      "nota_credito",
+      "string",
+      true
+     ]
+    ],
+    "retirados": 6,
+    "operacion": "CREATE OR REPLACE TABLE AS SELECT",
+    "modo": null,
+    "cometido_ms": 1790275175426
+   },
+   "filas": 30496304,
+   "columnas": [
+    "pto_venta",
+    "terminal",
+    "num_transaccion",
+    "fecha",
+    "hora",
+    "plu",
+    "tipo_unidad",
+    "departamento",
+    "departamento_desc",
+    "seccion",
+    "fecha_hora",
+    "cantidad",
+    "tasa_iva",
+    "tasa_impoconsumo",
+    "tasa_icui",
+    "venta_sin_impuesto",
+    "impuesto",
+    "iva",
+    "nuevo_iva",
+    "impoconsumo",
+    "impuesto_bolsa",
+    "icui",
+    "venta_bruta",
+    "venta",
+    "venta_antes_iva",
+    "venta_neta",
+    "descuento",
+    "reintegro",
+    "tipo_transaccion",
+    "cod_tipo_transaccion",
+    "id_cliente",
+    "cod_tipo_persona",
+    "tipo_persona",
+    "tipo_identificacion",
+    "es_venta_marcada",
+    "Descripcion_pto_vta",
+    "formato",
+    "medio_Pago",
+    "tipo_pago",
+    "nit",
+    "minifactura",
+    "factura_linea",
+    "factura_contingencia",
+    "nota_credito"
+   ],
+   "fuente_conteo": "registro Delta",
+   "bandera": "transacciones-en-linea-ventas-table"
+  },
+  {
+   "valor": "silver.familias_ventas",
+   "ws": "f46ef407-ab98-4741-8a4e-25d1d42ab145",
+   "ruta": "eae58d30-8ffe-4de2-b4d4-91e1734d0fd2/Tables/silver/familias_ventas",
+   "existe": true,
+   "archivos": 16,
+   "parquet": 2,
+   "bytes": 49872797,
+   "mb": 47.56,
+   "ultima_escritura": "Wed, 23 Sep 2026 16:18:55 GMT",
+   "delta": {
+    "versiones": 2,
+    "archivos": 1,
+    "filas": 544899,
+    "esquema": [
+     [
+      "NUMERO_DOC",
+      "integer",
+      true
+     ],
+     [
+      "VENTAS_DROGUERIAS_NUM_CONSUMOS_TOTALES",
+      "long",
+      true
+     ],
+     [
+      "VENTAS_DROGUERIAS_NUM_CONSUMOS_6MESES",
+      "long",
+      true
+     ],
+     [
+      "VENTAS_DROGUERIAS_NUM_CONSUMOS_12MESES",
+      "long",
+      true
+     ],
+     [
+      "VENTAS_DROGUERIAS_NUM_CONSUMOS_24MESES",
+      "long",
+      true
+     ],
+     [
+      "VENTAS_DROGUERIAS_VALOR_TOTAL_CONSUMOS",
+      "double",
+      true
+     ],
+     [
+      "VENTAS_DROGUERIAS_VALOR_TOTAL_CONSUMOS_6MESES",
+      "double",
+      true
+     ],
+     [
+      "VENTAS_DROGUERIAS_VALOR_TOTAL_CONSUMOS_12MESES",
+      "double",
+      true
+     ],
+     [
+      "VENTAS_DROGUERIAS_VALOR_TOTAL_CONSUMOS_24MESES",
+      "double",
+      true
+     ],
+     [
+      "VENTAS_DROGUERIAS_VALOR_PROMEDIO_CONSUMOS",
+      "double",
+      true
+     ],
+     [
+      "VENTAS_DROGUERIAS_VALOR_MEDIANA_CONSUMOS",
+      "double",
+      true
+     ],
+     [
+      "VENTAS_DROGUERIAS_VALOR_MIN_CONSUMOS",
+      "double",
+      true
+     ],
+     [
+      "VENTAS_DROGUERIAS_VALOR_MAX_CONSUMOS",
+      "double",
+      true
+     ],
+     [
+      "VENTAS_OTROS_NUM_CONSUMOS_TOTALES",
+      "long",
+      true
+     ],
+     [
+      "VENTAS_OTROS_NUM_CONSUMOS_6MESES",
+      "long",
+      true
+     ],
+     [
+      "VENTAS_OTROS_NUM_CONSUMOS_12MESES",
+      "long",
+      true
+     ],
+     [
+      "VENTAS_OTROS_NUM_CONSUMOS_24MESES",
+      "long",
+      true
+     ],
+     [
+      "VENTAS_OTROS_VALOR_TOTAL_CONSUMOS",
+      "double",
+      true
+     ],
+     [
+      "VENTAS_OTROS_VALOR_TOTAL_CONSUMOS_6MESES",
+      "double",
+      true
+     ],
+     [
+      "VENTAS_OTROS_VALOR_TOTAL_CONSUMOS_12MESES",
+      "double",
+      true
+     ],
+     [
+      "VENTAS_OTROS_VALOR_TOTAL_CONSUMOS_24MESES",
+      "double",
+      true
+     ],
+     [
+      "VENTAS_OTROS_VALOR_PROMEDIO_CONSUMOS",
+      "double",
+      true
+     ],
+     [
+      "VENTAS_OTROS_VALOR_MEDIANA_CONSUMOS",
+      "double",
+      true
+     ],
+     [
+      "VENTAS_OTROS_VALOR_MIN_CONSUMOS",
+      "double",
+      true
+     ],
+     [
+      "VENTAS_OTROS_VALOR_MAX_CONSUMOS",
+      "double",
+      true
+     ],
+     [
+      "VENTAS_SUPERMERCADOS_NUM_CONSUMOS_TOTALES",
+      "long",
+      true
+     ],
+     [
+      "VENTAS_SUPERMERCADOS_NUM_CONSUMOS_6MESES",
+      "long",
+      true
+     ],
+     [
+      "VENTAS_SUPERMERCADOS_NUM_CONSUMOS_12MESES",
+      "long",
+      true
+     ],
+     [
+      "VENTAS_SUPERMERCADOS_NUM_CONSUMOS_24MESES",
+      "long",
+      true
+     ],
+     [
+      "VENTAS_SUPERMERCADOS_VALOR_TOTAL_CONSUMOS",
+      "double",
+      true
+     ],
+     [
+      "VENTAS_SUPERMERCADOS_VALOR_TOTAL_CONSUMOS_6MESES",
+      "double",
+      true
+     ],
+     [
+      "VENTAS_SUPERMERCADOS_VALOR_TOTAL_CONSUMOS_12MESES",
+      "double",
+      true
+     ],
+     [
+      "VENTAS_SUPERMERCADOS_VALOR_TOTAL_CONSUMOS_24MESES",
+      "double",
+      true
+     ],
+     [
+      "VENTAS_SUPERMERCADOS_VALOR_PROMEDIO_CONSUMOS",
+      "double",
+      true
+     ],
+     [
+      "VENTAS_SUPERMERCADOS_VALOR_MEDIANA_CONSUMOS",
+      "double",
+      true
+     ],
+     [
+      "VENTAS_SUPERMERCADOS_VALOR_MIN_CONSUMOS",
+      "double",
+      true
+     ],
+     [
+      "VENTAS_SUPERMERCADOS_VALOR_MAX_CONSUMOS",
+      "double",
+      true
+     ],
+     [
+      "VENTAS_TOTAL_NUM_CONSUMOS_TOTALES",
+      "long",
+      true
+     ],
+     [
+      "VENTAS_TOTAL_NUM_CONSUMOS_6MESES",
+      "long",
+      true
+     ],
+     [
+      "VENTAS_TOTAL_NUM_CONSUMOS_12MESES",
+      "long",
+      true
+     ],
+     [
+      "VENTAS_TOTAL_NUM_CONSUMOS_24MESES",
+      "long",
+      true
+     ],
+     [
+      "VENTAS_TOTAL_VALOR_TOTAL_CONSUMOS",
+      "double",
+      true
+     ],
+     [
+      "VENTAS_TOTAL_VALOR_TOTAL_CONSUMOS_6MESES",
+      "double",
+      true
+     ],
+     [
+      "VENTAS_TOTAL_VALOR_TOTAL_CONSUMOS_12MESES",
+      "double",
+      true
+     ],
+     [
+      "VENTAS_TOTAL_VALOR_TOTAL_CONSUMOS_24MESES",
+      "double",
+      true
+     ],
+     [
+      "VENTAS_TOTAL_VALOR_PROMEDIO_CONSUMOS",
+      "double",
+      true
+     ],
+     [
+      "VENTAS_TOTAL_VALOR_MEDIANA_CONSUMOS",
+      "double",
+      true
+     ],
+     [
+      "VENTAS_TOTAL_VALOR_MIN_CONSUMOS",
+      "double",
+      true
+     ],
+     [
+      "VENTAS_TOTAL_VALOR_MAX_CONSUMOS",
+      "double",
+      true
+     ]
+    ],
+    "retirados": 1,
+    "operacion": "CREATE OR REPLACE TABLE AS SELECT",
+    "modo": null,
+    "cometido_ms": 1790274423815
+   },
+   "filas": 544899,
+   "columnas": [
+    "NUMERO_DOC",
+    "VENTAS_DROGUERIAS_NUM_CONSUMOS_TOTALES",
+    "VENTAS_DROGUERIAS_NUM_CONSUMOS_6MESES",
+    "VENTAS_DROGUERIAS_NUM_CONSUMOS_12MESES",
+    "VENTAS_DROGUERIAS_NUM_CONSUMOS_24MESES",
+    "VENTAS_DROGUERIAS_VALOR_TOTAL_CONSUMOS",
+    "VENTAS_DROGUERIAS_VALOR_TOTAL_CONSUMOS_6MESES",
+    "VENTAS_DROGUERIAS_VALOR_TOTAL_CONSUMOS_12MESES",
+    "VENTAS_DROGUERIAS_VALOR_TOTAL_CONSUMOS_24MESES",
+    "VENTAS_DROGUERIAS_VALOR_PROMEDIO_CONSUMOS",
+    "VENTAS_DROGUERIAS_VALOR_MEDIANA_CONSUMOS",
+    "VENTAS_DROGUERIAS_VALOR_MIN_CONSUMOS",
+    "VENTAS_DROGUERIAS_VALOR_MAX_CONSUMOS",
+    "VENTAS_OTROS_NUM_CONSUMOS_TOTALES",
+    "VENTAS_OTROS_NUM_CONSUMOS_6MESES",
+    "VENTAS_OTROS_NUM_CONSUMOS_12MESES",
+    "VENTAS_OTROS_NUM_CONSUMOS_24MESES",
+    "VENTAS_OTROS_VALOR_TOTAL_CONSUMOS",
+    "VENTAS_OTROS_VALOR_TOTAL_CONSUMOS_6MESES",
+    "VENTAS_OTROS_VALOR_TOTAL_CONSUMOS_12MESES",
+    "VENTAS_OTROS_VALOR_TOTAL_CONSUMOS_24MESES",
+    "VENTAS_OTROS_VALOR_PROMEDIO_CONSUMOS",
+    "VENTAS_OTROS_VALOR_MEDIANA_CONSUMOS",
+    "VENTAS_OTROS_VALOR_MIN_CONSUMOS",
+    "VENTAS_OTROS_VALOR_MAX_CONSUMOS",
+    "VENTAS_SUPERMERCADOS_NUM_CONSUMOS_TOTALES",
+    "VENTAS_SUPERMERCADOS_NUM_CONSUMOS_6MESES",
+    "VENTAS_SUPERMERCADOS_NUM_CONSUMOS_12MESES",
+    "VENTAS_SUPERMERCADOS_NUM_CONSUMOS_24MESES",
+    "VENTAS_SUPERMERCADOS_VALOR_TOTAL_CONSUMOS",
+    "VENTAS_SUPERMERCADOS_VALOR_TOTAL_CONSUMOS_6MESES",
+    "VENTAS_SUPERMERCADOS_VALOR_TOTAL_CONSUMOS_12MESES",
+    "VENTAS_SUPERMERCADOS_VALOR_TOTAL_CONSUMOS_24MESES",
+    "VENTAS_SUPERMERCADOS_VALOR_PROMEDIO_CONSUMOS",
+    "VENTAS_SUPERMERCADOS_VALOR_MEDIANA_CONSUMOS",
+    "VENTAS_SUPERMERCADOS_VALOR_MIN_CONSUMOS",
+    "VENTAS_SUPERMERCADOS_VALOR_MAX_CONSUMOS",
+    "VENTAS_TOTAL_NUM_CONSUMOS_TOTALES",
+    "VENTAS_TOTAL_NUM_CONSUMOS_6MESES",
+    "VENTAS_TOTAL_NUM_CONSUMOS_12MESES",
+    "VENTAS_TOTAL_NUM_CONSUMOS_24MESES",
+    "VENTAS_TOTAL_VALOR_TOTAL_CONSUMOS",
+    "VENTAS_TOTAL_VALOR_TOTAL_CONSUMOS_6MESES",
+    "VENTAS_TOTAL_VALOR_TOTAL_CONSUMOS_12MESES",
+    "VENTAS_TOTAL_VALOR_TOTAL_CONSUMOS_24MESES",
+    "VENTAS_TOTAL_VALOR_PROMEDIO_CONSUMOS",
+    "VENTAS_TOTAL_VALOR_MEDIANA_CONSUMOS",
+    "VENTAS_TOTAL_VALOR_MIN_CONSUMOS",
+    "VENTAS_TOTAL_VALOR_MAX_CONSUMOS"
+   ],
+   "fuente_conteo": "registro Delta",
+   "bandera": "ventas-lakehouse-table"
+  }
+ ],
+ "salidas": [],
+ "control": [
+  {
+   "valor": "lh_transversal.control.migrations_history",
+   "ws": "f46ef407-ab98-4741-8a4e-25d1d42ab145",
+   "ruta": "eae58d30-8ffe-4de2-b4d4-91e1734d0fd2/Tables/control/migrations_history",
+   "existe": true,
+   "archivos": 469,
+   "parquet": 112,
+   "bytes": 1978957,
+   "mb": 1.89,
+   "ultima_escritura": "Wed, 23 Sep 2026 23:10:24 GMT",
+   "delta": {
+    "versiones": 113,
+    "archivos": 110,
+    "filas": 110,
+    "esquema": [
+     [
+      "flow",
+      "string",
+      true
+     ],
+     [
+      "version",
+      "integer",
+      true
+     ],
+     [
+      "name",
+      "string",
+      true
+     ],
+     [
+      "checksum",
+      "string",
+      true
+     ],
+     [
+      "applied_at",
+      "timestamp",
+      true
+     ],
+     [
+      "status",
+      "string",
+      true
+     ],
+     [
+      "direction",
+      "string",
+      true
+     ],
+     [
+      "error",
+      "string",
+      true
+     ],
+     [
+      "job_id",
+      "string",
+      true
+     ]
+    ],
+    "retirados": 1,
+    "operacion": "WRITE",
+    "modo": "Append",
+    "cometido_ms": 1790268436633
+   },
+   "filas": 110,
+   "columnas": [
+    "flow",
+    "version",
+    "name",
+    "checksum",
+    "applied_at",
+    "status",
+    "direction",
+    "error",
+    "job_id"
+   ],
+   "fuente_conteo": "registro Delta",
+   "bandera": "migrations-history-table"
+  }
+ ],
+ "estado_salidas": [],
+ "transformacion": {
+  "filas_entrada": 31041203,
+  "filas_salida": 0,
+  "columnas_entrada": [
+   "Descripcion_pto_vta",
+   "NUMERO_DOC",
+   "VENTAS_DROGUERIAS_NUM_CONSUMOS_12MESES",
+   "VENTAS_DROGUERIAS_NUM_CONSUMOS_24MESES",
+   "VENTAS_DROGUERIAS_NUM_CONSUMOS_6MESES",
+   "VENTAS_DROGUERIAS_NUM_CONSUMOS_TOTALES",
+   "VENTAS_DROGUERIAS_VALOR_MAX_CONSUMOS",
+   "VENTAS_DROGUERIAS_VALOR_MEDIANA_CONSUMOS",
+   "VENTAS_DROGUERIAS_VALOR_MIN_CONSUMOS",
+   "VENTAS_DROGUERIAS_VALOR_PROMEDIO_CONSUMOS",
+   "VENTAS_DROGUERIAS_VALOR_TOTAL_CONSUMOS",
+   "VENTAS_DROGUERIAS_VALOR_TOTAL_CONSUMOS_12MESES",
+   "VENTAS_DROGUERIAS_VALOR_TOTAL_CONSUMOS_24MESES",
+   "VENTAS_DROGUERIAS_VALOR_TOTAL_CONSUMOS_6MESES",
+   "VENTAS_OTROS_NUM_CONSUMOS_12MESES",
+   "VENTAS_OTROS_NUM_CONSUMOS_24MESES",
+   "VENTAS_OTROS_NUM_CONSUMOS_6MESES",
+   "VENTAS_OTROS_NUM_CONSUMOS_TOTALES",
+   "VENTAS_OTROS_VALOR_MAX_CONSUMOS",
+   "VENTAS_OTROS_VALOR_MEDIANA_CONSUMOS",
+   "VENTAS_OTROS_VALOR_MIN_CONSUMOS",
+   "VENTAS_OTROS_VALOR_PROMEDIO_CONSUMOS",
+   "VENTAS_OTROS_VALOR_TOTAL_CONSUMOS",
+   "VENTAS_OTROS_VALOR_TOTAL_CONSUMOS_12MESES",
+   "VENTAS_OTROS_VALOR_TOTAL_CONSUMOS_24MESES",
+   "VENTAS_OTROS_VALOR_TOTAL_CONSUMOS_6MESES",
+   "VENTAS_SUPERMERCADOS_NUM_CONSUMOS_12MESES",
+   "VENTAS_SUPERMERCADOS_NUM_CONSUMOS_24MESES",
+   "VENTAS_SUPERMERCADOS_NUM_CONSUMOS_6MESES",
+   "VENTAS_SUPERMERCADOS_NUM_CONSUMOS_TOTALES",
+   "VENTAS_SUPERMERCADOS_VALOR_MAX_CONSUMOS",
+   "VENTAS_SUPERMERCADOS_VALOR_MEDIANA_CONSUMOS",
+   "VENTAS_SUPERMERCADOS_VALOR_MIN_CONSUMOS",
+   "VENTAS_SUPERMERCADOS_VALOR_PROMEDIO_CONSUMOS",
+   "VENTAS_SUPERMERCADOS_VALOR_TOTAL_CONSUMOS",
+   "VENTAS_SUPERMERCADOS_VALOR_TOTAL_CONSUMOS_12MESES",
+   "VENTAS_SUPERMERCADOS_VALOR_TOTAL_CONSUMOS_24MESES",
+   "VENTAS_SUPERMERCADOS_VALOR_TOTAL_CONSUMOS_6MESES",
+   "VENTAS_TOTAL_NUM_CONSUMOS_12MESES",
+   "VENTAS_TOTAL_NUM_CONSUMOS_24MESES",
+   "VENTAS_TOTAL_NUM_CONSUMOS_6MESES",
+   "VENTAS_TOTAL_NUM_CONSUMOS_TOTALES",
+   "VENTAS_TOTAL_VALOR_MAX_CONSUMOS",
+   "VENTAS_TOTAL_VALOR_MEDIANA_CONSUMOS",
+   "VENTAS_TOTAL_VALOR_MIN_CONSUMOS",
+   "VENTAS_TOTAL_VALOR_PROMEDIO_CONSUMOS",
+   "VENTAS_TOTAL_VALOR_TOTAL_CONSUMOS",
+   "VENTAS_TOTAL_VALOR_TOTAL_CONSUMOS_12MESES",
+   "VENTAS_TOTAL_VALOR_TOTAL_CONSUMOS_24MESES",
+   "VENTAS_TOTAL_VALOR_TOTAL_CONSUMOS_6MESES",
+   "cantidad",
+   "cod_tipo_persona",
+   "cod_tipo_transaccion",
+   "departamento",
+   "departamento_desc",
+   "descuento",
+   "es_venta_marcada",
+   "factura_contingencia",
+   "factura_linea",
+   "fecha",
+   "fecha_hora",
+   "formato",
+   "hora",
+   "icui",
+   "id_cliente",
+   "impoconsumo",
+   "impuesto",
+   "impuesto_bolsa",
+   "iva",
+   "medio_Pago",
+   "minifactura",
+   "nit",
+   "nota_credito",
+   "nuevo_iva",
+   "num_transaccion",
+   "plu",
+   "pto_venta",
+   "reintegro",
+   "seccion",
+   "tasa_icui",
+   "tasa_impoconsumo",
+   "tasa_iva",
+   "terminal",
+   "tipo_identificacion",
+   "tipo_pago",
+   "tipo_persona",
+   "tipo_transaccion",
+   "tipo_unidad",
+   "venta",
+   "venta_antes_iva",
+   "venta_bruta",
+   "venta_neta",
+   "venta_sin_impuesto"
+  ],
+  "columnas_salida": [],
+  "conservadas": [],
+  "descartadas": [
+   "Descripcion_pto_vta",
+   "NUMERO_DOC",
+   "VENTAS_DROGUERIAS_NUM_CONSUMOS_12MESES",
+   "VENTAS_DROGUERIAS_NUM_CONSUMOS_24MESES",
+   "VENTAS_DROGUERIAS_NUM_CONSUMOS_6MESES",
+   "VENTAS_DROGUERIAS_NUM_CONSUMOS_TOTALES",
+   "VENTAS_DROGUERIAS_VALOR_MAX_CONSUMOS",
+   "VENTAS_DROGUERIAS_VALOR_MEDIANA_CONSUMOS",
+   "VENTAS_DROGUERIAS_VALOR_MIN_CONSUMOS",
+   "VENTAS_DROGUERIAS_VALOR_PROMEDIO_CONSUMOS",
+   "VENTAS_DROGUERIAS_VALOR_TOTAL_CONSUMOS",
+   "VENTAS_DROGUERIAS_VALOR_TOTAL_CONSUMOS_12MESES",
+   "VENTAS_DROGUERIAS_VALOR_TOTAL_CONSUMOS_24MESES",
+   "VENTAS_DROGUERIAS_VALOR_TOTAL_CONSUMOS_6MESES",
+   "VENTAS_OTROS_NUM_CONSUMOS_12MESES",
+   "VENTAS_OTROS_NUM_CONSUMOS_24MESES",
+   "VENTAS_OTROS_NUM_CONSUMOS_6MESES",
+   "VENTAS_OTROS_NUM_CONSUMOS_TOTALES",
+   "VENTAS_OTROS_VALOR_MAX_CONSUMOS",
+   "VENTAS_OTROS_VALOR_MEDIANA_CONSUMOS",
+   "VENTAS_OTROS_VALOR_MIN_CONSUMOS",
+   "VENTAS_OTROS_VALOR_PROMEDIO_CONSUMOS",
+   "VENTAS_OTROS_VALOR_TOTAL_CONSUMOS",
+   "VENTAS_OTROS_VALOR_TOTAL_CONSUMOS_12MESES",
+   "VENTAS_OTROS_VALOR_TOTAL_CONSUMOS_24MESES",
+   "VENTAS_OTROS_VALOR_TOTAL_CONSUMOS_6MESES",
+   "VENTAS_SUPERMERCADOS_NUM_CONSUMOS_12MESES",
+   "VENTAS_SUPERMERCADOS_NUM_CONSUMOS_24MESES",
+   "VENTAS_SUPERMERCADOS_NUM_CONSUMOS_6MESES",
+   "VENTAS_SUPERMERCADOS_NUM_CONSUMOS_TOTALES",
+   "VENTAS_SUPERMERCADOS_VALOR_MAX_CONSUMOS",
+   "VENTAS_SUPERMERCADOS_VALOR_MEDIANA_CONSUMOS",
+   "VENTAS_SUPERMERCADOS_VALOR_MIN_CONSUMOS",
+   "VENTAS_SUPERMERCADOS_VALOR_PROMEDIO_CONSUMOS",
+   "VENTAS_SUPERMERCADOS_VALOR_TOTAL_CONSUMOS",
+   "VENTAS_SUPERMERCADOS_VALOR_TOTAL_CONSUMOS_12MESES",
+   "VENTAS_SUPERMERCADOS_VALOR_TOTAL_CONSUMOS_24MESES",
+   "VENTAS_SUPERMERCADOS_VALOR_TOTAL_CONSUMOS_6MESES",
+   "VENTAS_TOTAL_NUM_CONSUMOS_12MESES",
+   "VENTAS_TOTAL_NUM_CONSUMOS_24MESES",
+   "VENTAS_TOTAL_NUM_CONSUMOS_6MESES",
+   "VENTAS_TOTAL_NUM_CONSUMOS_TOTALES",
+   "VENTAS_TOTAL_VALOR_MAX_CONSUMOS",
+   "VENTAS_TOTAL_VALOR_MEDIANA_CONSUMOS",
+   "VENTAS_TOTAL_VALOR_MIN_CONSUMOS",
+   "VENTAS_TOTAL_VALOR_PROMEDIO_CONSUMOS",
+   "VENTAS_TOTAL_VALOR_TOTAL_CONSUMOS",
+   "VENTAS_TOTAL_VALOR_TOTAL_CONSUMOS_12MESES",
+   "VENTAS_TOTAL_VALOR_TOTAL_CONSUMOS_24MESES",
+   "VENTAS_TOTAL_VALOR_TOTAL_CONSUMOS_6MESES",
+   "cantidad",
+   "cod_tipo_persona",
+   "cod_tipo_transaccion",
+   "departamento",
+   "departamento_desc",
+   "descuento",
+   "es_venta_marcada",
+   "factura_contingencia",
+   "factura_linea",
+   "fecha",
+   "fecha_hora",
+   "formato",
+   "hora",
+   "icui",
+   "id_cliente",
+   "impoconsumo",
+   "impuesto",
+   "impuesto_bolsa",
+   "iva",
+   "medio_Pago",
+   "minifactura",
+   "nit",
+   "nota_credito",
+   "nuevo_iva",
+   "num_transaccion",
+   "plu",
+   "pto_venta",
+   "reintegro",
+   "seccion",
+   "tasa_icui",
+   "tasa_impoconsumo",
+   "tasa_iva",
+   "terminal",
+   "tipo_identificacion",
+   "tipo_pago",
+   "tipo_persona",
+   "tipo_transaccion",
+   "tipo_unidad",
+   "venta",
+   "venta_antes_iva",
+   "venta_bruta",
+   "venta_neta",
+   "venta_sin_impuesto"
+  ],
+  "derivadas": [],
+  "delta": -31041203,
+  "pct_conservado": 0.0,
+  "veredicto": "SALIDA_VACIA"
+ }
+}

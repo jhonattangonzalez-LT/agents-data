@@ -1,0 +1,556 @@
+"""reportes_v4 · construye y publica los cinco archivos de un lote (ver docs/REPORTES_V4.md).
+
+Los archivos se ARMAN desde el estado local del lote (lotes/<N>/…), nunca a mano: cada etapa deja su
+parte en el estado y `construir(lote)` reescribe los JSON. Asi un archivo siempre refleja lo medido, y
+volver a construir no pierde nada (las decisiones sobre diferencias viven en lotes/<N>/v4/decisiones.json).
+
+  medicion_<plat>_<clave>_v<N>.json · cotejo_<clave>_v<N>.json · flujo_<flujo>_v<N>.json · log_agentes_<lote>.jsonl
+"""
+import datetime
+import hashlib
+import json
+import os
+import re
+import uuid
+
+from .. import lote as L
+from ..acceso import onelake as ol
+from ..config import CONTROLES, criterio
+
+RAIZ_OL = "Files/resultados/reportes_v4"
+FORMATO = {"medicion": "pc.v4/medicion@1", "cotejo": "pc.v4/cotejo@1", "flujo": "pc.v4/flujo@1"}
+FUERA = {"VG-07", "VG-08", "ID-07", "ID-08"}
+CATALOGO = [c["codigo"] for c in CONTROLES["controles"]]
+_RE_V = re.compile(r"_v(\d+)\.json$")
+
+
+def _ahora():
+    return datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds")
+
+
+def _sha(doc):
+    return hashlib.sha256(json.dumps(doc, sort_keys=True, ensure_ascii=False, default=str).encode()).hexdigest()
+
+
+# ----------------------------------------------------------------- rutas y versiones
+def ruta_ol(tipo, nombre_obj, version, plataforma=None, pruebas=False, lote=None):
+    base = RAIZ_OL + ("/_pruebas" if pruebas else "")
+    if tipo == "medicion":
+        p = plataforma.lower()
+        return f"{base}/mediciones/{p}/{nombre_obj}/medicion_{p}_{nombre_obj}_v{version}.json"
+    if tipo == "cotejo":
+        return f"{base}/cotejos/{nombre_obj}/cotejo_{nombre_obj}_v{version}.json"
+    if tipo == "flujo":
+        return f"{base}/flujos/{nombre_obj}/flujo_{nombre_obj}_v{version}.json"
+    if tipo == "log":
+        return f"{base}/logs/{lote}/log_agentes_{lote}.jsonl"
+    raise ValueError(tipo)
+
+
+def _carpeta_ol(tipo, nombre_obj, plataforma=None, pruebas=False):
+    return ruta_ol(tipo, nombre_obj, 0, plataforma, pruebas).rsplit("/", 1)[0]
+
+
+def version(lote, tipo, nombre_obj, plataforma=None, pruebas=False):
+    """La version de este archivo en este lote. Se fija la primera vez: mayor _vN publicado + 1."""
+    vs = L.leer(lote, "v4/versiones.json", {}) or {}
+    k = f"{tipo}/{plataforma or '-'}/{nombre_obj}"
+    if k not in vs:
+        try:
+            ex = [int(m.group(1)) for p in ol.listar(_carpeta_ol(tipo, nombre_obj, plataforma, pruebas), False)
+                  if (m := _RE_V.search(p["name"]))]
+        except Exception:
+            ex = []
+        vs[k] = (max(ex) + 1) if ex else 1
+        L.guardar(lote, "v4/versiones.json", vs)
+    return vs[k]
+
+
+def _sobre(lote, tipo, f, clave=None, plataforma=None, previo=None):
+    d = L.leer(lote, "lote.json")
+    v = version(lote, tipo, clave or f["nombre_fabric"], plataforma, pruebas=bool((d or {}).get("pruebas")))
+    return {"formato": FORMATO[tipo], "id": (previo or {}).get("id") or str(uuid.uuid4()), "lote": str(lote),
+            "version": v, "estado_archivo": "EN_CURSO",
+            "creado_utc": (previo or {}).get("creado_utc") or _ahora(), "actualizado_utc": _ahora(),
+            "flujo": {"fabric": f["nombre_fabric"], "stratio": f.get("nombre_stratio"), "fl": f.get("fl"),
+                      "grupo": f["grupo"], "orquestador": f.get("orquestador")},
+            **({"clave": clave} if clave else {}), **({"plataforma": plataforma} if plataforma else {}),
+            "aportes": [], "insumos": []}
+
+
+def _aporte(doc, agente, parte, utc):
+    doc["aportes"].append({"agente": agente, "parte": parte, "utc": utc})
+
+
+# ----------------------------------------------------------------- 1-2 · medicion
+def _controles_rapido(rap):
+    out = {}
+    for cod, c in (rap.get("controles") or {}).items():
+        if cod in FUERA:
+            continue
+        out[cod] = {"estado": c.get("estado"), "nivel": c.get("nivel"), "resuelto_en": "rapido",
+                    "detalle": c.get("detalle"), **({"valor": c["valor"]} if "valor" in c and cod != "CP-02" else {})}
+        for k in ("parcial", "aproximado"):
+            if c.get(k):
+                out[cod][k] = c[k]
+    return out
+
+
+def _controles_completo(rep):
+    out = {}
+    v = rep.get("validaciones") or {}
+    for r in (v.get("ID_integridad_y_conteos") or []) + (v.get("VG_esquema_y_metadata") or []):
+        if r["codigo"] in FUERA:
+            continue
+        out[r["codigo"]] = {"estado": r["estado"], "nivel": 0 if r["codigo"].startswith("VG") else (2 if r["codigo"] in ("ID-02", "ID-05") else 1),
+                            "resuelto_en": "completo", "detalle": r.get("detalle")}
+    for k, r in (rep.get("puntos_control") or {}).items():
+        cod = k.split("_")[0]
+        if cod in ("CP-02", "CP-05"):      # CP-05 real = commit en la corrida (nivel 0); el del motor es la hora de medir
+            continue
+        out[cod] = {"estado": r.get("estado"), "nivel": {"CP-01": 1, "CP-03": 2, "CP-04": 2, "CP-05": 0}.get(cod),
+                    "resuelto_en": "completo", **({"valor": r.get("valor")} if cod in ("CP-01", "CP-03") else {})}
+    return out
+
+
+def construir_medicion(lote, f, o, plataforma):
+    k = o["clave"]
+    rel = f"v4/mediciones/{plataforma}/{k}.json"
+    previo = L.leer(lote, rel)
+    if previo and previo.get("estado_archivo") == "CERRADO":
+        return previo
+    rap = L.leer(lote, f"rapido/{plataforma}/{k}.json")
+    pend = L.leer(lote, f"rapido/{plataforma}/{k}.pendiente.json")
+    rep = L.leer(lote, f"nivel2/{plataforma}/{k}.json")
+    if not (rap or pend or rep):
+        return None
+    doc = _sobre(lote, "medicion", f, k, plataforma, previo)
+    src = o.get(plataforma.lower()) or {}
+    doc["objeto"] = {"ubicacion": src.get("ruta"), "tipo_origen": src.get("tipo"), "ventana_fechas": o.get("ventana_fechas"),
+                     "columnas_excluidas": o.get("excluir_columnas") or [], "llave": o.get("llave")}
+    doc["estado"] = {"nivel0": "PENDIENTE", "nivel1": "PENDIENTE", "nivel2": "PENDIENTE"}
+    doc["tiempos"] = {}
+    ctl = {}
+    if rap:
+        n0, n1 = rap["nivel0"], rap["nivel1"]
+        doc["objeto"].update(tipo_fuente=rap["objeto"].get("tipo_fuente"), version_delta=n0.get("version_delta"),
+                             ultimo_commit=n0.get("ultimo_commit"), particiones=n0.get("particiones"),
+                             bytes=(rap.get("costo") or {}).get("bytes_objeto"), archivos=n1.get("archivos"))
+        doc["estado"].update(nivel0={"estado": "COMPLETO", "utc": rap["medido_utc"]},
+                             nivel1={"estado": "COMPLETO", "utc": rap["medido_utc"], "fuente": n1.get("fuente")})
+        doc["nivel0"] = {"num_columnas": n0["num_columnas"], "columnas": n0["columnas"],
+                         "hash_esquema_estricto": n0.get("hash_esquema_estricto"), "hash_esquema_tipos": n0.get("hash_esquema_tipos"),
+                         "hash_nombres_columnas": n0.get("hash_nombres_columnas"),
+                         **({"esquema_postgres": n0["esquema_postgres"]} if n0.get("esquema_postgres") else {})}
+        doc["nivel1"] = {"filas": n1["filas"], "fuente": n1.get("fuente"), "filas_borradas_dv": n1.get("filas_borradas_dv"),
+                         "por_columna": n1["columnas"], "sin_estadisticas": n1.get("sin_estadisticas") or [],
+                         "advertencias": rap.get("advertencias") or []}
+        doc["tiempos"]["rapido_s"] = rap.get("segundos")
+        doc["costo_rapido"] = rap.get("costo")
+        ctl.update(_controles_rapido(rap))
+        _aporte(doc, f"medidor-rapido-{plataforma.lower()}", "nivel0,nivel1", rap["medido_utc"])
+    elif pend:
+        doc["estado"]["nivel1"] = {"estado": "REQUIERE_DESCARGA", "motivo": pend.get("motivo")}
+    if rep:
+        h = dict(rep.get("hash") or {})
+        h.pop("especificacion", None)
+        doc["nivel2"] = {"motor": rep["ejecucion"].get("version_reporte"), "filas": rep["conteos"]["row_count"],
+                         "hash": h, "perfil": rep.get("metricas_columnas"), "valores_frecuentes": rep.get("valores_frecuentes"),
+                         "muestra": rep.get("muestra"), "contrato_propuesto": rep.get("contrato_propuesto"),
+                         "esquema_motor": rep.get("esquema"), "vista": (rep.get("objeto") or {}).get("vista")}
+        doc["estado"]["nivel2"] = {"estado": "COMPLETO", "utc": rep["ejecucion"].get("medido_utc")}
+        doc["tiempos"]["nivel2_s"] = rep["ejecucion"].get("duracion_segundos")
+        doc["tiempos"]["nivel2_etapas"] = rep["ejecucion"].get("duracion_por_etapa")
+        ctl.update(_controles_completo(rep))
+        if not rap:      # sin rapido (p. ej. Rocket sin Range): niveles 0 y 1 salen del completo
+            doc["estado"]["nivel0"] = doc["estado"]["nivel1"] = {"estado": "COMPLETO_DESDE_NIVEL2", "utc": rep["ejecucion"].get("medido_utc")}
+            doc["nivel0"] = {"num_columnas": rep["esquema"]["num_columnas"], "columnas": rep["esquema"]["columnas"],
+                             "hash_esquema_tipos": rep["esquema"].get("hash_esquema_tipos")}
+            doc["nivel1"] = {"filas": rep["conteos"]["row_count"], "fuente": "nivel2"}
+        _aporte(doc, "medidor-completo", "nivel2", rep["ejecucion"].get("medido_utc"))
+    try:
+        from ..cache import gestor
+        e = gestor.manifiesto(lote)["entradas"].get(f"{plataforma}/{k}")
+        if e:
+            doc["objeto"]["descarga"] = {"archivos": e["archivos"], "bytes": e["bytes"], "estado_cache": e["estado"],
+                                         "descargado_utc": e["descargado_utc"], "segundos": (e.get("meta") or {}).get("segundos")}
+    except Exception:
+        pass
+    # el catalogo completo, en orden, con lo que falte marcado
+    doc["controles"] = {c: ctl.get(c) or {"estado": "PENDIENTE_NIVEL_2" if (CONTROLES_NIVEL[c] == 2) else "PENDIENTE", "nivel": CONTROLES_NIVEL[c]}
+                        for c in CATALOGO}
+    listo = all((doc["estado"][n] or {}).get("estado", "").startswith("COMPLETO") for n in ("nivel0", "nivel1", "nivel2")
+                if isinstance(doc["estado"][n], dict))
+    doc["estado_archivo"] = "COMPLETO" if listo and isinstance(doc["estado"]["nivel2"], dict) else "EN_CURSO"
+    L.guardar(lote, rel, doc)
+    return doc
+
+
+CONTROLES_NIVEL = {c["codigo"]: c["nivel"] for c in CONTROLES["controles"]}
+
+
+# ----------------------------------------------------------------- 3 · cotejo
+def _dif(tipo, columna, cifra, nivel, **extra):
+    return dict({"id": f"{tipo}:{columna or '*'}", "tipo": tipo, "columna": columna, "cifra": cifra, "nivel": nivel,
+                 "ejemplo": None, "causa": None, "causa_medida": False, "evidencia": [], "decision": "PENDIENTE",
+                 "decidido_por": None}, **extra)
+
+
+def _diferencias(grupo, cr, cc):
+    out = {}
+    if cr:
+        fl = cr["filas"]
+        if fl["delta"]:
+            out["conteo:*"] = _dif("conteo", None, {"stratio": fl["stratio"], "fabric": fl["fabric"], "delta": fl["delta"]}, 1)
+        e = cr["esquema"]
+        for c in e["solo_en_stratio"]:
+            out[f"columna_ausente:{c}"] = _dif("columna_ausente", c, {"stratio": "presente", "fabric": "ausente"}, 0)
+        for c in e["solo_en_fabric"]:
+            out[f"columna_nueva:{c}"] = _dif("columna_nueva", c, {"stratio": "ausente", "fabric": "presente"}, 0)
+        for c, t in e["tipos_distintos"].items():
+            out[f"tipo:{c}"] = _dif("tipo", c, t, 0)
+        for c, n in cr["nulos_distintos"].items():
+            out[f"nulos:{c}"] = _dif("nulos", c, {"stratio": n["stratio"], "fabric": n["fabric"],
+                                                   "delta": (n["fabric"] or 0) - (n["stratio"] or 0)}, 1)
+        for c in cr["vacias_solo_en_fabric"]:
+            out[f"vacia:{c}"] = _dif("vacia", c, {"stratio": "con datos", "fabric": "100 % nulos"}, 1)
+        for c in cr["constantes_solo_en_fabric"]:
+            out[f"constante:{c}"] = _dif("constante", c, {"stratio": "varios valores", "fabric": "un solo valor"}, 1)
+    if cc:
+        v = cc["veredictos"]
+        f = v["filas"]
+        if f.get("delta"):
+            out["conteo:*"] = _dif("conteo", None, {"stratio": f["stratio"], "fabric": f["fabric"], "delta": f["delta"]}, 2)
+        for c in v["hash"].get("columnas_hash_distinto") or []:
+            out[f"valor:{c}"] = _dif("valor", c, {"hash_columna": "distinto"}, 2)
+        dup = v["hash"].get("filas_duplicadas") or {}
+        if dup.get("stratio") != dup.get("fabric"):
+            out["duplicados:*"] = _dif("duplicados", None, dup, 2)
+        for c, n in (v["nulos"].get("columnas_con_nulos_distintos") or {}).items():
+            out[f"nulos:{c}"] = _dif("nulos", c, {"stratio": n["stratio"], "fabric": n["fabric"],
+                                                   "delta": (n["fabric"] or 0) - (n["stratio"] or 0)}, 2)
+        for r in v["contrato"].get("rupturas") or []:
+            if r["regla"] in ("columna_ausente_en_fabric", "columna_nueva_en_fabric", "tipo"):
+                continue      # ya vienen como columna_ausente / columna_nueva / tipo
+            out[f"contrato_{r['regla']}:{r['columna']}"] = _dif(f"contrato_{r['regla']}", r["columna"],
+                                                                 {"stratio": r.get("stratio"), "fabric": r.get("fabric")}, 2)
+    # lo que el criterio del grupo no exige nace INFORMATIVA
+    for d in out.values():
+        if grupo == "analitica" and d["tipo"] in ("conteo", "valor", "duplicados"):
+            d["decision"] = "INFORMATIVA"
+    return out
+
+
+def construir_cotejo(lote, f, o):
+    k = o["clave"]
+    rel = f"v4/cotejos/{k}.json"
+    previo = L.leer(lote, rel)
+    if previo and previo.get("estado_archivo") == "CERRADO":
+        return previo
+    ms, mf = L.leer(lote, f"v4/mediciones/STRATIO/{k}.json"), L.leer(lote, f"v4/mediciones/FABRIC/{k}.json")
+    if not (ms or mf):
+        return None
+    doc = _sobre(lote, "cotejo", f, k, None, previo)
+    doc["insumos"] = [{"tipo": f"medicion_{p.lower()}", "version": m["version"], "estado": m["estado_archivo"],
+                       "sha256": _sha(m), "ruta": ruta_ol("medicion", k, m["version"], p, bool((L.leer(lote, "lote.json") or {}).get("pruebas")))}
+                      for p, m in (("STRATIO", ms), ("FABRIC", mf)) if m]
+    cr = L.leer(lote, f"cotejo_rapido/{k}.json")
+    idx = (L.leer(lote, "cotejos/indice.json", {}) or {}).get(k)
+    cc = json.load(open(idx["archivo"])) if idx and os.path.exists(idx["archivo"]) else None
+    falta = "ESPERANDO_STRATIO" if not ms else ("ESPERANDO_FABRIC" if not mf else None)
+    doc["estado"] = {"rapido": "COMPLETO" if cr else (falta or "PENDIENTE"),
+                     "completo": "COMPLETO" if cc else (falta or "PENDIENTE")}
+    if cr:
+        doc["rapido"] = {k2: cr[k2] for k2 in ("filas", "esquema", "nulos_distintos", "vacias_solo_en_fabric",
+                                                "constantes_solo_en_fabric", "no_cumple", "resultado_rapido")}
+        _aporte(doc, "cotejo-rapido", "rapido", cr["generado_utc"])
+    if cc:
+        doc["completo"] = {k2: cc.get(k2) for k2 in ("criterio", "exigencias", "resultado", "justificacion")}
+        doc["completo"]["veredictos"] = cc["veredictos"]
+        doc["completo"]["archivo_local"] = os.path.basename(idx["archivo"])
+        _aporte(doc, "cotejador", "completo", cc.get("generado_utc"))
+    # matriz de controles
+    mat = {}
+    for c in CONTROLES["controles"]:
+        cod = c["codigo"]
+        es = ((ms or {}).get("controles") or {}).get(cod) or {}
+        ef = ((mf or {}).get("controles") or {}).get(cod) or {}
+        fila = {"nivel": c["nivel"], "criterio": criterio(cod, f["grupo"]), "stratio": es.get("estado"), "fabric": ef.get("estado")}
+        rr = ((cr or {}).get("controles") or {}).get(cod) or {}
+        fila["resultado"] = rr.get("resultado") or "PENDIENTE"
+        if cc and c["nivel"] == 2 or (cc and cod in ("CP-01",)):
+            fila["resultado"] = _resultado_completo(cod, fila, cc)
+        mat[cod] = fila
+    doc["controles"] = mat
+    # diferencias: detectadas + decisiones guardadas
+    difs = _diferencias(f["grupo"], cr, cc)
+    dec = ((L.leer(lote, "v4/decisiones.json", {}) or {}).get(k)) or {}
+    for i, d in difs.items():
+        if i in dec:
+            d.update({x: dec[i][x] for x in ("ejemplo", "causa", "causa_medida", "evidencia", "decision", "decidido_por") if x in dec[i]})
+    for i, dd in dec.items():         # diferencias agregadas a mano (no detectadas)
+        if i not in difs:
+            difs[i] = dict(_dif(dd.get("tipo", i.split(":")[0]), dd.get("columna"), dd.get("cifra"), dd.get("nivel")), **dd)
+    doc["diferencias"] = sorted(difs.values(), key=lambda d: (d["nivel"] or 9, d["tipo"], d["columna"] or ""))
+    pend = [d["id"] for d in doc["diferencias"] if d["decision"] == "PENDIENTE"]
+    if cc:
+        est, etapa = cc["resultado"], "COMPLETO"
+    elif cr:
+        est, etapa = cr["resultado_rapido"], "RAPIDO"
+    else:
+        est, etapa = falta or "PENDIENTE", "SIN_COTEJO"
+    if pend and est.startswith("APROBADO"):
+        est = "REVISAR_DIFERENCIAS"
+    filas = (cc or {}).get("veredictos", {}).get("filas") or (cr or {}).get("filas") or {}
+    doc["resultado"] = {"etapa": etapa, "estado": est, "diferencias_pendientes": pend,
+                        "resumen": (f"filas {filas.get('stratio')} → {filas.get('fabric')}; "
+                                    f"{len(doc['diferencias'])} diferencia(s), {len(pend)} pendiente(s)") if filas else est}
+    doc["estado_archivo"] = "COMPLETO" if (cc and not pend) else "EN_CURSO"
+    L.guardar(lote, rel, doc)
+    return doc
+
+
+def _resultado_completo(cod, fila, cc):
+    v = cc["veredictos"]
+    cri = fila["criterio"]
+    if cri == "informativo":
+        return "INFORMATIVO"
+    if cri == "no_aplica":
+        return "NO_APLICA"
+    if cod == "CP-01":
+        return "CUMPLE" if v["filas"].get("delta") == 0 else ("NO_CUMPLE" if cri == "igual" else "INFORMATIVO")
+    if cod == "CP-03":
+        return "CUMPLE" if v["hash"].get("igual") else "NO_CUMPLE"
+    if cod in ("ID-02", "ID-05"):
+        return "NO_CUMPLE" if cod in (v["controles"].get("regresiones") or []) else "CUMPLE"
+    return fila.get("resultado") or "PENDIENTE"
+
+
+# ----------------------------------------------------------------- 4 · flujo
+def _transformacion(roles):
+    """Filas y columnas de entrada vs salida con los roles REALES (stats del _delta_log, sin leer dato)."""
+    from ..rapido import delta_remoto as dr
+
+    def medir(tablas):
+        out = []
+        for t in tablas:
+            if not t or "." not in t or "/" in t:
+                out.append({"tabla": t, "nota": "no Delta"})
+                continue
+            try:
+                base = dr.resolver_tabla(t)
+                lg = dr.leer_log(base, todos_los_commits=False)
+                st = [a.get("stats") or {} for a in lg["vigentes"].values()]
+                n = sum(int(s.get("numRecords") or 0) for s in st) if st and all("numRecords" in s for s in st) else None
+                out.append({"tabla": t, "filas": n, "columnas": [c["nombre"] for c in dr.columnas(lg)]})
+            except Exception as e:
+                out.append({"tabla": t, "nota": f"{type(e).__name__}"})
+        return out
+    ent, sal = medir(roles.get("entradas") or []), medir(roles.get("salidas") or [])
+    ce = {c for x in ent for c in x.get("columnas") or []}
+    cs = {c for x in sal for c in x.get("columnas") or []}
+    fe = sum(x.get("filas") or 0 for x in ent)
+    fs = sum(x.get("filas") or 0 for x in sal)
+    return {"entradas": ent, "salidas": sal, "filas_entrada": fe, "filas_salida": fs,
+            "conservadas": sorted(ce & cs), "descartadas": sorted(ce - cs), "derivadas": sorted(cs - ce),
+            "veredicto": ("SALIDA_VACIA" if sal and fs == 0 else "SIN_SALIDAS" if not sal else "CON_SALIDA"),
+            "nota": "calculado con los roles corregidos (codigo del flujo + _delta_log), no con los del validador"}
+
+
+def _reclasificar(pruebas, entradas_reales, cambios):
+    """Una prueba del validador sobre una tabla que segun el codigo es ENTRADA no evalua una salida."""
+    invertidas = {c["ruta"] for c in cambios if c.get("rol_codigo") == "entrada"}
+    out = []
+    for p in pruebas or []:
+        q = {k: p.get(k) for k in ("prueba", "nivel", "objeto", "esperado", "obtenido", "detalle")}
+        obj = str(p.get("objeto") or "")
+        if p.get("prueba") in ("contenido_actualizado", "esquema_estable", "salida_no_actualizada") and \
+                any(t and t in obj for t in invertidas):
+            q["nivel_original"] = q["nivel"]
+            q["nivel"] = "NO_APLICA"
+            q["reclasificada"] = "la tabla es ENTRADA segun el codigo del flujo: la prueba de salida no aplica"
+        out.append(q)
+    return out
+
+
+def construir_flujo(lote, f):
+    n = f["nombre_fabric"]
+    rel = f"v4/flujos/{n}.json"
+    previo = L.leer(lote, rel)
+    if previo and previo.get("estado_archivo") == "CERRADO":
+        return previo
+    etl = L.leer(lote, f"etl/veredictos/{n}.json")
+    sem = L.leer(lote, f"semaforo/{n}.json")
+    doc = _sobre(lote, "flujo", f, None, None, previo)
+    doc["estado"] = {"ejecucion": "PENDIENTE", "roles": "PENDIENTE", "semaforo": "PENDIENTE", "tablas": "PENDIENTE"}
+    if etl:
+        r, inv, raw = etl["resumen"], etl.get("inventario") or {}, etl.get("veredicto") or {}
+        doc["ejecucion"] = {"corrida": {"item": n, "tipo_item": r.get("tipo"), "inicio_utc": r.get("inicio_utc"),
+                                        "fin_utc": r.get("fin_utc"), "estado": r.get("estado_corrida"),
+                                        "duracion_s": r.get("duracion_s"), "run_id": (raw.get("corrida_fabric") or {}).get("id")},
+                            "validador": {"notebook": "qa_v2_etl_validator", "run": etl.get("lanzamiento"),
+                                          "resultado": r.get("resultado_validador"), "veredicto": r.get("veredicto_validador"),
+                                          "ruta_onelake": etl.get("ruta_onelake"),
+                                          "tiempos_s": raw.get("tiempos_segundos"), "metricas_corrida": raw.get("metricas_corrida")}}
+        doc["estado"]["ejecucion"] = r.get("estado_corrida") or "SIN_DATO"
+        corr = inv.get("correccion") or {}
+        conf = inv.get("confirmacion_delta") or {}
+        if r.get("roles_desde") == "actividad_copy":
+            roles = {"desde": "actividad_copy", "invertidos": False, "entradas": r.get("entradas") or [],
+                     "salidas": r.get("salidas") or [], "datos_salida": r.get("datos_salida")}
+        else:
+            com = {x["ruta"]: x for x in (conf.get("entradas") or []) + (conf.get("salidas") or [])}
+            fila = lambda x: {"tabla": x["ruta"], "bandera": x["bandera"], "rol_validador": x["rol_validador"],
+                              "commits_en_corrida": (com.get(x["ruta"]) or {}).get("commits_en_ventana"),
+                              "ultimo_commit": ((com.get(x["ruta"]) or {}).get("ultimo_commit") or {}).get("utc")}
+            roles = {"desde": "codigo_del_flujo+_delta_log", "zip": inv.get("zip"), "capa": inv.get("capa"),
+                     "invertidos": corr.get("invertido"), "coherentes_con_delta": conf.get("roles_coherentes"),
+                     "entradas": [fila(x) for x in corr.get("entradas") or []],
+                     "salidas": [fila(x) for x in corr.get("salidas") or []],
+                     "salidas_sin_commit": conf.get("salidas_sin_commit"), "entradas_con_commit": conf.get("entradas_con_commit")}
+        doc["roles"] = roles
+        doc["estado"]["roles"] = "CORREGIDOS" if roles.get("invertidos") else "OK"
+        doc["pruebas"] = _reclasificar(raw.get("pruebas"), None, corr.get("cambios") or [])
+        if roles.get("invertidos"):
+            doc["pruebas_nota"] = ("El validador aplico sus pruebas de salida a tablas que son ENTRADAS (reclasificadas a NO_APLICA) "
+                                   "y no las aplico a las salidas reales. Las salidas reales quedan cubiertas por CP-05 "
+                                   "(commit dentro de la corrida) y por la medicion de sus tablas.")
+        doc["dependencias"] = {"declaradas_en_lote": f.get("dependencias") or [], "validador": raw.get("dependencias"),
+                               "existencia": raw.get("existencia"),
+                               "ejecutadas": [e.get("detalle") for e in L.leer_bitacora(lote)
+                                              if e["accion"] == "ejecutar_productor" and e.get("flujo") == n]}
+        if f["grupo"] == "analitica":
+            tabla_txt = lambda x: x if isinstance(x, str) else x.get("tabla")
+            rr = {"entradas": [tabla_txt(x) for x in roles["entradas"]], "salidas": [tabla_txt(x) for x in roles["salidas"]]}
+            an = etl.get("revision_analitica") or {}
+            doc["analitica"] = {"revision_validador": {k2: an.get(k2) for k2 in ("veredicto", "ambiente", "variables", "transformacion")} if an else None,
+                                "transformacion_corregida": _transformacion(rr)}
+        _aporte(doc, "etl-validador", "ejecucion,pruebas,dependencias", r.get("fin_utc"))
+        _aporte(doc, "inventario-roles", "roles", r.get("fin_utc"))
+    # tablas del flujo
+    tablas = []
+    for o in f["objetos"]:
+        k = o["clave"]
+        ms, mf = L.leer(lote, f"v4/mediciones/STRATIO/{k}.json"), L.leer(lote, f"v4/mediciones/FABRIC/{k}.json")
+        co = L.leer(lote, f"v4/cotejos/{k}.json")
+        resumen_m = lambda m: {"version": m["version"], "estado": {n2: (m["estado"][n2] or {}).get("estado") if isinstance(m["estado"][n2], dict) else m["estado"][n2]
+                                                                    for n2 in ("nivel0", "nivel1", "nivel2")}} if m else None
+        tablas.append({"clave": k, "fabric": (o.get("fabric") or {}).get("ruta"), "stratio": (o.get("stratio") or {}).get("ruta"),
+                       "medicion_stratio": resumen_m(ms), "medicion_fabric": resumen_m(mf),
+                       "cotejo": {"version": co["version"], "etapa": co["resultado"]["etapa"], "estado": co["resultado"]["estado"],
+                                  "diferencias_pendientes": len(co["resultado"]["diferencias_pendientes"])} if co else None})
+    doc["tablas"] = tablas
+    doc["estado"]["tablas"] = f"{sum(1 for t in tablas if t['cotejo'] and t['cotejo']['etapa'] == 'COMPLETO')}/{len(tablas)} con cotejo completo"
+    if sem:
+        doc["semaforo"] = {k2: sem.get(k2) for k2 in ("estado", "siguiente", "motivos_rojo", "avisos", "evaluado_utc")}
+        doc["estado"]["semaforo"] = sem["estado"]
+        _aporte(doc, "semaforo", "semaforo", sem.get("evaluado_utc"))
+    est = doc["estado"]
+    if f["grupo"] == "orquestador":
+        res = "APROBADO_POR_EJECUCION" if est["ejecucion"] == "Completed" else "PENDIENTE"
+    elif est["semaforo"] == "ROJO":
+        res = "DEVUELTO_A_DESARROLLO"
+    elif tablas and all(t["cotejo"] and t["cotejo"]["etapa"] == "COMPLETO" and t["cotejo"]["estado"].startswith("APROBADO") for t in tablas):
+        res = "APROBADO"
+    else:
+        res = "EN_CURSO"
+    doc["resultado"] = {"estado": res, "resumen": f"ejecucion {est['ejecucion']} · roles {est['roles']} · semaforo {est['semaforo']} · {est['tablas']}"}
+    doc["estado_archivo"] = "COMPLETO" if res in ("APROBADO", "APROBADO_POR_EJECUCION", "DEVUELTO_A_DESARROLLO") else "EN_CURSO"
+    L.guardar(lote, rel, doc)
+    return doc
+
+
+# ----------------------------------------------------------------- todo el lote
+def construir(lote):
+    d = L.leer(lote, "lote.json")
+    hechos = {"mediciones": 0, "cotejos": 0, "flujos": 0}
+    for f in d["flujos"]:
+        for o in f["objetos"]:
+            for p in ("FABRIC", "STRATIO"):
+                if construir_medicion(lote, f, o, p):
+                    hechos["mediciones"] += 1
+            if construir_cotejo(lote, f, o):
+                hechos["cotejos"] += 1
+        construir_flujo(lote, f)
+        hechos["flujos"] += 1
+    return hechos
+
+
+def publicar(lote, pruebas=None, bucket=True):
+    """Sube los 5 tipos a OneLake (reescribe en sitio la version del lote; nunca un CERRADO ya subido),
+    las mediciones tambien al bucket v4, y verifica cada uno con HEAD."""
+    from ..acceso import bucket as B
+    d = L.leer(lote, "lote.json")
+    pruebas = d.get("pruebas", False) if pruebas is None else pruebas
+    hechos, base = [], os.path.join(L.dir_lote(lote), "v4")
+    for f in d["flujos"]:
+        piezas = [("flujo", f["nombre_fabric"], None, f"flujos/{f['nombre_fabric']}.json")]
+        for o in f["objetos"]:
+            piezas += [("medicion", o["clave"], "FABRIC", f"mediciones/FABRIC/{o['clave']}.json"),
+                       ("medicion", o["clave"], "STRATIO", f"mediciones/STRATIO/{o['clave']}.json"),
+                       ("cotejo", o["clave"], None, f"cotejos/{o['clave']}.json")]
+        for tipo, nombre, plat, relp in piezas:
+            loc = os.path.join(base, relp)
+            if not os.path.exists(loc):
+                continue
+            doc = json.load(open(loc))
+            datos = json.dumps(doc, ensure_ascii=False, indent=1, default=str).encode("utf8")
+            dest = ruta_ol(tipo, nombre, doc["version"], plat, pruebas)
+            ol.escribir(dest, datos)
+            h = ol.head(dest)
+            ok = bool(h) and h["bytes"] == len(datos)
+            reg = {"tipo": tipo, "nombre": nombre, "plataforma": plat, "version": doc["version"], "ruta": dest,
+                   "estado_archivo": doc["estado_archivo"], "head_ok": ok}
+            if tipo == "medicion" and bucket:
+                blob = f"v4/{'_pruebas/' if pruebas else ''}qa/{nombre}/medicion_{plat.lower()}_{nombre}_v{doc['version']}.json"
+                try:
+                    B.subir(plat, blob, datos, sobrescribir=True)
+                    reg["bucket"] = f"{B.CONT[plat]}/{blob}"
+                except Exception as e:
+                    reg["bucket_error"] = f"{type(e).__name__}: {str(e)[:120]}"
+            hechos.append(reg)
+    # log
+    ev = L.leer_bitacora(lote)
+    if ev:
+        datos = "".join(json.dumps(e, ensure_ascii=False, default=str) + "\n" for e in ev).encode("utf8")
+        dest = ruta_ol("log", None, None, pruebas=pruebas, lote=lote)
+        ol.escribir(dest, datos)
+        h = ol.head(dest)
+        hechos.append({"tipo": "log", "nombre": lote, "ruta": dest, "eventos": len(ev), "head_ok": bool(h) and h["bytes"] == len(datos)})
+    L.guardar(lote, "v4/publicado.json", {"utc": _ahora(), "pruebas": pruebas, "archivos": hechos})
+    return hechos
+
+
+def decidir_diferencia(lote, clave, id_dif, decision, causa=None, causa_medida=False, ejemplo=None, evidencia=None,
+                       tipo=None, columna=None, cifra=None, nivel=None):
+    assert decision in ("PENDIENTE", "INFORMATIVA", "JUSTIFICADA", "HALLAZGO")
+    if decision == "JUSTIFICADA" and not (causa and causa_medida):
+        raise ValueError("una diferencia JUSTIFICADA necesita causa con causa_medida=True")
+    dec = L.leer(lote, "v4/decisiones.json", {}) or {}
+    e = dec.setdefault(clave, {}).setdefault(id_dif, {})
+    e.update({k: v for k, v in {"decision": decision, "causa": causa, "causa_medida": causa_medida, "ejemplo": ejemplo,
+                                "evidencia": evidencia, "tipo": tipo, "columna": columna, "cifra": cifra, "nivel": nivel}.items()
+              if v is not None})
+    e["decidido_por"] = {"usuario": L.usuario(), "utc": _ahora()}
+    L.guardar(lote, "v4/decisiones.json", dec)
+    L.bitacora(lote, "cotejador", "decidir_diferencia", {"id": id_dif, "decision": decision, "causa": causa},
+               estado="DECISION", clave=clave)
+    return e
+
+
+def cerrar(lote):
+    """Marca CERRADO cada archivo v4 del lote: ya no se reescribe; un cambio posterior abre v<N+1>."""
+    n = 0
+    for r, _d, fs in os.walk(os.path.join(L.dir_lote(lote), "v4")):
+        for fn in fs:
+            p = os.path.join(r, fn)
+            if not fn.endswith(".json"):
+                continue
+            d = json.load(open(p))
+            if isinstance(d, dict) and str(d.get("formato", "")).startswith("pc.v4/"):
+                d["estado_archivo"] = "CERRADO"
+                d["cerrado_utc"] = _ahora()
+                json.dump(d, open(p, "w"), indent=1, ensure_ascii=False, default=str)
+                n += 1
+    L.bitacora(lote, "coordinador", "cerrar_lote_v4", {"archivos": n}, estado="DECISION")
+    return n

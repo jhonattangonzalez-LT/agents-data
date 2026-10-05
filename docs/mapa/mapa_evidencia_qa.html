@@ -1,0 +1,902 @@
+<title>Mapa de evidencia QA</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: dos paginas (v1 como estaba · v2 pipeline de agentes); cada una con diagrama por carriles + panel lateral */
+:root{
+  --bg:#F3F5F8; --surface:#FFFFFF; --fg:#18202B; --muted:#5B6676; --line:#D5DBE4; --edge:#8592A5;
+  --stratio:#3D5A98; --fabric:#A86A00; --bridge:#1F7A80; --local:#2F7A4A; --people:#7A4A8C; --on:#C2410C;
+  --tint-s:#E8EDF7; --tint-b:#E3F1F1; --tint-f:#F6EEDF; --tint-l:#E5F1E9; --tint-p:#F1E8F4; --tint-c:#ECEEF2;
+  --ok:#1E7A46; --info:#3D5A98; --off:#8A93A3; --na:#B4531B; --bad:#B42318;
+  --f-display:"Archivo","Segoe UI",system-ui,sans-serif;
+  --f-body:"IBM Plex Sans","Segoe UI",system-ui,sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,"SFMono-Regular",Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --bg:#12161D; --surface:#1A2029; --fg:#E6EAF0; --muted:#9AA5B5; --line:#2C3542; --edge:#6B7789;
+  --stratio:#8DA6E0; --fabric:#E0A33C; --bridge:#5CC2C8; --local:#6CC48C; --people:#C79BD8; --on:#FB8A4C;
+  --tint-s:#1A2233; --tint-b:#152628; --tint-f:#2A2215; --tint-l:#16261C; --tint-p:#241A2A; --tint-c:#1E232C;
+  --ok:#6CC48C; --info:#8DA6E0; --off:#6B7789; --na:#F0915A; --bad:#F97066; color-scheme:dark }}
+:root[data-theme="dark"]{
+  --bg:#12161D; --surface:#1A2029; --fg:#E6EAF0; --muted:#9AA5B5; --line:#2C3542; --edge:#6B7789;
+  --stratio:#8DA6E0; --fabric:#E0A33C; --bridge:#5CC2C8; --local:#6CC48C; --people:#C79BD8; --on:#FB8A4C;
+  --tint-s:#1A2233; --tint-b:#152628; --tint-f:#2A2215; --tint-l:#16261C; --tint-p:#241A2A; --tint-c:#1E232C;
+  --ok:#6CC48C; --info:#8DA6E0; --off:#6B7789; --na:#F0915A; --bad:#F97066; color-scheme:dark }
+
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font:14px/1.5 var(--f-body);margin:0}
+.wrap{max-width:1500px;margin:0 auto;padding-inline:20px;padding-block:24px 56px}
+h1,h2{font-family:var(--f-display);text-wrap:balance;margin:0}
+h1{font-size:clamp(24px,3vw,34px);font-weight:800;letter-spacing:-.01em}
+h2{font-size:20px;font-weight:700}
+.lede{color:var(--muted);max-width:72ch;margin:6px 0 0}
+.mono{font-family:var(--f-mono);font-size:12px}
+.eyebrow{font:600 11px/1 var(--f-body);letter-spacing:.09em;text-transform:uppercase;color:var(--muted)}
+section{margin-top:40px}
+.sechead{display:flex;flex-wrap:wrap;align-items:baseline;gap:8px 16px;margin-bottom:14px}
+
+.pages{display:inline-flex;margin-top:18px;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--surface)}
+.pages button{font:600 14px var(--f-body);border:0;background:none;color:var(--fg);padding:9px 16px;cursor:pointer;display:flex;gap:8px;align-items:baseline}
+.pages button small{font:500 11px var(--f-body);color:var(--muted)}
+.pages button[aria-pressed="true"]{background:var(--fg);color:var(--bg)}
+.pages button[aria-pressed="true"] small{color:var(--bg);opacity:.75}
+
+.routes{display:flex;flex-wrap:wrap;gap:8px;margin:20px 0 14px}
+.route{font:500 13px var(--f-body);border:1px solid var(--line);background:var(--surface);color:var(--fg);
+  padding:7px 12px;border-radius:999px;cursor:pointer;display:flex;align-items:center;gap:8px}
+.route i{width:9px;height:9px;border-radius:50%;background:var(--c,var(--edge));display:inline-block}
+.route[aria-pressed="true"]{border-color:var(--on);box-shadow:inset 0 0 0 1px var(--on)}
+.route:focus-visible,.node:focus-visible,.chip:focus-visible,.tree button:focus-visible,.btn:focus-visible,.pages button:focus-visible{outline:2px solid var(--on);outline-offset:2px}
+
+.stage{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:16px;align-items:start}
+@media (max-width:1100px){.stage{grid-template-columns:minmax(0,1fr)}}
+.stage.ancho{grid-template-columns:minmax(0,1fr)}
+.stage.ancho .panel{position:static;max-width:900px}
+.stage.ancho .canvas svg{min-width:1200px}
+.canvas{background:var(--surface);border:1px solid var(--line);border-radius:10px;overflow-x:auto;margin:0}
+.canvas svg{display:block;width:100%;min-width:980px;height:auto}
+
+.band rect{stroke:none}
+.bandlabel{font:700 11px var(--f-body);letter-spacing:.12em;text-transform:uppercase}
+.node .box{fill:var(--surface);stroke-width:1.4}
+.node .qb{fill:var(--na)} .node .qt{font:800 12px var(--f-body);fill:var(--surface)}
+.node .tc{font:600 12.5px var(--f-body);fill:var(--fg)} .node .sc{font:400 10.5px var(--f-mono);fill:var(--muted)}
+.lane-l{font:700 11px var(--f-body);letter-spacing:.06em;text-transform:uppercase} .lane-s{font:400 10.5px var(--f-body);fill:var(--muted)}
+.col-l{font:700 11px var(--f-body);letter-spacing:.06em;text-transform:uppercase;fill:var(--fg)}
+.node .t{font:600 13px var(--f-body);fill:var(--fg)}
+.node .s{font:400 11px var(--f-mono);fill:var(--muted)}
+.node .tag{font:600 9.5px var(--f-body);letter-spacing:.08em;text-transform:uppercase}
+.node .pend{font:700 9px var(--f-body);letter-spacing:.06em;fill:var(--na)}
+.node .prob{font:700 9px var(--f-body);letter-spacing:.06em;fill:var(--ok)}
+.node{cursor:pointer;transition:opacity .2s}
+.node:hover .box{stroke-width:2.4}
+.node.sel .box{stroke:var(--on)!important;stroke-width:2.6}
+.node.cur .box{stroke:var(--on)!important;stroke-width:3}
+.edge path.halo{fill:none;stroke:var(--surface);stroke-width:8}
+.edge path.ln{fill:none;stroke:var(--edge);stroke-width:1.6}
+.edge.dash path.ln{stroke-dasharray:5 4}
+.edge.bad path.ln{stroke:var(--bad)}
+.edge text{font:500 10.5px var(--f-body);fill:var(--muted);paint-order:stroke;stroke:var(--surface);stroke-width:4px;stroke-linejoin:round}
+.edge{transition:opacity .2s}
+.edge.on path.ln{stroke:var(--on);stroke-width:2.4;stroke-dasharray:7 5;animation:flow 1s linear infinite}
+.edge.on text{fill:var(--on);font-weight:600}
+@keyframes flow{to{stroke-dashoffset:-12}}
+@media (prefers-reduced-motion:reduce){.edge.on path.ln{animation:none}}
+svg.focus .node:not(.in){opacity:.22}
+svg.focus .edge:not(.on){opacity:.12}
+.mk-off path{fill:var(--edge)} .mk-on path{fill:var(--on)} .mk-bad path{fill:var(--bad)}
+
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:18px;position:sticky;top:calc(env(safe-area-inset-top,0px) + 12px)}
+.panel h3{font:700 18px var(--f-display);margin:4px 0 6px}
+.panel p{margin:0 0 10px;color:var(--fg)}
+.kv{display:grid;grid-template-columns:auto minmax(0,1fr);gap:6px 10px;margin:10px 0}
+.kv dt{font:600 11px var(--f-body);text-transform:uppercase;letter-spacing:.07em;color:var(--muted);padding-top:2px}
+.kv dd{margin:0;min-width:0;overflow-wrap:anywhere}
+.crit{list-style:none;padding:0;margin:8px 0 0;display:grid;gap:6px}
+.crit li{padding-left:16px;position:relative}
+.crit li::before{content:"";position:absolute;left:2px;top:.6em;width:6px;height:6px;border:1.5px solid var(--on);border-radius:50%}
+.player{display:flex;align-items:center;gap:8px;margin-top:14px;padding-top:12px;border-top:1px solid var(--line)}
+.btn{font:600 12px var(--f-body);border:1px solid var(--line);background:var(--bg);color:var(--fg);border-radius:6px;padding:6px 10px;cursor:pointer}
+.btn:disabled{opacity:.4;cursor:default}
+.dots{display:flex;gap:4px;flex:1;justify-content:center}
+.dots span{width:7px;height:7px;border-radius:50%;background:var(--line)}
+.dots span.on{background:var(--on)}
+.steptext{font-size:13.5px;margin:0 0 4px}
+.stepn{font:700 12px var(--f-mono);color:var(--on)}
+.verdicts{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}
+.verdicts span{font:500 11px var(--f-body);border:1px solid var(--line);border-radius:4px;padding:2px 6px}
+.estado{display:inline-block;font:700 10.5px var(--f-body);letter-spacing:.05em;text-transform:uppercase;border-radius:999px;padding:2px 8px;border:1px solid currentColor;margin:2px 0 8px}
+.estado.ok{color:var(--ok)} .estado.pend{color:var(--na)}
+
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:var(--surface)}
+.seg button{font:600 13px var(--f-body);border:0;background:none;color:var(--fg);padding:7px 14px;cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--fg);color:var(--bg)}
+.ctl{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+@media (max-width:820px){.ctl{grid-template-columns:minmax(0,1fr)}}
+.fam{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px;min-width:0}
+.fam header{display:flex;align-items:baseline;gap:8px;margin-bottom:10px;flex-wrap:wrap}
+.fam header b{font:800 22px var(--f-display)}
+.fam header span{color:var(--muted);font-size:12.5px}
+.chips{display:grid;gap:6px}
+.chip{display:grid;grid-template-columns:52px minmax(0,1fr) auto;align-items:center;gap:8px;text-align:left;
+  font:13px var(--f-body);color:var(--fg);background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:6px 8px;cursor:pointer}
+.chip code{font:500 12px var(--f-mono)}
+.chip em{font-style:normal;font-size:11px;font-weight:600;padding:2px 7px;border-radius:999px;white-space:nowrap;color:var(--k);border:1px solid var(--k)}
+.chip[data-k="exige"]{--k:var(--ok)} .chip[data-k="info"]{--k:var(--info)}
+.chip[data-k="fuera"]{--k:var(--off)} .chip[data-k="na"]{--k:var(--na)}
+.chip[data-k="fuera"] span,.chip[data-k="na"] span{color:var(--muted)}
+.chip.sel{border-color:var(--on)}
+.ctlnote{margin-top:12px;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:12px 14px;min-height:48px}
+.legend{display:flex;flex-wrap:wrap;gap:12px;font-size:12px;color:var(--muted)}
+.legend b{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:5px;vertical-align:-1px}
+
+.trees{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+@media (max-width:1000px){.trees{grid-template-columns:minmax(0,1fr)}}
+.tree{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px;min-width:0}
+.tree h4{margin:0 0 2px;font:700 14px var(--f-display)}
+.tree .root{font:500 11.5px var(--f-mono);color:var(--muted);margin-bottom:10px;overflow-wrap:anywhere}
+.tree ul{list-style:none;margin:0;padding:0;display:grid;gap:3px}
+.tree button{width:100%;text-align:left;background:none;border:1px solid transparent;border-radius:6px;padding:5px 6px;cursor:pointer;color:var(--fg);
+  display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:start}
+.tree button:hover,.tree button.sel{border-color:var(--line);background:var(--bg)}
+.tree .p{font:12px var(--f-mono);overflow-wrap:anywhere}
+.tree .p .d{color:var(--muted)}
+.tree .w{font:600 10.5px var(--f-body);padding:1px 6px;border-radius:999px;color:var(--wc);border:1px solid var(--wc);white-space:nowrap}
+
+.agents{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+@media (max-width:1000px){.agents{grid-template-columns:minmax(0,1fr)}}
+.agent{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px;display:grid;gap:8px;align-content:start;min-width:0}
+.agent h4{margin:0;font:700 16px var(--f-display)}
+.agent .where{font-size:12.5px;color:var(--muted)}
+.agent .jump{justify-self:start}
+.pipe{display:flex;flex-wrap:wrap;gap:4px;align-items:center;font:500 11.5px var(--f-mono)}
+.pipe span{border:1px solid var(--line);border-radius:4px;padding:2px 6px;background:var(--bg)}
+.pipe i{color:var(--muted);font-style:normal}
+
+.cmp{width:100%;border-collapse:collapse;background:var(--surface);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.cmp th,.cmp td{text-align:left;padding:10px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+.cmp th{font:600 11px var(--f-body);letter-spacing:.07em;text-transform:uppercase;color:var(--muted);background:var(--bg)}
+.cmp td:first-child{font-weight:600;white-space:nowrap}
+.cmp td.antes{color:var(--muted)}
+.cmp tr:last-child td{border-bottom:0}
+.tblwrap{overflow-x:auto}
+.num{font-variant-numeric:tabular-nums}
+</style>
+
+<div class="wrap">
+  <div class="eyebrow">Comfandi · Quind · migración Stratio → Fabric · QA</div>
+  <h1>Mapa de evidencia QA</h1>
+  <p class="lede" id="lede">Del ETL Validator v9 al acta firmada: quién mide, por dónde viaja cada JSON y con qué criterio se baja la evidencia. Elija un recorrido o toque cualquier caja.</p>
+  <div class="pages" role="group" aria-label="Versión del proceso">
+    <button data-pg="v1" aria-pressed="true">v1 · como estaba <small>hasta el 02-oct</small></button>
+    <button data-pg="v2" aria-pressed="false">v2 · arquitectura de agentes <small>acordada el 05-oct</small></button>
+  </div>
+
+  <!-- ============================== V1 ============================== -->
+  <div id="pg-v1">
+    <div class="routes" id="v1-routes" role="group" aria-label="Recorridos v1"></div>
+    <div class="stage">
+      <figure class="canvas">
+        <svg id="v1-dg" viewBox="0 0 1420 870" role="img" aria-label="Proceso v1: el ETL Validator ejecuta los flujos en Fabric; los notebooks de métricas miden en Stratio y en Fabric y se encuentran en el bucket de Azure; el cotejo escribe en OneLake; el agente de actas baja la evidencia con el CLI de Fabric y la cookie de Rocket y genera el acta."></svg>
+      </figure>
+      <aside class="panel" id="v1-panel" aria-live="polite"></aside>
+    </div>
+
+    <section>
+      <div class="sechead">
+        <h2>Controles VG · ID · CP</h2>
+        <div class="seg" role="group" aria-label="Grupo de flujo" id="v1-grupo">
+          <button data-g="ingesta" aria-pressed="true">Ingesta</button>
+          <button data-g="analitica" aria-pressed="false">Analítica</button>
+          <button data-g="orq" aria-pressed="false">Orquestador</button>
+        </div>
+        <div class="legend">
+          <span><b style="background:var(--ok)"></b>se exige</span>
+          <span><b style="background:var(--info)"></b>informativo</span>
+          <span><b style="background:var(--off)"></b>fuera del cómputo</span>
+          <span><b style="background:var(--na)"></b>no aplica</span>
+        </div>
+      </div>
+      <div class="ctl" id="v1-ctl"></div>
+      <div class="ctlnote" id="v1-ctlnote"></div>
+    </section>
+
+    <section>
+      <div class="sechead"><h2>Dónde quedan los JSON</h2><span class="lede" style="margin:0">Toque una ruta: el diagrama marca quién la escribe.</span></div>
+      <div class="trees" id="v1-trees"></div>
+    </section>
+
+    <section>
+      <div class="sechead"><h2>Agentes en el circuito</h2></div>
+      <div class="agents" id="v1-agents"></div>
+    </section>
+  </div>
+
+  <!-- ============================== V2 ============================== -->
+  <div id="pg-v2" hidden>
+    <div class="routes" id="v2-routes" role="group" aria-label="Recorridos v2"></div>
+    <div class="stage ancho">
+      <figure class="canvas">
+        <svg id="v2-dg" viewBox="0 0 1500 805" role="img" aria-label="Arquitectura de la pipeline QA v2: cinco carriles horizontales (personas, coordinador, agentes, herramientas y archivos locales, plataformas) cruzados por siete etapas (arranque, roles y ETL, niveles 0 y 1, semáforo, nivel 2, veredicto, cierre). Las decisiones son rombos en el carril del coordinador; las preguntas al usuario llevan un signo de interrogación; una corrección vuelve al nivel 0 como versión nueva."></svg>
+      </figure>
+      <aside class="panel" id="v2-panel" aria-live="polite"></aside>
+    </div>
+
+    <section>
+      <div class="sechead"><h2>Cómo se arranca</h2></div>
+      <div class="agents" id="v2-arranque"></div>
+    </section>
+
+    <section>
+      <div class="sechead"><h2>Preguntas y decisiones</h2><span class="lede" style="margin:0">Dónde se detiene el proceso a esperar a una persona. Toda respuesta queda en el log como DECISION.</span></div>
+      <div class="tblwrap"><table class="cmp" id="v2-decisiones"></table></div>
+    </section>
+
+    <section>
+      <div class="sechead"><h2>Carpetas y archivos</h2><span class="lede" style="margin:0">Toque una ruta: el diagrama marca quién la escribe.</span></div>
+      <div class="trees" id="v2-trees"></div>
+    </section>
+  </div>
+</div>
+
+<script>
+const SVGNS="http://www.w3.org/2000/svg";
+const el=(t,a={},p)=>{const e=document.createElementNS(SVGNS,t);for(const k in a)e.setAttribute(k,a[k]);if(p)p.appendChild(e);return e};
+const css=v=>`var(${v})`;
+function esc(s){return String(s).replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]))}
+
+/* Motor comun de diagrama: nodos, aristas, recorridos paso a paso y panel */
+function crearMapa(cfg){
+  const svg=document.getElementById(cfg.svg), panel=document.getElementById(cfg.panel);
+  const pre=cfg.svg;
+  const defs=el("defs",{},svg);
+  [["off","mk-off"],["on","mk-on"],["bad","mk-bad"]].forEach(([k,c])=>{
+    const m=el("marker",{id:`${pre}-ah-${k}`,class:c,viewBox:"0 0 10 10",refX:9,refY:5,markerWidth:7,markerHeight:7,orient:"auto-start-reverse"},defs);
+    el("path",{d:"M0,0 L10,5 L0,10 z"},m);
+  });
+  const gB=el("g",{},svg),gE=el("g",{},svg),gN=el("g",{},svg);
+  if(cfg.fondo)cfg.fondo(gB);
+  cfg.bands.forEach(b=>{
+    const g=el("g",{class:"band"},gB);
+    el("rect",{x:8,y:b.y,width:1404,height:b.h,rx:8,style:`fill:${css(b.c)}`},g);
+    const t=el("text",{class:"bandlabel",x:0,y:0,transform:`translate(${b.lx||40} ${b.y+b.h/2}) rotate(-90)`,"text-anchor":"middle",style:`fill:${css(b.k)}`},g);
+    t.textContent=b.l;
+  });
+  const E=cfg.edges,N=cfg.nodes,R=cfg.routes;
+  const edgeEls={};
+  E.forEach(e=>{
+    const g=el("g",{class:"edge"+(e.dash?" dash":"")+(e.bad?" bad":""),"data-id":e.id},gE);
+    el("path",{class:"halo",d:e.d},g);
+    el("path",{class:"ln",d:e.d,"marker-end":`url(#${pre}-ah-${e.bad?"bad":"off"})`},g);
+    if(e.l){const t=el("text",{x:e.lx,y:e.ly,"text-anchor":"middle"},g);
+      if(e.v)t.setAttribute("transform",`rotate(-90 ${e.lx} ${e.ly})`);t.textContent=e.l;}
+    edgeEls[e.id]=g;
+  });
+  const nodeEls={};
+  for(const id in N){
+    const n=N[id],w=n.w||190,h=n.h||64,col=css(cfg.colores[n.b]);
+    const g=el("g",{class:"node",tabindex:0,role:"button","aria-label":n.t,"data-id":id},gN);
+    if(n.forma==="rombo"){
+      const cx=n.x+w/2,cy=n.y+h/2;
+      el("polygon",{class:"box",points:`${cx},${n.y} ${n.x+w},${cy} ${cx},${n.y+h} ${n.x},${cy}`,style:`stroke:${col}`},g);
+      const tt=el("text",{class:"tc",x:cx,y:cy+1,"text-anchor":"middle"},g);tt.textContent=n.t;
+      if(n.s){const ts=el("text",{class:"sc",x:cx,y:cy+15,"text-anchor":"middle"},g);ts.textContent=n.s;}
+      if(n.q){el("circle",{class:"qb",cx:n.x+w-22,cy:n.y+12,r:9},g);const q=el("text",{class:"qt",x:n.x+w-22,y:n.y+16,"text-anchor":"middle"},g);q.textContent="?";}
+      g.addEventListener("click",()=>selectNode(id));
+      g.addEventListener("keydown",ev=>{if(ev.key==="Enter"||ev.key===" "){ev.preventDefault();selectNode(id)}});
+      nodeEls[id]=g;continue;
+    }
+    el("rect",{class:"box",x:n.x,y:n.y,width:w,height:h,rx:7,style:`stroke:${col}`},g);
+    const tg=el("text",{class:"tag",x:n.x+12,y:n.y+16,style:`fill:${col}`},g);tg.textContent=n.tag;
+    if(n.q){el("circle",{class:"qb",cx:n.x+w-12,cy:n.y+12,r:9},g);const q=el("text",{class:"qt",x:n.x+w-12,y:n.y+16,"text-anchor":"middle"},g);q.textContent="?";}
+    if(n.estado){const s=el("text",{class:n.estado==="probado"?"prob":"pend",x:n.x+w-10,y:n.y+16,"text-anchor":"end"},g);
+      s.textContent=n.estado==="probado"?"✓ PROBADO":"PENDIENTE";}
+    const tt=el("text",{class:"t",x:n.x+12,y:n.y+35},g);tt.textContent=n.t;
+    const ts=el("text",{class:"s",x:n.x+12,y:n.y+52},g);ts.textContent=n.s;
+    (n.extra||[]).forEach((f,i)=>{const r=el("text",{class:"s",x:n.x+12+(n.extraIndent||0),y:n.y+(n.extraY||76)+i*17},g);r.textContent=f;});
+    g.addEventListener("click",()=>selectNode(id));
+    g.addEventListener("keydown",ev=>{if(ev.key==="Enter"||ev.key===" "){ev.preventDefault();selectNode(id)}});
+    nodeEls[id]=g;
+  }
+  function setOn(ids){
+    Object.entries(edgeEls).forEach(([k,g])=>{
+      const on=ids.has(k);g.classList.toggle("on",on);
+      const e=E.find(x=>x.id===k);
+      g.querySelector(".ln").setAttribute("marker-end",`url(#${pre}-ah-${on?"on":(e.bad?"bad":"off")})`);
+    });
+  }
+  let route=R[0],step=0,timer=null,selected=null;
+  function nodeHTML(id){
+    const n=N[id];
+    let h=`<div class="eyebrow" style="color:${css(cfg.colores[n.b])}">${esc(n.tag)}</div><h3>${esc(n.t)}</h3>`;
+    if(n.estado)h+=`<span class="estado ${n.estado==="probado"?"ok":"pend"}">${n.estado==="probado"?"probado 04-oct":"pendiente de probar"}</span>`;
+    h+=`<p>${esc(n.d)}</p>`;
+    if(n.io)h+=`<dl class="kv">${n.io.map(([k,v])=>`<dt>${esc(k)}</dt><dd class="mono">${esc(v)}</dd>`).join("")}</dl>`;
+    if(n.verd)h+=`<div class="eyebrow">veredictos separados</div><div class="verdicts">${["dato","medición","encoding","nulos","controles","contrato"].map(v=>`<span>${v}</span>`).join("")}</div>`;
+    if(n.cr)h+=`<div class="eyebrow" style="margin-top:12px">criterios</div><ul class="crit">${n.cr.map(c=>`<li>${esc(c)}</li>`).join("")}</ul>`;
+    return h;
+  }
+  function render(){
+    Object.values(nodeEls).forEach(g=>g.classList.remove("cur","in","sel"));
+    if(!route.steps){
+      svg.classList.toggle("focus",!!selected);
+      if(selected){
+        const ids=new Set(E.filter(e=>e.a===selected||e.b===selected).map(e=>e.id));
+        setOn(ids);nodeEls[selected].classList.add("sel","in");
+        E.filter(e=>ids.has(e.id)).forEach(e=>{nodeEls[e.a].classList.add("in");nodeEls[e.b].classList.add("in")});
+        panel.innerHTML=nodeHTML(selected)+`<div class="player"><button class="btn" data-a="clr">Ver todo</button></div>`;
+        panel.querySelector('[data-a="clr"]').onclick=()=>{selected=null;render()};
+      }else{setOn(new Set());panel.innerHTML=cfg.intro;}
+      return;
+    }
+    svg.classList.add("focus");
+    const all=new Set(),inN=new Set();
+    route.steps.forEach(s=>{inN.add(s.n);s.e.forEach(x=>all.add(x))});
+    all.forEach(x=>{const e=E.find(z=>z.id===x);inN.add(e.a);inN.add(e.b)});
+    const s=route.steps[step];
+    const cur=new Set();route.steps.slice(0,step+1).forEach(t=>t.e.forEach(x=>cur.add(x)));
+    setOn(cur);
+    inN.forEach(n=>nodeEls[n].classList.add("in"));
+    nodeEls[s.n].classList.add("cur");
+    const tot=route.steps.length;
+    panel.innerHTML=`<div class="eyebrow">${esc(route.l)}</div>
+      <p class="steptext"><span class="stepn">${step+1}/${tot}</span> ${esc(s.t)}</p>
+      <div class="player"><button class="btn" data-a="pv" ${step===0?"disabled":""} aria-label="Paso anterior">◀</button>
+      <div class="dots">${route.steps.map((_,i)=>`<span class="${i<=step?"on":""}"></span>`).join("")}</div>
+      <button class="btn" data-a="pl">${timer?"Pausa":"Reproducir"}</button>
+      <button class="btn" data-a="nx" ${step===tot-1?"disabled":""} aria-label="Paso siguiente">▶</button></div>
+      <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--line)">${nodeHTML(s.n)}</div>`;
+    panel.querySelector('[data-a="pv"]').onclick=()=>{stop();step--;render()};
+    panel.querySelector('[data-a="nx"]').onclick=()=>{stop();step++;render()};
+    panel.querySelector('[data-a="pl"]').onclick=()=>{timer?stop():play();render()};
+  }
+  function play(){stop();if(step>=route.steps.length-1)step=0;timer=setInterval(()=>{if(step<route.steps.length-1){step++;render()}else{stop();render()}},2600)}
+  function stop(){if(timer){clearInterval(timer);timer=null}}
+  const rb=document.getElementById(cfg.routesEl);
+  function setRoute(id){stop();route=R.find(r=>r.id===id);step=0;selected=null;
+    rb.querySelectorAll(".route").forEach(b=>b.setAttribute("aria-pressed",b.dataset.r===id));render()}
+  function selectNode(id){
+    if(route.steps){const i=route.steps.findIndex(s=>s.n===id);if(i>=0){stop();step=i;render();return}
+      setRoute(R[0].id)}
+    selected=selected===id?null:id;render();
+  }
+  R.forEach(r=>{const b=document.createElement("button");b.className="route";b.dataset.r=r.id;
+    b.setAttribute("aria-pressed",r.id===R[0].id);b.innerHTML=`<i style="--c:var(${r.c})"></i>${esc(r.l)}`;
+    b.onclick=()=>setRoute(r.id);rb.appendChild(b)});
+  render();
+  return {setRoute,mostrar:id=>{setRoute(R[0].id);selected=id;render()},nodo:id=>N[id],stage:svg.closest(".stage")};
+}
+
+function arboles(contId,TREES,mapa,colores){
+  const tb=document.getElementById(contId);
+  TREES.forEach(T=>{const d=document.createElement("div");d.className="tree";
+    d.innerHTML=`<h4>${esc(T.h)}</h4><div class="root">${esc(T.root)}</div><ul></ul>`;
+    T.items.forEach(([p,f,w])=>{const li=document.createElement("li");const b=document.createElement("button");
+      const n=mapa.nodo(w);
+      b.innerHTML=`<span class="p">${esc(p)}<br><span class="d">${esc(f)}</span></span><span class="w" style="--wc:${css(colores[n.b])}">${esc(n.t)}</span>`;
+      b.onclick=()=>{tb.querySelectorAll(".tree button").forEach(x=>x.classList.remove("sel"));b.classList.add("sel");
+        mapa.mostrar(w);mapa.stage.scrollIntoView({behavior:"smooth",block:"start"})};
+      li.appendChild(b);d.querySelector("ul").appendChild(li)});
+    tb.appendChild(d)});
+}
+
+/* =========================================================== V1 */
+const V1C={s:"--stratio",b:"--bridge",f:"--fabric",l:"--local"};
+const V1N={
+ hdfs:{x:90,y:90,b:"s",t:"HDFS + Postgres",s:"/data/prod/… · esq.tabla",tag:"origen",
+   d:"El dato de Stratio: rutas HDFS (landing, trusted…) y tablas Postgres. Es lo que se toma como verdad para la paridad.",
+   io:[["Lo leen","Métricas STRATIO (dos kernels) y Rocket"]]},
+ mets_py:{x:340,y:50,b:"s",t:"Métricas STRATIO v18",s:"kernel Python · archivos",tag:"notebook",
+   d:"Mide cada ruta de FUENTES: perfil por columna, cinco huellas, ID-01..08 y VG-01..08, y en ingesta el SHA-256 del dataset.",
+   io:[["Sale","stratio_<clave>_<fecha>_v<N>.json"],["Va a","metricas-stratio/v3/qa/<clave>/"]],
+   cr:["Sesión creada por el notebook: fija memoria y núcleos, pero no trae JAR del clúster.","Sube cada objeto apenas termina (SUBIR_POR_OBJETO).","Ingesta: EJECUTAR_CP = True y EXIGIR_PARIDAD = True. El SHA-256 es obligatorio.","Analítica: EXIGIR_PARIDAD = False. Se cambia al pasar de un tipo de prueba al otro."]},
+ mets_sp:{x:340,y:130,b:"s",t:"Métricas STRATIO v18",s:"kernel Spark · JDBC",tag:"notebook",
+   d:"La misma auditoría para las fuentes Postgres. Es el único kernel con org.postgresql.Driver.",
+   io:[["Sale","stratio_<clave>…json"],["Va a","metricas-stratio/v3/qa/<clave>/"]],
+   cr:["Si se declara Postgres se mide Postgres: no existe modo «omitir».","El nombre real lo dice el campo «literal Rocket» de la VariableLibrary."]},
+ rocket:{x:1180,y:90,b:"s",t:"Rocket · fileBrowser",s:"findByPath · download",tag:"API",
+   d:"La API de archivos de Stratio. Con la cookie de sesión lista y descarga los parquet del HDFS de producción.",
+   io:[["Endpoint","POST /rocket/fileBrowser/findByPath"],["Endpoint","POST /rocket/fileBrowser/download"],["Cuerpo","{pathHdfs}"]]},
+ bkF:{x:580,y:250,b:"b",t:"metricas-fabric",s:"v3/qa/<clave>/…_v<N>.json",tag:"contenedor",
+   d:"Lo que mide Fabric, por tabla y versionado. El notebook de Stratio puede bajarlo para cotejar en sentido inverso.",
+   io:[["Cuenta","comfqametricsdevqaeus2"],["Acceso local","SAS en ~/Projects/.azure_metricas_sas"]]},
+ bkS:{x:860,y:250,b:"b",t:"metricas-stratio",s:"v3/qa/<clave>/…_v<N>.json",tag:"contenedor",
+   d:"El punto de encuentro: Stratio sube aquí y Fabric baja de aquí. El intercambio es por tabla, no por corrida.",
+   io:[["Cuenta","comfqametricsdevqaeus2"],["Versión","cuenta por tabla (v1, v2…) en toda su historia"]]},
+ etl:{x:90,y:380,b:"f",t:"ETL Validator v9",s:"pasos 4 → 12",tag:"notebook",
+   d:"Resuelve, prevuela, ejecuta y verifica cada flujo. Su id de CORRIDA viaja a los reportes de métricas como CORRIDA_VALIDADOR.",
+   io:[["Veredicto","PASA · PASA_CON_AVISOS · NO_PASA"],["Hallazgos","OK · OMITIDO · ADVERTENCIA · BLOQUEANTE"],["Sale a","reportes_v3/validador/"]],
+   cr:["v9 resuelve cada alias contra SU biblioteca, el workspace del flujo y los pipelines hijos: 29 → 0 rutas sin resolver.","Prevuelo: desplegado, punto de entrada, variables resueltas, sin destinos de otro ambiente, al menos una salida.","Paso 8 lanza por olas según el grafo de dependencias."]},
+ flujos:{x:90,y:490,b:"f",t:"Flujos QA",s:"ingestion · orchestration",tag:"pipelines",
+   d:"Los DataPipeline / Spark Job Definition migrados. Ingesta copia, analítica transforma, orquestadores solo invocan.",
+   io:[["Workspaces","ingestion-qa · orchestration-qa"]]},
+ pgp:{x:340,y:400,b:"f",t:"qa_consulta_postgres",s:"pipeline · SQL libre",tag:"pipeline",
+   d:"El Spark de Fabric no puede leer Postgres (gateway on-prem). Esta pipeline recibe SQL y devuelve filas con un Lookup.",
+   io:[["Conexión","PG_ANALITICA_DEV_QA-RW"]],
+   cr:["Solo integridad: conteo, esquema, nulos, distintos, min/max.","Nunca hash: un SQL de más de ~46 s tumba el gateway."]},
+ lh:{x:340,y:480,b:"f",t:"Tablas destino",s:"bronze · silver · gold",tag:"lakehouse",
+   d:"Lo que escriben los flujos. La capa sale de la ruta real de destino, no del nombre del flujo.",
+   io:[["Rutas","Files/bronze/… · silver.… · gold.…"]]},
+ metF:{x:580,y:420,w:190,h:120,b:"f",t:"Métricas FABRIC v18",s:"mismas reglas que Stratio",tag:"notebook",extra:["perfil · 5 huellas","ID-01..08 · VG-01..08"],
+   d:"Mide la misma tabla con el mismo código (solo cambian FUENTES y rutas). PRECISION_COMPARABLE iguala la precisión a los dos lados.",
+   io:[["Sale","fabric_<clave>_<fecha>_v<N>.json"],["Va a","bucket + descargados/qa/fabric/<clave>/"]],
+   cr:["Postgres declarado como jdbc:postgresql:esquema.tabla se desvía solo a la pipeline.","Ingesta: EJECUTAR_CP y EXIGIR_PARIDAD en True, igual que en Stratio.","Tocar la canonicalización (CELDA 6) invalida todas las mediciones previas."]},
+ cot:{x:860,y:440,h:80,b:"f",t:"Cotejo · Celda 12.2",s:"empareja por clave_cotejo",tag:"notebook",extra:["6 veredictos"],extraY:69,
+   d:"Baja el JSON de Stratio y lo enfrenta al de Fabric. EXIGIR_PARIDAD = True en ingesta (CP obligatorios, SHA-256 incluido); False al probar analítica (INTEGRIDAD).",
+   io:[["Sale","metrica_<clave>_<fecha>_v<N>.json"],["Analítica","analitica_<flujo>_<fecha>_v<N>.json"]],
+   verd:true},
+ res:{x:1100,y:400,w:230,h:170,b:"f",t:"OneLake · resultados/",s:"lh_transversal · datalake-qa",tag:"evidencia",extra:["▸ validador/","▸ metricas/descargados/","▸ metricas/cotejos/","▸ flujos/cotejos/","▸ ../actas/"],extraIndent:8,
+   d:"Toda la evidencia que el acta enlaza vive aquí, no en disco local. Ver «Dónde quedan los JSON».",
+   io:[["Ruta","Files/resultados/reportes_v3/"],["Workspace","f46ef407-…"],["Lakehouse","eae58d30-…"]]},
+ agent:{x:90,y:650,b:"l",t:"Agente acta-entrega",s:"subagente Claude Code",tag:"agente",
+   d:"Produce el acta del lote, los reportes técnicos de fallas o el informe de salida a producción. Mide antes de escribir.",
+   io:[["Definición","~/.claude/agents/acta-entrega.md"],["Lee primero","actas/CONTEXTO.md §0"]],
+   cr:["Ninguna cifra sin medir; toda diferencia con causa medida.","El acta no menciona negativas: lo que falla va a un reporte técnico.","Ingesta VG+ID+CP · analítica VG+ID · orquestadores por ejecución."]},
+ matriz:{x:90,y:760,b:"l",t:"inventario/matriz.json",s:"flujo_id · nombre_rocket",tag:"validador-agent-v2",
+   d:"De aquí salen el código FL-0xxx y el nombre en Stratio de cada flujo. Si falta, la celda dice «sin código FL asignado».",
+   io:[["Repo","qa-etl-validador-agent-v2/"]]},
+ cli:{x:340,y:650,b:"l",t:"acta.py",s:"delta·metricas·perfil·tiempos",tag:"CLI",
+   d:"Mide y publica la evidencia en OneLake para que sobreviva a la sesión.",
+   io:[["delta","estado del _delta_log"],["metricas","reporte por tabla → descargados/qa/fabric/"],["perfil","ID-01..04 y VG-01 con DuckDB"],["tiempos","duración desde el historial de Fabric"]]},
+ sas:{x:340,y:760,b:"l",t:"SAS del bucket",s:"herramientas/bucket.py",tag:"credencial",
+   d:"Lee los dos contenedores sin SDK y agrupa los JSON por clave_cotejo, ordenados por versión.",
+   io:[["Secreto","~/Projects/.azure_metricas_sas"]]},
+ fab:{x:600,y:650,b:"l",t:"fab CLI",s:"token OneLake + API",tag:"credencial",
+   d:"El CLI de Fabric ya autenticado entrega el token. Con él se lista, se hace HEAD y se descarga de OneLake.",
+   io:[["Binario","~/.local/bin/fab"],["Endpoint","onelake.dfs.fabric.microsoft.com"]],
+   cr:["Tablas: manda commitInfo.timestamp del _delta_log, no la fecha del archivo.","Reportes con hora en el nombre: se lista la carpeta y se toma el publicado; nunca se adivina.","Cada enlace se comprueba con HEAD · 16 hilos · reintentos · un 404 es definitivo.","El reporte de comparación lo designa el equipo: no se cambia por una corrida más reciente."]},
+ gen:{x:600,y:760,b:"l",t:"Generador normalizado",s:"datos → generar → verificar",tag:"script",
+   d:"datos_normalizados.py N resuelve datos y enlaces; generar_acta_normalizada.py N arma el .docx; verificar.py --enlaces lo reabre todo.",
+   io:[["Formato","9 puntos · §0 de CONTEXTO.md"]],
+   cr:["No emite el acta si queda un enlace sin resolver.","Stratio azul #3D5A98, Fabric ámbar #A86A00."]},
+ cotL:{x:860,y:650,b:"l",t:"acta.py cotejo",s:"DuckDB · anti-join",tag:"CLI",
+   d:"Baja el parquet de los dos lados y cuenta con el mismo procedimiento. Dice qué registros faltan a cada lado y por qué.",
+   io:[["Uso","--hdfs <ruta> --tabla <capa/tabla> --llave <col>"]]},
+ docx:{x:860,y:760,b:"l",t:"Acta .docx",s:"+ .evidencia.json",tag:"entregable",
+   d:"Se guarda en ~/Projects/reportes/ y se publica en Files/resultados/actas/ solo cuando el usuario lo pide.",
+   io:[["Nombre","Acta_Entrega_Flujos_LoteN_<fecha>_v<ver>.docx"]]},
+ cookie:{x:1180,y:650,w:150,b:"l",t:"Cookie Rocket",s:"~/Projects/.rocket_cookie",tag:"credencial",
+   d:"Cabecera Cookie de una sesión abierta en Rocket. Nunca se imprime ni se escribe en código.",
+   cr:["Se baja Stratio cuando el cotejo de métricas deja una diferencia sin causa medida, o la tabla no se publicó: el parquet dice qué registros difieren.","Si la carpeta no trae .parquet, baja a particiones clave=valor hasta 4 niveles e ignora carpetas «_».","4 hilos · 5 reintentos (Rocket corta sin avisar) · salta lo ya descargado."]}
+};
+const V1E=[
+ {id:"etl_res",a:"etl",b:"res",d:"M185 380 V362 H1215 V400",l:"veredictos · pasos 10 y 12",lx:640,ly:356},
+ {id:"hdfs_py",a:"hdfs",b:"mets_py",d:"M280 108 H310 V82 H340",l:"lee archivos",lx:262,ly:76},
+ {id:"hdfs_sp",a:"hdfs",b:"mets_sp",d:"M280 138 H310 V162 H340",l:"JDBC",lx:286,ly:178},
+ {id:"py_bkS",a:"mets_py",b:"bkS",d:"M530 82 H600 V232 H930 V250",l:"sube por objeto",lx:660,ly:226},
+ {id:"sp_bkS",a:"mets_sp",b:"bkS",d:"M530 162 H600 V232 H930 V250",l:"",lx:0,ly:0},
+ {id:"etl_fl",a:"etl",b:"flujos",d:"M185 444 V490",l:"lanza · paso 8",lx:228,ly:471},
+ {id:"fl_lh",a:"flujos",b:"lh",d:"M280 530 H340",l:"escribe",lx:310,ly:550},
+ {id:"fl_pg",a:"flujos",b:"pgp",d:"M280 498 H310 V432 H340",l:"copias PG",lx:302,ly:390},
+ {id:"pg_mf",a:"pgp",b:"metF",d:"M530 436 H580",l:"SQL",lx:555,ly:430},
+ {id:"lh_mf",a:"lh",b:"metF",d:"M530 512 H580",l:"lee",lx:555,ly:506},
+ {id:"mf_bkF",a:"metF",b:"bkF",d:"M675 420 V314",l:"sube por objeto",lx:722,ly:398},
+ {id:"mf_cot",a:"metF",b:"cot",d:"M770 480 H860",l:"reporte Fabric",lx:815,ly:472},
+ {id:"bkS_cot",a:"bkS",b:"cot",d:"M955 314 V440",l:"descarga Stratio",lx:1005,ly:410},
+ {id:"mf_res",a:"metF",b:"res",d:"M675 540 V560 H1100",l:"descargados/qa/fabric",lx:930,ly:554},
+ {id:"cot_res",a:"cot",b:"res",d:"M1050 480 H1100",l:"cotejos",lx:1075,ly:472},
+ {id:"res_fab",a:"res",b:"fab",d:"M1150 570 V625 H695 V650",l:"lista · HEAD · baja",lx:930,ly:619},
+ {id:"fab_cli",a:"fab",b:"cli",d:"M600 682 H530",l:"token",lx:565,ly:676},
+ {id:"fab_cotL",a:"fab",b:"cotL",d:"M790 682 H860",l:"parquet vigentes",lx:825,ly:676},
+ {id:"ag_cli",a:"agent",b:"cli",d:"M280 682 H340",l:"ejecuta",lx:310,ly:676},
+ {id:"sas_cli",a:"sas",b:"cli",d:"M435 760 V714",l:"JSON del bucket",lx:478,ly:742},
+ {id:"cli_gen",a:"cli",b:"gen",d:"M530 704 H565 V792 H600",l:"cifras",lx:548,ly:812},
+ {id:"cotL_gen",a:"cotL",b:"gen",d:"M860 704 H825 V792 H790",l:"causa",lx:825,ly:812},
+ {id:"mz_gen",a:"matriz",b:"gen",d:"M185 824 V846 H695 V824",l:"FL-0xxx · nombre Stratio",lx:440,ly:840},
+ {id:"gen_docx",a:"gen",b:"docx",d:"M790 808 H860",l:"",lx:0,ly:0},
+ {id:"ck_rk",a:"cookie",b:"rocket",d:"M1330 682 H1350 V154",l:"Cookie",lx:1350,ly:300,v:1},
+ {id:"rk_cotL",a:"rocket",b:"cotL",d:"M1370 122 H1392 V740 H955 V714",l:"parquet Stratio",lx:1180,ly:734},
+ {id:"docx_res",a:"docx",b:"res",d:"M1050 792 H1120 V570",l:"publica si se pide",lx:1120,ly:822,dash:1}
+];
+const V1R=[
+ {id:"todo",l:"Todo",c:"--edge",steps:null},
+ {id:"etl",l:"ETL v9 · ejecutar",c:"--fabric",steps:[
+  {n:"etl",e:[],t:"Paso 4–5: encuentra el flujo en los workspaces y resuelve sus entradas y salidas contra su Variable Library."},
+  {n:"etl",e:[],t:"Paso 6–7: prevuelo de cinco chequeos y línea base de cada salida (conteo, esquema, huella)."},
+  {n:"flujos",e:["etl_fl"],t:"Paso 8: lanza por olas según dependencias y espera estado terminal."},
+  {n:"lh",e:["fl_lh","fl_pg"],t:"El flujo escribe en bronze/silver/gold y, si aplica, copia a Postgres."},
+  {n:"etl",e:[],t:"Pasos 8.1–9 y 11: vuelve a medir, contrasta con la línea base y revisa la transformación de analítica."},
+  {n:"res",e:["etl_res"],t:"Pasos 10 y 12: corrida del día, veredicto por flujo e índice en validador/."}]},
+ {id:"ing",l:"Métricas · paridad",c:"--stratio",steps:[
+  {n:"mets_py",e:["hdfs_py"],t:"Stratio mide cada fuente: perfil, cinco huellas, ID y VG."},
+  {n:"bkS",e:["py_bkS"],t:"Cada tabla sube al bucket apenas termina, con su versión."},
+  {n:"metF",e:["lh_mf"],t:"Fabric mide la misma tabla con el mismo código y la misma precisión."},
+  {n:"bkF",e:["mf_bkF","mf_res"],t:"Sube su JSON al bucket y lo deja en descargados/qa/fabric/."},
+  {n:"cot",e:["bkS_cot","mf_cot"],t:"Celda 12.2 baja el de Stratio y empareja por clave_cotejo."},
+  {n:"res",e:["cot_res"],t:"Escribe cotejos/<clave>/ con seis veredictos separados."}]},
+ {id:"pg",l:"Postgres · integridad",c:"--bridge",steps:[
+  {n:"mets_sp",e:["hdfs_sp"],t:"Kernel Spark de la plataforma: el único con driver JDBC."},
+  {n:"bkS",e:["sp_bkS"],t:"Sube igual que las rutas de archivo."},
+  {n:"pgp",e:["fl_pg"],t:"En Fabric, el SQL va por la pipeline qa_consulta_postgres."},
+  {n:"metF",e:["pg_mf"],t:"Solo integridad: conteo, esquema, nulos, distintos, min/max. Nunca hash."},
+  {n:"cot",e:["bkS_cot","mf_cot","cot_res"],t:"El cotejo queda en modo INTEGRIDAD para estas tablas."}]},
+ {id:"fab",l:"Descarga Fabric · fab CLI",c:"--fabric",steps:[
+  {n:"fab",e:[],t:"El CLI ya autenticado da el token de OneLake, sin renovación interactiva."},
+  {n:"res",e:["res_fab"],t:"Lista la carpeta, toma el archivo publicado y comprueba cada enlace con HEAD."},
+  {n:"cli",e:["fab_cli"],t:"acta.py lee el _delta_log, publica métricas, perfil y tiempos."},
+  {n:"cotL",e:["fab_cotL"],t:"Baja solo los parquet vigentes según el _delta_log."}]},
+ {id:"rk",l:"Descarga Stratio · cookie",c:"--stratio",steps:[
+  {n:"cookie",e:[],t:"Se activa cuando hay una diferencia sin causa medida o la tabla no se publicó."},
+  {n:"rocket",e:["ck_rk"],t:"POST findByPath con la cookie: lista la ruta HDFS y sus particiones."},
+  {n:"cotL",e:["rk_cotL"],t:"POST download de cada parquet, 4 hilos, con reintentos."},
+  {n:"cotL",e:["fab_cotL","rk_cotL"],t:"DuckDB cuenta los dos lados y hace anti-join por la llave."}]},
+ {id:"acta",l:"Cierre · agente de actas",c:"--local",steps:[
+  {n:"agent",e:[],t:"Lee CONTEXTO.md y el acta modelo; decide la familia: acta, reporte técnico o salida a producción."},
+  {n:"cli",e:["ag_cli","sas_cli","fab_cli"],t:"Mide: tiempos, métricas, perfil; lee los JSON del bucket."},
+  {n:"cotL",e:["fab_cotL","rk_cotL"],t:"Cada diferencia se cotea hasta tener su causa medida."},
+  {n:"gen",e:["cli_gen","cotL_gen","mz_gen"],t:"Junta cifras, causas y nombres FL; resuelve los enlaces."},
+  {n:"docx",e:["gen_docx"],t:"Genera el .docx y verificar.py --enlaces reabre cada enlace."},
+  {n:"res",e:["docx_res"],t:"Se publica en Files/resultados/actas/ solo cuando el usuario lo pide."}]}
+];
+const mapa1=crearMapa({svg:"v1-dg",panel:"v1-panel",routesEl:"v1-routes",nodes:V1N,edges:V1E,routes:V1R,colores:V1C,
+  bands:[{y:24,h:192,c:"--tint-s",k:"--stratio",l:"Stratio · Rocket"},{y:222,h:110,c:"--tint-b",k:"--bridge",l:"Bucket Azure"},
+         {y:338,h:268,c:"--tint-f",k:"--fabric",l:"Fabric QA"},{y:612,h:250,c:"--tint-l",k:"--local",l:"Local · Claude Code"}],
+  intro:`<div class="eyebrow">cómo leerlo</div><h3>Cuatro carriles, una evidencia</h3>
+    <p>Stratio y Fabric miden lo mismo con el mismo código y se encuentran en el bucket. El cotejo y el validador escriben en OneLake. Desde local, el agente baja esa evidencia y cierra con el acta.</p>
+    <dl class="kv"><dt>Elija</dt><dd>un recorrido arriba para verlo paso a paso</dd><dt>Toque</dt><dd>una caja para ver qué hace, qué produce y con qué criterio</dd></dl>`});
+
+/* controles v1 */
+(function(){
+const CTL={
+ VG:{n:"esquema y metadata",items:[["VG-01","Nombres de columna únicos"],["VG-02","Nombres válidos en Delta/Parquet"],["VG-03","Tipos soportados en destino"],
+  ["VG-04","Precisión y escala de decimales"],["VG-05","Tipos complejos anidados"],["VG-06","Longitud de nombres"],["VG-07","Conformidad con contrato"],["VG-08","Esquema vs. corrida previa"]]},
+ ID:{n:"integridad del dato",items:[["ID-01","Conteo mayor que cero"],["ID-02","Duplicados de fila completa"],["ID-03","Columnas 100 % nulas"],
+  ["ID-04","Obligatoriedad (no nulos)"],["ID-05","Candidatas a clave única"],["ID-06","Columnas constantes"],["ID-07","Conteo vs. corrida previa"],["ID-08","Huella vs. corrida previa"]]},
+ CP:{n:"paridad Stratio ↔ Fabric",items:[["CP-01","Conteo de filas"],["CP-02","Esquema y tipos"],["CP-03","Checksum SHA-256"],["CP-04","Muestreo"],["CP-05","Reejecución y sello"]]}
+};
+const WHY={
+ "CP-04":["info","Muestra de 10 filas (limit 10) sin orden, en los dos modos: no es determinista, no entra al hash y no aprueba ni rechaza. Sirve para leer el dato."],
+ "VG-07":["na","No hay contratos publicados: sale NO_EVALUABLE. El notebook propone uno a partir de lo observado."],
+ "VG-08":["fuera","Compara cada lado contra SU corrida previa. Mide evolución, no paridad."],
+ "ID-07":["fuera","Compara cada lado contra SU corrida previa. Mide evolución, no paridad."],
+ "ID-08":["fuera","Compara cada lado contra SU corrida previa. Mide evolución, no paridad."],
+ "ID-05":["info","Informa columnas candidatas; no aprueba ni rechaza."]
+};
+const KLBL={exige:"se exige",info:"informativo",fuera:"fuera",na:"no aplica"};
+let grupo="ingesta",selCtl=null;
+function kind(code){
+  if(grupo==="orq")return["na","Los orquestadores no escriben datos: se aprueban por ejecución."];
+  const fam=code.slice(0,2);
+  if(code==="CP-04")return WHY[code];
+  if(grupo==="analitica"&&fam==="CP")return["info","EXIGIR_PARIDAD = False: en analítica los dos lados corren en ventanas distintas; filas y huella se informan. Se aprueba con VG e ID."];
+  if(WHY[code])return WHY[code];
+  if(fam==="CP")return["exige",{"CP-01":"Las filas deben coincidir; una diferencia necesita causa medida.","CP-02":"Columnas que sobran o faltan, o un tipo distinto, rompen el contrato.","CP-03":"Obligatorio en ingesta: EJECUTAR_CP = True a los dos lados. Mismo SHA-256 = mismo dato, sin importar orden ni particiones.","CP-05":"El sello de reejecución confirma qué carga se midió."}[code]+" EXIGIR_PARIDAD = True."];
+  return["exige","Se mide igual a los dos lados y debe dar el mismo estado, regla por regla."];
+}
+function draw(){
+  const box=document.getElementById("v1-ctl");box.innerHTML="";
+  for(const f of ["VG","ID","CP"]){
+    const d=document.createElement("div");d.className="fam";
+    d.innerHTML=`<header><b>${f}</b><span>${CTL[f].n}</span></header><div class="chips"></div>`;
+    const ch=d.querySelector(".chips");
+    CTL[f].items.forEach(([c,t])=>{const [k]=kind(c);
+      const b=document.createElement("button");b.className="chip"+(selCtl===c?" sel":"");b.dataset.k=k;
+      b.innerHTML=`<code>${c}</code><span>${t}</span><em>${KLBL[k]}</em>`;
+      b.onclick=()=>{selCtl=c;draw()};ch.appendChild(b)});
+    box.appendChild(d);
+  }
+  const crit={ingesta:"Ingesta se aprueba con VG, ID y CP, SHA-256 incluido: EJECUTAR_CP = True y EXIGIR_PARIDAD = True. La pregunta es «¿llegó el mismo dato?».",
+    analitica:"Analítica se aprueba con VG e ID: EXIGIR_PARIDAD = False, porque transforma y se exige integridad, no paridad.",
+    orq:"Orquestador: se aprueba por ejecución; no hay tabla que medir."}[grupo];
+  const note=document.getElementById("v1-ctlnote");
+  if(selCtl){const [k,w]=kind(selCtl);const t=[...CTL.VG.items,...CTL.ID.items,...CTL.CP.items].find(x=>x[0]===selCtl)[1];
+    note.innerHTML=`<b class="mono">${selCtl}</b> · ${esc(t)}: <b style="color:var(--${k==="exige"?"ok":k==="info"?"info":k==="fuera"?"off":"na"})">${KLBL[k]}</b>. ${esc(w)}<br><span style="color:var(--muted)">Lo calcula la CELDA 8 de los notebooks de métricas; el agente vuelve a medir ID-01..04 y VG-01 con <span class="mono">acta.py perfil</span>.</span>`;}
+  else note.innerHTML=`${esc(crit)} <span style="color:var(--muted)">Toque un control para ver por qué.</span>`;
+}
+document.querySelectorAll("#v1-grupo button").forEach(b=>b.onclick=()=>{grupo=b.dataset.g;
+  document.querySelectorAll("#v1-grupo button").forEach(x=>x.setAttribute("aria-pressed",x===b));draw()});
+draw();
+})();
+
+arboles("v1-trees",[
+ {h:"OneLake · lakehouse de QA",root:"lh_transversal/Files/resultados/",items:[
+  ["reportes_v3/validador/flujos/<fecha>/","corrida_<id>_<N>flujos.json","etl"],
+  ["reportes_v3/validador/flujos/veredictos/","<flujo>__<id>.json","etl"],
+  ["reportes_v3/validador/analitica/<fecha>/","revisión por flujo de analítica","etl"],
+  ["reportes_v3/validador/informes/<fecha>/","índice de la corrida","etl"],
+  ["reportes_v3/metricas/descargados/qa/fabric/<clave>/","fabric_<clave>_<fecha>_v<N>.json","metF"],
+  ["reportes_v3/metricas/descargados/qa/stratio/<clave>/","stratio_<clave>_<fecha>_v<N>.json","cot"],
+  ["reportes_v3/metricas/cotejos/<clave>/","metrica_<clave>_<fecha>_v<N>.json","cot"],
+  ["reportes_v3/flujos/cotejos/<flujo>/","analitica_<flujo>_<fecha>_v<N>.json","cot"],
+  ["actas/","acta publicada","docx"]]},
+ {h:"Bucket Azure",root:"comfqametricsdevqaeus2",items:[
+  ["metricas-stratio/v3/qa/<clave>/","stratio_<clave>_<fecha>_v<N>.json","mets_py"],
+  ["metricas-fabric/v3/qa/<clave>/","fabric_<clave>_<fecha>_v<N>.json","metF"]]},
+ {h:"Local",root:"~/Projects/",items:[
+  ["reportes/","Acta_Entrega_Flujos_LoteN_<fecha>_v<ver>.docx","docx"],
+  ["reportes/","…_v<ver>.evidencia.json · manifiesto de enlaces","gen"],
+  ["<--tmp de acta.py cotejo>/","parquet de trabajo · no es evidencia","cotL"]]}
+],mapa1,V1C);
+
+(function(){
+const AG=[
+ {h:"acta-entrega",w:"Subagente de Claude Code · carril Local",node:"agent",route:"acta",
+  p:"Cierra el circuito: mide con acta.py, cotea con Rocket cuando hace falta y entrega el .docx verificado. También hace los reportes técnicos de fallas y el informe de salida a producción.",
+  pipe:["CONTEXTO.md","acta.py","datos_normalizados","generar","verificar --enlaces"]},
+ {h:"qa-etl-validador-agent-v2",w:"CLI del repositorio · alimenta el carril Local",node:"matriz",route:null,
+  p:"El validador estático original. Hoy aporta el inventario (FL-0xxx, nombre Rocket) y aloja la carpeta actas/ con todo el CLI.",
+  pipe:["T2 metadata","T1 inputs","ejecutar","T3 outputs","T4 función","T5 veredicto"]},
+ {h:"ETL Validator v9",w:"Notebook en Fabric · carril Fabric",node:"etl",route:"etl",
+  p:"No es un subagente, pero actúa como uno: decide qué flujo corre, en qué orden, y deja el veredicto que el acta cita.",
+  pipe:["resolver","prevuelo","línea base","ejecutar","verificar","informe"]}
+];
+const ab=document.getElementById("v1-agents");
+AG.forEach(a=>{const d=document.createElement("div");d.className="agent";
+  d.innerHTML=`<h4>${a.h}</h4><div class="where">${a.w}</div><div>${a.p}</div>
+   <div class="pipe">${a.pipe.map(x=>`<span>${x}</span>`).join("<i>→</i>")}</div>
+   <button class="btn jump">Ver en el diagrama</button>`;
+  d.querySelector(".jump").onclick=()=>{if(a.route)mapa1.setRoute(a.route);else mapa1.mostrar(a.node);
+    mapa1.stage.scrollIntoView({behavior:"smooth",block:"start"})};
+  ab.appendChild(d)});
+const note=document.createElement("p");note.className="lede";note.style.gridColumn="1/-1";
+note.textContent="No hay otros subagentes propios: los demás disponibles en Claude Code (Explore, Plan, general-purpose) son genéricos y no forman parte del flujo.";
+ab.appendChild(note);
+})();
+
+/* =========================================================== V2 · arquitectura */
+const V2C={c:"--fg",f:"--fabric",s:"--stratio",l:"--local",p:"--people",x:"--bad",b:"--bridge"};
+const COLS=["Arranque","Paso 0 · roles y ETL","Niveles 0 y 1 · rápido","Semáforo","Nivel 2 · pesado","Veredicto","Cierre · lote y acta"];
+const COLT=["--tint-c","--tint-c","--tint-s","--tint-s","--tint-f","--tint-l","--tint-p"];
+const LANES=[{y:40,h:110,l:"Personas",s:"preguntas y decisiones",k:"--people"},
+             {y:156,h:130,l:"Coordinador",s:"chat · CLAUDE.md",k:"--fg"},
+             {y:292,h:196,l:"Agentes",s:".claude/agents/",k:"--local"},
+             {y:494,h:140,l:"Herramientas",s:"python -m pc · trabajos/",k:"--bridge"},
+             {y:640,h:155,l:"Plataformas",s:"Fabric · Stratio · bucket",k:"--fabric"}];
+const X0=i=>130+195*i, W=175;
+const ROW={P:68,K:186,A0:300,A1:362,A2:424,T0:506,T1:568,F0:652,F1:716};
+const V2N={};
+function nd(id,col,fila,o){V2N[id]=Object.assign({x:X0(col)+10,y:ROW[fila],w:W,h:o.forma==="rombo"?64:(fila==="K"?64:57)},o);}
+/* personas */
+nd("u_inicio",0,"P",{b:"p",tag:"usuario",t:"Abre el chat",s:"cd … && claude",q:1,
+  d:"La persona de QA abre Claude Code dentro de ~/Projects/pipeline-comfandi. La sesión se convierte en el coordinador (CLAUDE.md) y empieza preguntando.",
+  io:[["Comando","cd ~/Projects/pipeline-comfandi && claude"],["Primer mensaje","«quiero validar el flujo X» o «retomemos desde docs/RESUMEN_…»"]]});
+nd("u_cookie",2,"P",{b:"p",tag:"pregunta",t:"Cookie y VPN",s:"dura 2–3 h",q:1,
+  d:"Antes de cualquier tarea de Stratio el coordinador informa cuánto le queda a cada cookie de Rocket (duran 2–3 h; se pueden usar 1 a 3 y se reparten los hilos) y si hay VPN. Si quedan menos de 15 min, pide nuevas.",
+  io:[["Comandos","python -m pc stratio cookie · python -m pc stratio vpn"]]});
+nd("u_dev",3,"P",{b:"x",tag:"desarrollo",t:"Desarrollo corrige",s:"ROJO o DEVUELTO",
+  d:"Lo que no admite justificación vuelve a desarrollo con el motivo y la cifra de cada lado. Cuando corrigen y re-ejecutan, se abre un ciclo nuevo (vN+1) que empieza otra vez en el nivel 0.",
+  io:[["Llega con","semáforo ROJO o diferencia DEVUELTA"],["Vuelve con","pc ciclo --flujo F --motivo «…»"]]});
+nd("u_grande",4,"P",{b:"p",tag:"pregunta",t:"¿Tabla grande?",s:"ver estimación",q:1,
+  d:"Si una tabla supera 100 M filas o 5 GB, el coordinador muestra la estimación (filas, MB, vía, tiempo de descarga y medición) y pregunta. Se mide igual, pero solo con confirmación.",
+  io:[["Comando","python -m pc estimar --trabajo T"],["Si confirma","pc descargar --confirmar-grandes"]]});
+nd("u_decide",5,"P",{b:"p",tag:"decisión",t:"QA decide",s:"Comfandi verifica",q:1,
+  d:"Al salir del nivel 2 QA ve cada diferencia (cifra exacta, ejemplos, causa medida) y decide: JUSTIFICADA, A_VERIFICAR (la cierra QA o Comfandi) o DEVUELTO. Si Comfandi pide corregir, también vuelve a desarrollo.",
+  io:[["Comandos","pc diferencia --decision … · pc verificar --por QA|COMFANDI --decision APRUEBA|CORREGIR"]]});
+nd("u_lote",6,"P",{b:"p",tag:"persona",t:"Responsable del acta",s:"lote · compuertas",q:1,
+  d:"El lote se arma al final con los expedientes aprobados. Pasa revisión QA → revisión Comfandi → aprobación. Firmantes: solo ingesta Erick (CDS); solo analítica u orquestadores Diego (DIA); ambos grupos, los dos.",
+  io:[["Comandos","pc lote disponibles · pc lote armar --lote N --responsable «…» · pc revision aprobar …"]]});
+/* coordinador */
+nd("k_def",0,"K",{b:"c",tag:"coordinador",t:"Define el trabajo",s:"flujos · grupo · rutas",
+  d:"Pregunta y registra: nombre del flujo en Fabric y en Stratio, FL, grupo (ingesta · analítica · orquestador), rutas de cada tabla a cada lado, ventana de fechas. Crea trabajos/<T>/.",
+  io:[["Comandos","pc trabajo crear --trabajo T --responsable … · pc trabajo flujo --trabajo T --json flujos.json"]],
+  cr:["Si no conoce las rutas, inventario-roles saca las salidas reales del código y se confirman con el usuario.","Nunca inventa un código FL."]});
+nd("k_prod",1,"K",{b:"c",forma:"rombo",t:"¿Productor?",s:"entrada vacía",q:1,
+  d:"Si una analítica lee una entrada vacía o sin commit reciente, el coordinador pregunta si ejecutar el flujo que la produce. Solo con autorización.",
+  io:[["Registro","log: DECISION ejecutar_productor"]]});
+nd("k_rap",2,"K",{b:"c",tag:"coordinador",t:"Lanza los dos lados",s:"Fabric ∥ Stratio",
+  d:"Lanza en paralelo los medidores rápidos de Fabric y de Stratio. Apenas existen los dos reportes de una tabla se hace el cotejo rápido Stratio ↔ Fabric.",
+  io:[["Comando","python -m pc rapido --trabajo T"]]});
+nd("k_sem",3,"K",{b:"c",forma:"rombo",t:"Semáforo",s:"V · A · R",
+  d:"ROJO solo para lo que no admite justificación: la corrida falló, bloqueante real, salida sin commit en la corrida o tabla vacía. Un control 0/1 que no cumple da AMARILLO y pasa al nivel 2, donde se decide.",
+  io:[["Comando","python -m pc semaforo --trabajo T"]]});
+nd("k_est",4,"K",{b:"c",forma:"rombo",t:"¿Grande?",s:"> 100 M filas",q:1,
+  d:"Antes del nivel 2 se estima el tiempo de cada tabla y lado. Las grandes esperan confirmación del usuario.",
+  io:[["Comando","python -m pc estimar --trabajo T"]]});
+nd("k_ver",5,"K",{b:"c",forma:"rombo",t:"Veredicto",s:"por tabla",q:1,
+  d:"APROBADO · APROBADO_CON_JUSTIFICACION · APROBADO_CON_VERIFICACION · DEVUELTO (EN_REVISION mientras haya diferencias sin decidir). Justificar mantiene vN; corregir abre vN+1.",
+  cr:["Nada pasa al acta con una verificación pendiente.","JUSTIFICADA exige causa medida."]});
+nd("k_comp",6,"K",{b:"c",forma:"rombo",t:"¿3 de 3?",s:"compuertas",
+  d:"Revisión QA → revisión Comfandi → aprobación, atadas a la huella del resumen del lote. Si el lote cambia, se aprueba de nuevo.",
+  io:[["Comando","python -m pc revision consolidar|estado|aprobar --lote N"]]});
+/* agentes */
+const AG=(id,col,fila,t,s,d,io,cr,est)=>nd(id,col,fila,{b:"l",tag:"agente",t,s,d,io,cr,estado:est});
+nd("a_inv",1,"A0",{b:"l",tag:"dentro de etl v10",t:"roles reales",s:"zip + _delta_log",estado:"probado",d:"Entradas y salidas reales desde el código del flujo, confirmadas con commits dentro de la corrida. Corrige al validador, que invierte roles en orquestadores. Es parte del agente etl-validador v10 (ya no es un agente aparte).",io:[["Comando","pc roles --flujo F"]]});
+AG("a_etl",1,"A1","etl-validador v10","lanza · corrige · escribe","ETL Validator v10: lanza la ejecución en Fabric, recoge el veredicto, lo corrige con los roles reales (código + _delta_log), reclasifica las pruebas, recalcula la analítica y escribe el cotejo de flujo. Las mejoras de v10 ya corren en el agente; el notebook v10 para ver la ejecución en vivo está pendiente (hoy corre el v9 parametrizado).",[["Comandos","pc etl lanzar --esperar · pc etl recoger"]],null,"probado");
+AG("a_rapF",2,"A0","medidor-rapido-fabric","sin descargar","Niveles 0 y 1 de Fabric: _delta_log y pies de parquet por rango. 27,4 M filas en 34 s leyendo 8 MB.",[["Escribe","medicion_fabric … niveles 0 y 1"]],null,"probado");
+AG("a_rapS",2,"A1","medidor-rapido-stratio","Rocket · PG · SFTP","Niveles 0 y 1 de Stratio: Postgres con agregados dentro de la base. HDFS y CSV: Rocket NO acepta lectura por rango, así que salen de la descarga (se calculan solos al terminar de bajar). Probado el 05-oct con VPN y cookie.",[["Escribe","medicion_stratio … niveles 0 y 1"],["Requiere","VPN + cookie (1 a 3)"]],null,"probado");
+AG("a_sem",3,"A0","semaforo","ETL + cotejo rápido","Evalúa el ETL y el cotejo rápido y propone el color al coordinador.",[["Escribe","semaforo/<flujo>.json"]],null,"probado");
+AG("a_pgf",3,"A2","postgres-fabric","qa_v2_postgres","Único dueño de la pipeline que lee la Postgres de Fabric. La crea, la modifica o la duplica según el flujo; sirve agregados (niveles 0/1) y extracciones (nivel 2).",[["Comandos","pc pg asegurar · pc pg sql «…»"]],null,"probado");
+AG("a_desc",4,"A0","gestor-descargas","caché + manifiesto","Baja a la caché lo que pasó el semáforo: 8 hilos en OneLake y 8 en Rocket (repartidos entre 1 a 3 cookies, un objeto a la vez), sin abusar de ninguna plataforma. Lleva el manifiesto y limpia al cerrar.",[["Comandos","pc descargar · pc cache espacio|limpiar"]],null,"probado");
+AG("a_comp",4,"A1","medidor-completo","motor v15 · exacto","Nivel 2 exacto: SHA-256, duplicados, llaves, perfil, contrato. Escribe en el mismo archivo de medición.",[["Comando","pc medir --trabajo T"]],null,"probado");
+AG("a_cot",5,"A0","cotejador","mira las dos tablas","Coteja con Stratio como verdad y analiza S y F en la mesa de análisis para registrar cada diferencia exacta con hasta 5 ejemplos.",[["Comandos","pc cotejar · pc comparar · pc diferencia"]],null,"probado");
+AG("a_pub",5,"A1","publicador-reportes","reportes_v4 + bucket","Publica los JSON v4 (y las dos mediciones al bucket), verificados con HEAD. La vN se reescribe en sitio mientras avanza.",[["Comando","pc v4 publicar --trabajo T"]],null,"probado");
+AG("a_cons",6,"A0","consolidador-revision","expedientes → lote","Arma el lote con los expedientes aprobados, genera el resumen con huella y registra las compuertas.",[["Comandos","pc lote armar · pc revision …"]],null,"probado");
+AG("a_acta",6,"A1","acta-final","solo con 3/3","Genera el acta (estructura de las actas 6–10, presentación de las 2–3, anexo con todos los enlaces verificados con HEAD; firmantes según el grupo). Queda LOCAL: no se publica.",[["Comando","pc acta generar --lote N"]],null,"probado");
+/* herramientas y archivos locales */
+const TL=(id,col,fila,t,s,d,io)=>nd(id,col,fila,{b:"b",tag:"pc · local",t,s,d,io});
+TL("t_trab",0,"T0","pc trabajo","lote.json","La definición del trabajo: flujos, grupo, rutas de cada tabla, ventana de fechas.",[["Archivo","trabajos/<T>/lote.json"]]);
+TL("t_log",0,"T1","log de agentes","bitacora.jsonl","Cada acción de cada agente y cada decisión humana, con usuario y duración. Queda LOCAL (no se publica); el expediente lleva su resumen.",[["Ver","pc trabajo bitacora --trabajo T"]]);
+TL("t_etl",1,"T0","pc roles · pc etl","etl/veredictos/","Veredicto del validador, corregido con los roles reales.",[]);
+TL("t_rap",2,"T0","pc rapido","rapido/ · cotejo_rapido/","Reportes de nivel 0/1 de cada lado y el cotejo rápido de cada tabla.",[]);
+TL("t_sem",3,"T0","pc semaforo","semaforo/","El color de cada flujo con sus motivos.",[]);
+TL("t_ciclo",3,"T1","pc ciclo","historial/<flujo>/vN/","Corrección: archiva el ciclo vN completo (estado, diferencias, expediente) y abre vN+1. Borra la caché de ese flujo porque el dato cambió.",[["Comando","pc ciclo --trabajo T --flujo F --motivo «…»"]]);
+TL("t_n2",4,"T0","pc estimar · medir","cache/ · nivel2/","Estimación de tiempo, descargas con manifiesto y reportes del motor v15.",[]);
+TL("t_cot",5,"T0","pc cotejar · comparar","v4/diferencias.json","El cotejo del motor y las diferencias que escribe el agente.",[]);
+TL("t_ver",5,"T1","pc v4 · verificar","v4/ · expedientes/","Los cinco archivos v4 armados desde el estado, y el expediente .md cuando el flujo queda listo para acta.",[]);
+TL("t_lote",6,"T0","pc lote · revision","lotes/<N>/","El lote: copia de los expedientes, resumen con huella y compuertas.",[]);
+/* plataformas */
+const PL=(id,col,fila,b,tag,t,s,d)=>nd(id,col,fila,{b,tag,t,s,d});
+PL("f_etl",1,"F0","f","Fabric QA","Notebook ETL","v9 hoy · v10 pendiente","Se lanza por RunNotebook con la lista de flujos; ejecuta por olas y deja su veredicto en reportes_v3/validador/. Hoy corre el v9 con celda de parámetros (qa_v2_etl_validator); el v10 llevará las mejoras para mostrar la ejecución en vivo.");
+PL("f_ol",2,"F0","f","Fabric QA","OneLake","_delta_log + pies","Lectura por rango: solo los KB del pie de cada parquet y el registro Delta.");
+PL("s_src",2,"F1","s","Stratio","Rocket · PG · SFTP","VPN + cookie","HDFS por la API de Rocket con la cookie; Postgres por VPN (agregados en base); SFTP con paramiko.");
+PL("f_pg",3,"F0","f","Fabric QA","Postgres de Fabric","qa_v2_postgres","Solo alcanzable desde una DataPipeline (gateway). Copy a parquet en Files/.");
+PL("f_dl",4,"F0","f","Fabric QA","OneLake · descarga","parquet vigentes","Se bajan solo los archivos vigentes de la versión Delta medida.");
+PL("s_dl",4,"F1","s","Stratio","Rocket · descarga","8 hilos · 1–3 cookies","Descarga reanudable con 8 hilos repartidos entre 1 a 3 cookies, un objeto a la vez; Postgres extraído con DuckDB (tipos delicados como texto).");
+PL("f_rep",5,"F0","f","Fabric QA","OneLake reportes_v4","mediciones · cotejos · flujos","Files/resultados/reportes_v4/: medición Fabric, medición Stratio, cotejo y cotejo de flujo de cada ciclo vN. Es lo único que se publica (más las mediciones en el bucket). Log, expediente y acta quedan locales.");
+PL("b_v4",5,"F1","b","bucket","bucket v4","las dos mediciones","El punto de encuentro entre plataformas: siempre se suben las dos mediciones.");
+nd("f_acta",6,"T1",{b:"b",tag:"local · entregable",t:"Acta .docx + anexo",s:"~/Projects/reportes/",d:"Una acta por lote. Queda LOCAL: no se publica. Su anexo enlaza las mediciones, cotejos y cotejos de flujo publicados, todos verificados con HEAD."});
+
+/* aristas */
+const N_=id=>V2N[id], cx=n=>n.x+n.w/2, cy=n=>n.y+n.h/2;
+function borde(n,dx,arriba){if(n.forma!=="rombo")return arriba?n.y:n.y+n.h;
+  const k=(n.h/2)*(Math.abs(dx)/(n.w/2));return arriba?n.y+k:n.y+n.h-k;}
+function V(a,b,dx=0){const A=N_(a),B=N_(b),x=cx(A)+dx,abajo=B.y>A.y;
+  const y1=borde(A,dx,!abajo),y2=borde(B,dx,abajo);return {d:`M${x} ${y1} V${y2}`,lx:x,ly:(y1+y2)/2+4};}
+function H(a,b){const A=N_(a),B=N_(b),y=cy(A),der=B.x>A.x;
+  const x1=A.forma==="rombo"?(der?A.x+A.w:A.x):(der?A.x+A.w:A.x),x2=der?B.x:B.x+B.w;return {d:`M${x1} ${y} H${x2}`,lx:(x1+x2)/2,ly:y-6};}
+function G(a,b,lado){const A=N_(a),B=N_(b);const gx=lado==="izq"?A.x-5:A.x+A.w+5;const xa=lado==="izq"?A.x:A.x+A.w,xb=lado==="izq"?B.x:B.x+B.w;
+  return {d:`M${xa} ${cy(A)} H${gx} V${cy(B)} H${xb}`,lx:gx,ly:(cy(A)+cy(B))/2};}
+const V2E=[];
+function e(id,a,b,geo,l,extra){V2E.push(Object.assign({id,a,b,d:geo.d,l:l||"",lx:geo.lx,ly:geo.ly},extra||{}));}
+e("e_ini","u_inicio","k_def",V("u_inicio","k_def"),"pide el trabajo");
+e("e_def_prod","k_def","k_prod",H("k_def","k_prod"),"");
+e("e_prod_rap","k_prod","k_rap",H("k_prod","k_rap"),"");
+e("e_rap_sem","k_rap","k_sem",H("k_rap","k_sem"),"");
+e("e_sem_est","k_sem","k_est",H("k_sem","k_est"),"");
+e("e_est_ver","k_est","k_ver",H("k_est","k_ver"),"");
+e("e_ver_comp","k_ver","k_comp",H("k_ver","k_comp"),"");
+e("e_cookie","u_cookie","k_rap",V("u_cookie","k_rap"),"cookie vigente");
+e("e_rojo","k_sem","u_dev",V("k_sem","u_dev"),"ROJO",{bad:1});
+e("e_gr_q","k_est","u_grande",V("k_est","u_grande",-28),"pregunta");
+e("e_gr_r","u_grande","k_est",V("u_grande","k_est",28),"confirma");
+e("e_ver_q","k_ver","u_decide",V("k_ver","u_decide",-30),"diferencias");
+e("e_ver_r","u_decide","k_ver",V("u_decide","k_ver",30),"decide");
+(()=>{const A=N_("u_decide"),B=N_("u_dev");const y=50;e("e_devuelto","u_decide","u_dev",{d:`M${cx(A)} ${A.y} V${y} H${cx(B)} V${B.y}`,lx:(cx(A)+cx(B))/2,ly:y-4},"DEVUELTO",{bad:1});})();
+(()=>{const A=N_("u_dev"),B=N_("t_ciclo");const gx=A.x-5;e("e_corrige","u_dev","t_ciclo",{d:`M${A.x} ${cy(A)} H${gx} V${cy(B)} H${B.x}`,lx:gx,ly:420},"corrige → pc ciclo",{bad:1,dash:1,v:1});})();
+(()=>{const A=N_("t_ciclo"),B=N_("t_rap");const y=638;e("e_vn1","t_ciclo","t_rap",{d:`M${cx(A)} ${A.y+A.h} V${y} H${cx(B)} V${B.y+B.h}`,lx:(cx(A)+cx(B))/2+20,ly:y-4},"vN+1 · desde el nivel 0",{bad:1,dash:1});})();
+e("e_lote","u_lote","k_comp",V("u_lote","k_comp"),"3 compuertas");
+e("e_reg","k_def","t_trab",V("k_def","t_trab"),"registra");
+e("d_inv","k_prod","a_inv",V("k_prod","a_inv"),"delega");
+e("d_inv_etl","a_inv","a_etl",V("a_inv","a_etl"),"");
+e("d_rapF","k_rap","a_rapF",V("k_rap","a_rapF"),"delega");
+e("d_rapS","k_rap","a_rapS",(()=>{const A=N_("k_rap"),B=N_("a_rapS"),gx=A.x-5;return {d:`M${A.x+30} ${A.y+A.h} V${A.y+A.h+8} H${gx} V${cy(B)} H${B.x}`,lx:gx,ly:330};})(),"");
+e("d_sem","a_sem","k_sem",V("a_sem","k_sem"),"evalúa");
+e("d_desc","k_est","a_desc",V("k_est","a_desc"),"delega");
+e("d_desc_comp","a_desc","a_comp",V("a_desc","a_comp"),"");
+e("d_cot","k_ver","a_cot",V("k_ver","a_cot"),"analiza");
+e("d_cot_pub","a_cot","a_pub",V("a_cot","a_pub"),"");
+e("d_cons","k_comp","a_cons",V("k_comp","a_cons"),"arma lote");
+e("d_cons_acta","a_cons","a_acta",V("a_cons","a_acta"),"");
+e("p_pgf_desc","a_pgf","a_desc",(()=>{const A=N_("a_pgf"),B=N_("a_desc"),gx=A.x+A.w+12;return {d:`M${A.x+A.w} ${cy(A)} H${gx} V${cy(B)} H${B.x}`,lx:gx,ly:400};})(),"",{dash:1});
+e("t1","a_etl","t_etl",V("a_etl","t_etl"),"");
+e("t2","a_rapS","t_rap",V("a_rapS","t_rap"),"");
+e("t3","a_comp","t_n2",V("a_comp","t_n2"),"");
+e("t4","a_cot","t_cot",G("a_cot","t_cot","izq"),"");
+e("t5","a_pub","t_ver",G("a_pub","t_ver","der"),"");
+e("t6","a_cons","t_lote",G("a_cons","t_lote","izq"),"");
+e("f1","t_etl","f_etl",V("t_etl","f_etl"),"RunNotebook");
+e("f2","t_rap","f_ol",V("t_rap","f_ol"),"rango");
+e("f3","t_rap","s_src",G("t_rap","s_src","izq"),"");
+e("f4","a_pgf","f_pg",(()=>{const A=N_("a_pgf"),B=N_("f_pg"),gx=A.x+A.w+5;return {d:`M${A.x+A.w} ${cy(A)+10} H${gx} V${cy(B)} H${B.x+B.w}`,lx:gx,ly:600};})(),"",{dash:1});
+e("f5","t_n2","f_dl",V("t_n2","f_dl"),"descarga");
+e("f6","t_n2","s_dl",G("t_n2","s_dl","izq"),"");
+e("f7","t_ver","f_rep",V("t_ver","f_rep"),"HEAD ✓");
+e("f8","t_ver","b_v4",G("t_ver","b_v4","izq"),"");
+e("f9","a_acta","f_acta",(()=>{const A=N_("a_acta"),B=N_("f_acta"),gx=A.x+A.w+8;return {d:`M${A.x+A.w} ${cy(A)} H${gx} V${cy(B)} H${B.x+B.w}`,lx:gx,ly:560};})(),"");
+
+const V2R=[
+ {id:"todo",l:"Todo",c:"--edge",steps:null},
+ {id:"arranque",l:"Arranque",c:"--people",steps:[
+  {n:"u_inicio",e:[],t:"Abres Claude Code en ~/Projects/pipeline-comfandi. La sesión es el coordinador."},
+  {n:"k_def",e:["e_ini"],t:"El coordinador pregunta: flujos, nombres en Fabric y Stratio, grupo, rutas de cada tabla, ventana de fechas."},
+  {n:"t_trab",e:["e_reg"],t:"Registra el trabajo en trabajos/<T>/lote.json y empieza el log."}]},
+ {id:"ciclo",l:"Ciclo de un flujo",c:"--local",steps:[
+  {n:"a_inv",e:["e_def_prod","d_inv"],t:"Roles reales desde el código y el _delta_log."},
+  {n:"a_etl",e:["d_inv_etl","t1","f1"],t:"El ETL Validator corre en Fabric; su veredicto se corrige con los roles reales."},
+  {n:"k_rap",e:["e_prod_rap"],t:"El coordinador lanza los dos medidores rápidos en paralelo."},
+  {n:"a_rapF",e:["d_rapF","f2"],t:"Fabric: niveles 0 y 1 sin descargar."},
+  {n:"a_rapS",e:["d_rapS","t2","f3"],t:"Stratio: Postgres en base, HDFS por rango o descarga, SFTP."},
+  {n:"k_sem",e:["e_rap_sem","d_sem"],t:"Cotejo rápido Stratio ↔ Fabric y semáforo."},
+  {n:"a_desc",e:["e_sem_est","d_desc","f5","f6"],t:"Se estima, se descarga a la caché."},
+  {n:"a_comp",e:["d_desc_comp","t3"],t:"Nivel 2 exacto en el mismo archivo de medición."},
+  {n:"a_cot",e:["e_est_ver","d_cot","t4"],t:"El cotejador analiza las dos tablas y registra las diferencias."},
+  {n:"a_pub",e:["d_cot_pub","t5","f7","f8"],t:"Se publica reportes_v4 y las dos mediciones al bucket."}]},
+ {id:"preguntas",l:"Preguntas y decisiones",c:"--na",steps:[
+  {n:"u_inicio",e:["e_ini"],t:"Al arrancar: qué flujos, grupo, rutas y ventana de fechas."},
+  {n:"k_prod",e:[],t:"Si falta un productor: ¿lo ejecuto?"},
+  {n:"u_cookie",e:["e_cookie"],t:"Antes de Stratio: cuánto le queda a la cookie y si hay VPN."},
+  {n:"u_dev",e:["e_rojo"],t:"ROJO: vuelve a desarrollo con el motivo."},
+  {n:"u_grande",e:["e_gr_q","e_gr_r"],t:"Tabla grande: se muestra la estimación y se pregunta."},
+  {n:"u_decide",e:["e_ver_q","e_ver_r"],t:"Al salir del nivel 2: justificar, verificar o devolver cada diferencia."},
+  {n:"u_lote",e:["e_lote"],t:"Al final: el responsable arma el lote y pasan las 3 compuertas."}]},
+ {id:"correccion",l:"Corrección · vN+1",c:"--bad",steps:[
+  {n:"k_ver",e:[],t:"Una diferencia no es justificable, o Comfandi pide corregir."},
+  {n:"u_decide",e:["e_ver_q"],t:"QA la marca DEVUELTO."},
+  {n:"u_dev",e:["e_devuelto"],t:"Desarrollo corrige y re-ejecuta."},
+  {n:"t_ciclo",e:["e_corrige"],t:"pc ciclo archiva vN (con su expediente y diferencias) y abre vN+1."},
+  {n:"t_rap",e:["e_vn1"],t:"Se vuelve a empezar en el nivel 0. vN+1 cita a vN en «reemplaza_a»."}]},
+ {id:"cierre",l:"Cierre · lote y acta",c:"--people",steps:[
+  {n:"k_ver",e:[],t:"Flujo APROBADO (o con justificación, o verificado): se genera su expediente."},
+  {n:"k_comp",e:["e_ver_comp"],t:"Los expedientes se juntan cuando el responsable decide cerrar un lote."},
+  {n:"u_lote",e:["e_lote"],t:"Revisión QA → revisión Comfandi → aprobación, atadas a la huella."},
+  {n:"a_cons",e:["d_cons","t6"],t:"El consolidador arma lotes/<N>/ y registra las compuertas."},
+  {n:"a_acta",e:["d_cons_acta","f9"],t:"El acta, solo con 3/3 y por el responsable; firmantes según el grupo."}]}
+];
+const mapa2=crearMapa({svg:"v2-dg",panel:"v2-panel",routesEl:"v2-routes",nodes:V2N,edges:V2E,routes:V2R,colores:V2C,bands:[],
+  fondo:g=>{
+    COLS.forEach((c,i)=>{el("rect",{x:X0(i)+2,y:30,width:191,height:770,rx:6,style:`fill:var(${COLT[i]})`},g);
+      const t=el("text",{class:"col-l",x:X0(i)+97,y:22,"text-anchor":"middle"},g);t.textContent=c;});
+    LANES.forEach((l,i)=>{if(i)el("line",{x1:8,x2:1495,y1:l.y-3,y2:l.y-3,style:"stroke:var(--line);stroke-width:1.2;stroke-dasharray:6 4"},g);
+      const t=el("text",{class:"lane-l",x:14,y:l.y+18,style:`fill:var(${l.k})`},g);t.textContent=l.l;
+      const s=el("text",{class:"lane-s",x:14,y:l.y+33},g);s.textContent=l.s;});
+  },
+  intro:`<div class="eyebrow">cómo leerlo</div><h3>Arquitectura de la pipeline</h3>
+    <p>Cada fila es una pieza: personas, coordinador, agentes, herramientas con sus archivos locales, y plataformas. Cada columna es una etapa del ciclo de un flujo.</p>
+    <dl class="kv"><dt>Rombos</dt><dd>decisiones del coordinador</dd><dt><span style="color:var(--na);font-weight:800">?</span></dt><dd>momentos en que se pregunta a una persona</dd>
+    <dt><span style="color:var(--bad)">rojo</span></dt><dd>vuelta a desarrollo y ciclo nuevo vN+1</dd><dt>Toque</dt><dd>cualquier caja para ver qué hace y con qué comando</dd></dl>`});
+
+/* arranque */
+document.getElementById("v2-arranque").innerHTML=[
+ {h:"1 · Abrir el coordinador",p:"En una terminal, dentro de la carpeta del proyecto. CLAUDE.md convierte la sesión en el coordinador; los 11 agentes de .claude/agents/ quedan disponibles.",
+  c:["cd ~/Projects/pipeline-comfandi","claude"]},
+ {h:"2 · Decirle qué validar",p:"Un mensaje en lenguaje natural basta. El coordinador pregunta lo que falte antes de lanzar nada.",
+  c:["«Quiero validar 03-moves y 23-landing-…»","«Retomemos desde docs/RESUMEN_SESION_2026-10-05.md»","«¿Cómo va el trabajo T?»"]},
+ {h:"3 · Lo que el coordinador te preguntará",p:"Nombre del flujo en Fabric y en Stratio · grupo (ingesta, analítica, orquestador) · rutas de cada tabla a cada lado · ventana de fechas · y, durante el ciclo: cookie, tablas grandes, productores faltantes, decisión de cada diferencia.",
+  c:["python -m pc trabajo tablero --trabajo T","python -m pc trabajo bitacora --trabajo T"]}
+].map(a=>`<div class="agent"><h4>${esc(a.h)}</h4><div>${esc(a.p)}</div><div class="pipe">${a.c.map(x=>`<span>${esc(x)}</span>`).join("")}</div></div>`).join("");
+
+/* tabla de preguntas y decisiones */
+document.getElementById("v2-decisiones").innerHTML=`<thead><tr><th>Momento</th><th>Quién</th><th>Qué se pregunta o decide</th><th>Opciones</th><th>Dónde queda</th></tr></thead><tbody>${[
+ ["Arranque","usuario","qué flujos, grupo, rutas de cada tabla, ventana de fechas","—","trabajos/<T>/lote.json"],
+ ["Paso 0","usuario","¿ejecutar el flujo que produce una entrada vacía?","sí · no","log DECISION ejecutar_productor"],
+ ["Antes de Stratio","usuario","cookie de Rocket (dura 2–3 h) y VPN","renovar · seguir","aviso en el chat"],
+ ["Semáforo","coordinador","¿sigue al nivel 2?","VERDE · AMARILLO → sigue · ROJO → desarrollo","semaforo/<flujo>.json"],
+ ["Antes del nivel 2","usuario","¿medir una tabla grande? (con la estimación)","sí · después","log + --confirmar-grandes"],
+ ["Veredicto","QA","cada diferencia, con cifra, ejemplos y causa","JUSTIFICADA · A_VERIFICAR · DEVUELTO","cotejo vN · diferencias"],
+ ["Verificación","QA o Comfandi","confirmar lo marcado A_VERIFICAR","APRUEBA · CORREGIR (→ DEVUELTO)","cotejo de flujo · verificación"],
+ ["Corrección","coordinador","abrir ciclo nuevo tras re-ejecutar","vN+1 desde el nivel 0","historial/<flujo>/vN/"],
+ ["Cierre","responsable del acta","qué expedientes entran al lote","lista de flujos","lotes/<N>/lote.json"],
+ ["Compuertas","QA · Comfandi · aprobación","aprobar el lote (atado a la huella)","APROBADO · CON_OBSERVACIONES · RECHAZADO","lotes/<N>/revision/"]
+].map(r=>`<tr><td>${r[0]}</td><td>${r[1]}</td><td>${r[2]}</td><td class="antes">${r[3]}</td><td class="mono">${r[4]}</td></tr>`).join("")}</tbody>`;
+
+arboles("v2-trees",[
+ {h:"Proyecto y agentes",root:"~/Projects/pipeline-comfandi/",items:[
+  ["CLAUDE.md","el coordinador: preguntas, orden, reglas","k_def"],
+  [".claude/agents/","11 agentes · uno por responsabilidad","a_inv"],
+  ["config/pipeline.json · controles.json","ids, paralelismo, tasas · catálogo de controles","k_sem"],
+  ["pc/","herramientas: python -m pc …","t_trab"],
+  ["docs/","REPORTES_V4.md · RESUMEN_SESION · mapa/","u_inicio"],
+  ["muestras/","respaldos y ejemplos reales","a_pgf"]]},
+ {h:"Archivos locales de un trabajo",root:"trabajos/<T>/",items:[
+  ["lote.json · bitacora.jsonl","definición · log de agentes","t_trab"],
+  ["etl/veredictos/<flujo>.json","veredicto corregido","t_etl"],
+  ["rapido/{FABRIC,STRATIO}/ · cotejo_rapido/","niveles 0 y 1","t_rap"],
+  ["semaforo/<flujo>.json","color y motivos","t_sem"],
+  ["nivel2/{FABRIC,STRATIO}/ · cotejos/","motor v15 y cotejo","t_n2"],
+  ["v4/ (mediciones, cotejos, flujos, diferencias, ciclos)","los JSON que se publican","t_ver"],
+  ["expedientes/expediente_<flujo>_vN.md","flujo listo para acta","t_ver"],
+  ["historial/<flujo>/vN/","ciclos anteriores","t_ciclo"],
+  ["../../cache/<T>/{FABRIC,STRATIO}/<clave>/","descargas + manifiesto","a_desc"],
+  ["../../lotes/<N>/","lote final: expedientes, resumen, compuertas","t_lote"],
+  ["~/Projects/reportes/","acta .docx + anexo (solo local)","f_acta"]]},
+ {h:"Lo único que se publica",root:"OneLake Files/resultados/reportes_v4/ · bucket",items:[
+  ["mediciones/{fabric,stratio}/<clave>/","medicion_<lado>_<clave>_vN.json","a_rapF"],
+  ["cotejos/<clave>/","cotejo_<clave>_vN.json","a_cot"],
+  ["flujos/<flujo>/","cotejo_flujo_<flujo>_vN.json","a_etl"],
+  ["metricas-*/v4/qa/<clave>/","las dos mediciones (bucket)","b_v4"]]}
+],mapa2,V2C);
+
+
+/* paginas */
+function pagina(p){
+  document.getElementById("pg-v1").hidden=p!=="v1";
+  document.getElementById("pg-v2").hidden=p!=="v2";
+  document.querySelectorAll(".pages button").forEach(b=>b.setAttribute("aria-pressed",b.dataset.pg===p));
+  document.getElementById("lede").textContent=p==="v1"
+    ?"Del ETL Validator v9 al acta firmada: quién mide, por dónde viaja cada JSON y con qué criterio se baja la evidencia. Elija un recorrido o toque cualquier caja."
+    :"La arquitectura acordada: personas, coordinador, agentes, herramientas y plataformas, cruzados por las etapas del ciclo de un flujo. Decisiones en rombo, preguntas con «?», y la corrección como vuelta al nivel 0.";
+  try{history.replaceState(null,"","#"+p)}catch(e){}
+}
+document.querySelectorAll(".pages button").forEach(b=>b.onclick=()=>pagina(b.dataset.pg));
+pagina(location.hash==="#v1"?"v1":"v2");
+</script>

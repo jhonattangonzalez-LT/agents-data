@@ -1,0 +1,59 @@
+"""Publicacion de reportes en OneLake (lakehouse de QA), comprobada con HEAD.
+
+FORMATO PROVISIONAL: el usuario definira los nombres y carpetas definitivos de los JSON y la carga
+al bucket despues de crear todos los agentes. Hasta entonces todo va a:
+    Files/<raiz_onelake>/<lote>/<tipo>/<clave>/<nombre>.json
+y config.publicacion.formato_definitivo = false. El bucket (acceso/bucket.py) queda listo pero
+no se usa desde aqui hasta que se defina el formato.
+
+Cada tabla del lote lleva 4 reportes: metrica_stratio, metrica_fabric, cotejo y ejecucion.
+"""
+import json
+import os
+
+from .. import lote as L
+from ..acceso import fabric, onelake as ol
+from ..config import CFG
+
+TIPOS = ("metrica_stratio", "metrica_fabric", "cotejo", "ejecucion", "rapido_stratio", "rapido_fabric",
+         "cotejo_rapido", "semaforo", "revision")
+
+
+def ruta(lote, tipo, clave, nombre, pruebas=False):
+    raiz = CFG["publicacion"]["pruebas_onelake" if pruebas else "raiz_onelake"]
+    return f"Files/{raiz}/{lote}/{tipo}/{clave}/{nombre}"
+
+
+def publicar(lote, tipo, clave, doc_o_ruta, nombre=None, pruebas=False):
+    assert tipo in TIPOS, tipo
+    if isinstance(doc_o_ruta, str) and os.path.exists(doc_o_ruta):
+        datos = open(doc_o_ruta, "rb").read()
+        nombre = nombre or os.path.basename(doc_o_ruta)
+    else:
+        datos = json.dumps(doc_o_ruta, ensure_ascii=False, indent=1, default=str).encode("utf8")
+    if not nombre:
+        raise ValueError("falta nombre")
+    rel = ruta(lote, tipo, clave, nombre, pruebas)
+    if ol.head(rel):
+        raise FileExistsError(f"ya existe {rel}: no se sobreescribe, subir de version")
+    ol.escribir(rel, datos)
+    h = ol.head(rel)
+    if not h or h["bytes"] != len(datos):
+        raise IOError(f"HEAD no confirma {rel}: {h}")
+    reg = {"ruta": rel, "bytes": h["bytes"], "enlace": fabric.portal_archivo(rel), "verificado": True}
+    pub = L.leer(lote, "publicado.json", {}) or {}
+    pub.setdefault(clave, {})[tipo] = reg
+    L.guardar(lote, "publicado.json", pub)
+    L.bitacora(lote, "publicador-reportes", "publicar", {"tipo": tipo, "clave": clave, "ruta": rel})
+    return reg
+
+
+def verificar(lote):
+    """Vuelve a hacer HEAD a todo lo publicado del lote. Ningun enlace roto."""
+    pub = L.leer(lote, "publicado.json", {}) or {}
+    rotos = []
+    for clave, tipos in pub.items():
+        for t, r in tipos.items():
+            if not ol.head(r["ruta"]):
+                rotos.append((clave, t, r["ruta"]))
+    return {"total": sum(len(t) for t in pub.values()), "rotos": rotos}

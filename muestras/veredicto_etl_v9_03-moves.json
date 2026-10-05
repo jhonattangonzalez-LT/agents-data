@@ -1,0 +1,486 @@
+{
+ "corrida_validacion": "20260930T184152",
+ "generado_utc": "2026-09-30T18:41:52+00:00",
+ "flujo_solicitado": "03-moves",
+ "flujo_resuelto": "moves",
+ "tipo": "DataPipeline",
+ "workspace": "fabric-comfandi-orchestration-qa",
+ "ambiente": "qa",
+ "se_ejecuto": true,
+ "resultado": "PASA_CON_AVISOS",
+ "veredicto": "ADVERTENCIA",
+ "pasa_ejecucion": true,
+ "pasa_validacion": true,
+ "resumen": {
+  "OK": 12,
+  "ADVERTENCIA": 3,
+  "OMITIDO": 1
+ },
+ "pruebas": [
+  {
+   "prueba": "despliegue_en_ambiente",
+   "nivel": "OK",
+   "objeto": "moves",
+   "esperado": "workspace de qa",
+   "obtenido": "fabric-comfandi-orchestration-qa",
+   "detalle": "desplegado en fabric-comfandi-orchestration-qa como DataPipeline"
+  },
+  {
+   "prueba": "punto_de_entrada",
+   "nivel": "OK",
+   "objeto": "moves",
+   "esperado": "DataPipeline",
+   "obtenido": "DataPipeline",
+   "detalle": "punto de entrada ejecutable: DataPipeline"
+  },
+  {
+   "prueba": "rutas_resueltas",
+   "nivel": "OK",
+   "objeto": "moves",
+   "esperado": "8 rutas resueltas",
+   "obtenido": "8 resueltas",
+   "detalle": "8 ruta(s) resueltas contra la Variable Library de qa"
+  },
+  {
+   "prueba": "aislamiento_de_ambiente",
+   "nivel": "OK",
+   "objeto": "moves",
+   "esperado": "lakehouse de qa",
+   "obtenido": [
+    "lh_transversal"
+   ],
+   "detalle": "lakehouses de qa en todas las rutas ancladas"
+  },
+  {
+   "prueba": "salidas_declaradas",
+   "nivel": "OK",
+   "objeto": "moves",
+   "esperado": ">= 1 salida",
+   "obtenido": [
+    "silver.agrupadoras_destinos_agru",
+    "silver.agrupadoras_destinos_norm",
+    "silver.agrupadoras_origenes"
+   ],
+   "detalle": "3 salida(s) declarada(s)"
+  },
+  {
+   "prueba": "entrada_legible",
+   "nivel": "OK",
+   "objeto": "moves / entrada",
+   "esperado": "> 0 filas",
+   "obtenido": {
+    "filas": 6085710,
+    "columnas": 9
+   },
+   "detalle": "6085710 filas, 9 columnas - silver.agrupadoras_moves_agrup"
+  },
+  {
+   "prueba": "entrada_legible",
+   "nivel": "OK",
+   "objeto": "moves / entrada",
+   "esperado": "> 0 filas",
+   "obtenido": {
+    "filas": 93300899,
+    "columnas": 9
+   },
+   "detalle": "93300899 filas, 9 columnas - silver.agrupadoras_historico_movimiento_alt"
+  },
+  {
+   "prueba": "entrada_legible",
+   "nivel": "OK",
+   "objeto": "moves / entrada",
+   "esperado": "> 0 filas",
+   "obtenido": {
+    "filas": 87215189,
+    "columnas": 9
+   },
+   "detalle": "87215189 filas, 9 columnas - silver.agrupadoras_historico_movimiento2"
+  },
+  {
+   "prueba": "corrida_exitosa",
+   "nivel": "OK",
+   "objeto": "moves",
+   "esperado": "Completed",
+   "obtenido": "Completed",
+   "detalle": "corrida Completed en 600s"
+  },
+  {
+   "prueba": "esquema_estable",
+   "nivel": "OK",
+   "objeto": "moves / silver.agrupadoras_destinos_agru",
+   "esperado": [
+    "BP_AFIL",
+    "BP_EMPRES_TO",
+    "FECHA2",
+    "IS_AGRUP_TO"
+   ],
+   "obtenido": [
+    "BP_AFIL",
+    "BP_EMPRES_TO",
+    "FECHA2",
+    "IS_AGRUP_TO"
+   ],
+   "detalle": "esquema estable: 4 columnas"
+  },
+  {
+   "prueba": "contenido_actualizado",
+   "nivel": "ADVERTENCIA",
+   "objeto": "moves / silver.agrupadoras_destinos_agru",
+   "esperado": "senal de escritura",
+   "obtenido": {
+    "filas": 345828,
+    "contenido": "identico"
+   },
+   "detalle": "345828 filas, contenido identico al de antes: no hay senal de que la corrida escribiera"
+  },
+  {
+   "prueba": "esquema_estable",
+   "nivel": "OK",
+   "objeto": "moves / silver.agrupadoras_destinos_norm",
+   "esperado": [
+    "BP_AFIL",
+    "BP_EMPRES_TO",
+    "FECHA2",
+    "IS_AGRUP_TO"
+   ],
+   "obtenido": [
+    "BP_AFIL",
+    "BP_EMPRES_TO",
+    "FECHA2",
+    "IS_AGRUP_TO"
+   ],
+   "detalle": "esquema estable: 4 columnas"
+  },
+  {
+   "prueba": "contenido_actualizado",
+   "nivel": "ADVERTENCIA",
+   "objeto": "moves / silver.agrupadoras_destinos_norm",
+   "esperado": "senal de escritura",
+   "obtenido": {
+    "filas": 5039749,
+    "contenido": "identico"
+   },
+   "detalle": "5039749 filas, contenido identico al de antes: no hay senal de que la corrida escribiera"
+  },
+  {
+   "prueba": "esquema_estable",
+   "nivel": "OK",
+   "objeto": "moves / silver.agrupadoras_origenes",
+   "esperado": [
+    "AUART",
+    "ERDAT",
+    "IS_AGRUP_FROM",
+    "VBELN",
+    "ZZF_DESDE2",
+    "ZZF_HASTA2",
+    "ZZPARTNER_E",
+    "ZZPARTNER_P"
+   ],
+   "obtenido": [
+    "AUART",
+    "ERDAT",
+    "IS_AGRUP_FROM",
+    "VBELN",
+    "ZZF_DESDE2",
+    "ZZF_HASTA2",
+    "ZZPARTNER_E",
+    "ZZPARTNER_P"
+   ],
+   "detalle": "esquema estable: 8 columnas"
+  },
+  {
+   "prueba": "contenido_actualizado",
+   "nivel": "ADVERTENCIA",
+   "objeto": "moves / silver.agrupadoras_origenes",
+   "esperado": "senal de escritura",
+   "obtenido": {
+    "filas": 74348498,
+    "contenido": "identico"
+   },
+   "detalle": "74348498 filas, contenido identico al de antes: no hay senal de que la corrida escribiera"
+  },
+  {
+   "prueba": "(sin nombre)",
+   "nivel": "OMITIDO",
+   "objeto": "moves / SparkJobDefinition1",
+   "esperado": null,
+   "obtenido": null,
+   "detalle": "Succeeded en 590119 ms; la actividad no reporta filas (no es una copia de datos)"
+  }
+ ],
+ "entradas": [
+  {
+   "rol": "entrada",
+   "tipo": "moves-agrup-table",
+   "actividad": "SparkJobDefinition1",
+   "plantilla_carpeta": "pipeline().libraryVariables.vl_agrupadoras_moves_agrup_table",
+   "plantilla_archivo": "",
+   "carpeta_real": "silver.agrupadoras_moves_agrup",
+   "archivo_real": "silver.agrupadoras_moves_agrup",
+   "ruta_completa": "silver.agrupadoras_moves_agrup",
+   "variables": {
+    "vl_agrupadoras_moves_agrup_table": "silver.agrupadoras_moves_agrup"
+   },
+   "lakehouse": "lh_transversal",
+   "abfss": "abfss://f46ef407-ab98-4741-8a4e-25d1d42ab145@onelake.dfs.fabric.microsoft.com/eae58d30-8ffe-4de2-b4d4-91e1734d0fd2/Tables/silver/agrupadoras_moves_agrup",
+   "existe": null
+  },
+  {
+   "rol": "entrada",
+   "tipo": "historico-movimiento-alt-table",
+   "actividad": "SparkJobDefinition1",
+   "plantilla_carpeta": "pipeline().libraryVariables.vl_agrupadoras_historico_movimiento_alt_table",
+   "plantilla_archivo": "",
+   "carpeta_real": "silver.agrupadoras_historico_movimiento_alt",
+   "archivo_real": "silver.agrupadoras_historico_movimiento_alt",
+   "ruta_completa": "silver.agrupadoras_historico_movimiento_alt",
+   "variables": {
+    "vl_agrupadoras_historico_movimiento_alt_table": "silver.agrupadoras_historico_movimiento_alt"
+   },
+   "lakehouse": "lh_transversal",
+   "abfss": "abfss://f46ef407-ab98-4741-8a4e-25d1d42ab145@onelake.dfs.fabric.microsoft.com/eae58d30-8ffe-4de2-b4d4-91e1734d0fd2/Tables/silver/agrupadoras_historico_movimiento_alt",
+   "existe": null
+  },
+  {
+   "rol": "entrada",
+   "tipo": "historico-movimiento2-table",
+   "actividad": "SparkJobDefinition1",
+   "plantilla_carpeta": "pipeline().libraryVariables.vl_agrupadoras_historico_movimiento2_table",
+   "plantilla_archivo": "",
+   "carpeta_real": "silver.agrupadoras_historico_movimiento2",
+   "archivo_real": "silver.agrupadoras_historico_movimiento2",
+   "ruta_completa": "silver.agrupadoras_historico_movimiento2",
+   "variables": {
+    "vl_agrupadoras_historico_movimiento2_table": "silver.agrupadoras_historico_movimiento2"
+   },
+   "lakehouse": "lh_transversal",
+   "abfss": "abfss://f46ef407-ab98-4741-8a4e-25d1d42ab145@onelake.dfs.fabric.microsoft.com/eae58d30-8ffe-4de2-b4d4-91e1734d0fd2/Tables/silver/agrupadoras_historico_movimiento2",
+   "existe": null
+  }
+ ],
+ "salidas": [
+  {
+   "rol": "salida",
+   "tipo": "destinos-agru-path",
+   "actividad": "SparkJobDefinition1",
+   "plantilla_carpeta": "pipeline().libraryVariables.vl_agrupadoras_destinos_agru_path",
+   "plantilla_archivo": "",
+   "carpeta_real": "silver.agrupadoras_destinos_agru",
+   "archivo_real": "silver.agrupadoras_destinos_agru",
+   "ruta_completa": "silver.agrupadoras_destinos_agru",
+   "variables": {
+    "vl_agrupadoras_destinos_agru_path": "silver.agrupadoras_destinos_agru"
+   },
+   "lakehouse": "lh_transversal",
+   "abfss": "abfss://f46ef407-ab98-4741-8a4e-25d1d42ab145@onelake.dfs.fabric.microsoft.com/eae58d30-8ffe-4de2-b4d4-91e1734d0fd2/Tables/silver/agrupadoras_destinos_agru",
+   "existe": null
+  },
+  {
+   "rol": "salida",
+   "tipo": "destinos-norm-path",
+   "actividad": "SparkJobDefinition1",
+   "plantilla_carpeta": "pipeline().libraryVariables.vl_agrupadoras_destinos_norm_path",
+   "plantilla_archivo": "",
+   "carpeta_real": "silver.agrupadoras_destinos_norm",
+   "archivo_real": "silver.agrupadoras_destinos_norm",
+   "ruta_completa": "silver.agrupadoras_destinos_norm",
+   "variables": {
+    "vl_agrupadoras_destinos_norm_path": "silver.agrupadoras_destinos_norm"
+   },
+   "lakehouse": "lh_transversal",
+   "abfss": "abfss://f46ef407-ab98-4741-8a4e-25d1d42ab145@onelake.dfs.fabric.microsoft.com/eae58d30-8ffe-4de2-b4d4-91e1734d0fd2/Tables/silver/agrupadoras_destinos_norm",
+   "existe": null
+  },
+  {
+   "rol": "salida",
+   "tipo": "origenes-output-path",
+   "actividad": "SparkJobDefinition1",
+   "plantilla_carpeta": "pipeline().libraryVariables.vl_agrupadoras_origenes_output_path",
+   "plantilla_archivo": "",
+   "carpeta_real": "silver.agrupadoras_origenes",
+   "archivo_real": "silver.agrupadoras_origenes",
+   "ruta_completa": "silver.agrupadoras_origenes",
+   "variables": {
+    "vl_agrupadoras_origenes_output_path": "silver.agrupadoras_origenes"
+   },
+   "lakehouse": "lh_transversal",
+   "abfss": "abfss://f46ef407-ab98-4741-8a4e-25d1d42ab145@onelake.dfs.fabric.microsoft.com/eae58d30-8ffe-4de2-b4d4-91e1734d0fd2/Tables/silver/agrupadoras_origenes",
+   "existe": null
+  }
+ ],
+ "datos_salida": {
+  "silver.agrupadoras_destinos_agru": {
+   "filas": 345828,
+   "columnas": 4,
+   "esquema": "33c49897fb9e9ce8",
+   "contenido": "742538866679424",
+   "nombres": [
+    "BP_AFIL",
+    "BP_EMPRES_TO",
+    "FECHA2",
+    "IS_AGRUP_TO"
+   ]
+  },
+  "silver.agrupadoras_destinos_norm": {
+   "filas": 5039749,
+   "columnas": 4,
+   "esquema": "33c49897fb9e9ce8",
+   "contenido": "10824134720036025",
+   "nombres": [
+    "BP_AFIL",
+    "BP_EMPRES_TO",
+    "FECHA2",
+    "IS_AGRUP_TO"
+   ]
+  },
+  "silver.agrupadoras_origenes": {
+   "filas": 74348498,
+   "columnas": 8,
+   "esquema": "7715f5763a0429c2",
+   "contenido": "159660126068026491",
+   "nombres": [
+    "AUART",
+    "ERDAT",
+    "IS_AGRUP_FROM",
+    "VBELN",
+    "ZZF_DESDE2",
+    "ZZF_HASTA2",
+    "ZZPARTNER_E",
+    "ZZPARTNER_P"
+   ]
+  }
+ },
+ "datos_salida_momento": "despues_de_ejecutar",
+ "metricas_corrida": [
+  {
+   "actividad": "SparkJobDefinition1",
+   "estado": "Succeeded",
+   "duracion_ms": 590119,
+   "filas_leidas": null,
+   "filas_copiadas": null,
+   "archivos_leidos": null,
+   "archivos_escritos": null,
+   "bytes_leidos": null,
+   "bytes_escritos": null
+  }
+ ],
+ "corrida_fabric": {
+  "id": "0a713659-a850-48ba-a433-7da44ca8e188",
+  "status": "Completed",
+  "startTimeUtc": "2026-09-30T18:30:39.4664492",
+  "endTimeUtc": "2026-09-30T18:40:40.0366667"
+ },
+ "duracion_corrida": "600s",
+ "duracion_segundos": 600,
+ "duracion_texto": "duracion: 10 m 00 s (600 s) · API (inicio y fin)",
+ "duracion_origen": "API (inicio y fin)",
+ "duracion_parcial": false,
+ "duracion_sospechosa": false,
+ "tiempos_segundos": {
+  "resolucion": 0.0,
+  "lectura_descriptor": 17.25,
+  "prevuelo": 0.0,
+  "linea_base": 0.0,
+  "ejecucion_total": 610.74,
+  "entradas_y_salidas": 58.66,
+  "verificacion": 1.02
+ },
+ "tiempo_total_segundos": 687.67,
+ "dependencias": {
+  "upstream": [],
+  "downstream": [],
+  "aristas_entrada": [],
+  "aristas_salida": [],
+  "en_ciclo": false
+ },
+ "existencia": {
+  "verificada": true,
+  "entradas_faltantes": [],
+  "salidas_faltantes": [],
+  "sin_resolver": []
+ },
+ "entradas_y_salidas_tras_corrida": {
+  "entradas": [
+   {
+    "estado": "OK",
+    "filas": 6085710,
+    "columnas": 9,
+    "esquema": "ef1e039c2be4208b",
+    "contenido": "13073058585535353",
+    "motivo": null,
+    "ruta": "silver.agrupadoras_moves_agrup",
+    "abfss": "abfss://f46ef407-ab98-4741-8a4e-25d1d42ab145@onelake.dfs.fabric.microsoft.com/eae58d30-8ffe-4de2-b4d4-91e1734d0fd2/Tables/silver/agrupadoras_moves_agrup",
+    "tipo": "moves-agrup-table",
+    "lakehouse": "lh_transversal"
+   },
+   {
+    "estado": "OK",
+    "filas": 93300899,
+    "columnas": 9,
+    "esquema": "ef1e039c2be4208b",
+    "contenido": "200382061295154704",
+    "motivo": null,
+    "ruta": "silver.agrupadoras_historico_movimiento_alt",
+    "abfss": "abfss://f46ef407-ab98-4741-8a4e-25d1d42ab145@onelake.dfs.fabric.microsoft.com/eae58d30-8ffe-4de2-b4d4-91e1734d0fd2/Tables/silver/agrupadoras_historico_movimiento_alt",
+    "tipo": "historico-movimiento-alt-table",
+    "lakehouse": "lh_transversal"
+   },
+   {
+    "estado": "OK",
+    "filas": 87215189,
+    "columnas": 9,
+    "esquema": "ef1e039c2be4208b",
+    "contenido": "187309002709619351",
+    "motivo": null,
+    "ruta": "silver.agrupadoras_historico_movimiento2",
+    "abfss": "abfss://f46ef407-ab98-4741-8a4e-25d1d42ab145@onelake.dfs.fabric.microsoft.com/eae58d30-8ffe-4de2-b4d4-91e1734d0fd2/Tables/silver/agrupadoras_historico_movimiento2",
+    "tipo": "historico-movimiento2-table",
+    "lakehouse": "lh_transversal"
+   }
+  ],
+  "salidas": [
+   {
+    "estado": "OK",
+    "filas": 345828,
+    "columnas": 4,
+    "esquema": "33c49897fb9e9ce8",
+    "contenido": "742538866679424",
+    "motivo": null,
+    "ruta": "silver.agrupadoras_destinos_agru",
+    "abfss": "abfss://f46ef407-ab98-4741-8a4e-25d1d42ab145@onelake.dfs.fabric.microsoft.com/eae58d30-8ffe-4de2-b4d4-91e1734d0fd2/Tables/silver/agrupadoras_destinos_agru",
+    "tipo": "destinos-agru-path",
+    "lakehouse": "lh_transversal"
+   },
+   {
+    "estado": "OK",
+    "filas": 5039749,
+    "columnas": 4,
+    "esquema": "33c49897fb9e9ce8",
+    "contenido": "10824134720036025",
+    "motivo": null,
+    "ruta": "silver.agrupadoras_destinos_norm",
+    "abfss": "abfss://f46ef407-ab98-4741-8a4e-25d1d42ab145@onelake.dfs.fabric.microsoft.com/eae58d30-8ffe-4de2-b4d4-91e1734d0fd2/Tables/silver/agrupadoras_destinos_norm",
+    "tipo": "destinos-norm-path",
+    "lakehouse": "lh_transversal"
+   },
+   {
+    "estado": "OK",
+    "filas": 74348498,
+    "columnas": 8,
+    "esquema": "7715f5763a0429c2",
+    "contenido": "159660126068026491",
+    "motivo": null,
+    "ruta": "silver.agrupadoras_origenes",
+    "abfss": "abfss://f46ef407-ab98-4741-8a4e-25d1d42ab145@onelake.dfs.fabric.microsoft.com/eae58d30-8ffe-4de2-b4d4-91e1734d0fd2/Tables/silver/agrupadoras_origenes",
+    "tipo": "origenes-output-path",
+    "lakehouse": "lh_transversal"
+   }
+  ],
+  "escribio": false,
+  "medido": true,
+  "filas_entrada_total": 186601798,
+  "filas_salida_total": 79734075
+ },
+ "n_entradas": 3,
+ "n_salidas_declaradas": 3
+}

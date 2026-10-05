@@ -1,0 +1,93 @@
+{
+ "properties": {
+  "parameters": {
+   "consulta": {
+    "type": "string",
+    "defaultValue": "select 1 as uno"
+   },
+   "carpeta": {
+    "type": "string",
+    "defaultValue": "validador/postgres_fabric/prueba"
+   },
+   "archivo": {
+    "type": "string",
+    "defaultValue": "datos.parquet"
+   }
+  },
+  "activities": [
+   {
+    "name": "copiar_postgres_a_lakehouse",
+    "type": "Copy",
+    "dependsOn": [],
+    "policy": {
+     "timeout": "0.12:00:00",
+     "retry": 1,
+     "retryIntervalInSeconds": 30,
+     "secureOutput": false,
+     "secureInput": false
+    },
+    "typeProperties": {
+     "source": {
+      "type": "AzurePostgreSqlSource",
+      "query": {
+       "value": "@pipeline().parameters.consulta",
+       "type": "Expression"
+      },
+      "datasetSettings": {
+       "annotations": [],
+       "type": "AzurePostgreSqlTable",
+       "schema": [],
+       "typeProperties": {},
+       "externalReferences": {
+        "connection": "2d882b03-c343-489b-847f-e095b32c12c9"
+       }
+      },
+      "queryTimeout": "02:00:00"
+     },
+     "sink": {
+      "type": "ParquetSink",
+      "storeSettings": {
+       "type": "LakehouseWriteSettings"
+      },
+      "formatSettings": {
+       "type": "ParquetWriteSettings",
+       "enableVertiParquet": true
+      },
+      "datasetSettings": {
+       "annotations": [],
+       "linkedService": {
+        "name": "lh_transversal",
+        "properties": {
+         "annotations": [],
+         "type": "Lakehouse",
+         "typeProperties": {
+          "workspaceId": "f46ef407-ab98-4741-8a4e-25d1d42ab145",
+          "artifactId": "eae58d30-8ffe-4de2-b4d4-91e1734d0fd2",
+          "rootFolder": "Files"
+         }
+        }
+       },
+       "type": "Parquet",
+       "typeProperties": {
+        "location": {
+         "type": "LakehouseLocation",
+         "fileName": {
+          "value": "@pipeline().parameters.archivo",
+          "type": "Expression"
+         },
+         "folderPath": {
+          "value": "@pipeline().parameters.carpeta",
+          "type": "Expression"
+         }
+        },
+        "compressionCodec": "snappy"
+       },
+       "schema": []
+      }
+     },
+     "enableStaging": false
+    }
+   }
+  ]
+ }
+}

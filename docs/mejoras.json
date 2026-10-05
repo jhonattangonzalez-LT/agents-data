@@ -1,0 +1,14 @@
+[
+ {
+  "id": "M-001",
+  "fecha": "2026-10-05T10:28:03+00:00",
+  "que": "Versión inicial de la pipeline QA v2: coordinador, 11 agentes, reportes_v4, ETL v10, Stratio probado, acta v4",
+  "por_que": "Cerrar el proceso para que el equipo lo pueda instalar y correr",
+  "archivos": [
+   "README.md",
+   "CLAUDE.md"
+  ],
+  "autor": "Jhonattan-LT",
+  "estado": "SIN_COMPARTIR"
+ }
+]
