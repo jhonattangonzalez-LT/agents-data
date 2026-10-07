@@ -23,7 +23,8 @@
    "pc/__main__.py"
   ],
   "autor": "Jhonattan-LT",
-  "estado": "SIN_COMPARTIR"
+  "estado": "COMPARTIDA",
+  "commit": "53331f9"
  },
  {
   "id": "M-003",
@@ -34,7 +35,8 @@
    "pc/medir/completo.py"
   ],
   "autor": "Jhonattan-LT",
-  "estado": "SIN_COMPARTIR"
+  "estado": "COMPARTIDA",
+  "commit": "53331f9"
  },
  {
   "id": "M-004",
@@ -45,7 +47,8 @@
    "pc/medir/completo.py"
   ],
   "autor": "Jhonattan-LT",
-  "estado": "SIN_COMPARTIR"
+  "estado": "COMPARTIDA",
+  "commit": "53331f9"
  },
  {
   "id": "M-005",
@@ -66,7 +69,8 @@
    ".claude/agents/medidor-rapido-stratio.md"
   ],
   "autor": "Jhonattan-LT",
-  "estado": "SIN_COMPARTIR"
+  "estado": "COMPARTIDA",
+  "commit": "53331f9"
  },
  {
   "id": "M-006",
@@ -78,7 +82,8 @@
    "pc/__init__.py"
   ],
   "autor": "Jhonattan-LT",
-  "estado": "SIN_COMPARTIR"
+  "estado": "COMPARTIDA",
+  "commit": "2228ca4"
  },
  {
   "id": "M-007",
@@ -90,7 +95,8 @@
    "pc/reportes/v4.py"
   ],
   "autor": "Jhonattan-LT",
-  "estado": "SIN_COMPARTIR"
+  "estado": "COMPARTIDA",
+  "commit": "2228ca4"
  },
  {
   "id": "M-008",
@@ -103,6 +109,7 @@
    ".claude/agents/cotejador.md"
   ],
   "autor": "Jhonattan-LT",
-  "estado": "SIN_COMPARTIR"
+  "estado": "COMPARTIDA",
+  "commit": "2228ca4"
  }
 ]
