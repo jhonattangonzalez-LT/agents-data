@@ -2,6 +2,14 @@
 
 Cada mejora se comparte con el equipo (commit + push al repositorio). `SIN_COMPARTIR` = falta hacerlo.
 
+## M-009 · 2026-10-07 · SIN_COMPARTIR
+
+**Qué:** CP-05 de las salidas SFTP con la fecha de modificacion del archivo dentro de la corrida validada; pc descargar baja tambien el SFTP del lado Fabric y guarda la fecha de cada archivo (archivos_sftp); el cotejo de flujo ya no cuenta una salida registrada del flujo como entrada (rol invertido del validador); el gestor de descargas respalda la descarga cara de Stratio antes de un ciclo nuevo
+
+**Por qué:** Las salidas SFTP quedaban con CP-05 'no evaluado' aunque el dato estaba medido (L10-1: #2-#6, #29, #30), y SSF.PACS aparecia como entrada 'sin medir' del flujo pacs_03; un ciclo nuevo obligaba a volver a bajar por Rocket datos de Stratio que no cambiaron
+
+**Archivos:** `pc/reportes/v4.py`, `pc/reportes/formato2.py`, `pc/medir/completo.py`, `pc/__main__.py`, `.claude/agents/gestor-descargas.md` · por Jhonattan-LT
+
 ## M-008 · 2026-10-07 · COMPARTIDA
 
 **Qué:** Cotejo de tabla: cada control lleva «medicion» con lo que midio cada lado completo (VG: columnas, tipos, longitudes; CP-02 esquema; CP-01/ID-01 conteo; CP-03 SHA-256 y huella por columna; CP-04 las 10 filas; CP-05 commit; ID-02 duplicados; ID-03/ID-04 nulos por columna; ID-05 distintos y candidatas; ID-06 distintos y constantes), como ya hacia VG-09 con los dos contratos. Semaforo: para un flujo validado sin ejecutar (orquestador) usa la corrida medida en la evidencia

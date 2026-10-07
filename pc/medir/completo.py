@@ -79,13 +79,16 @@ def bajar_hdfs_stratio(lote, clave, ruta_hdfs, desde=None, log=print, particion=
     return dest, locs, m
 
 
-def bajar_sftp_stratio(lote, clave, directorio, patron=None, log=print):
+def bajar_sftp_stratio(lote, clave, directorio, patron=None, log=print, plataforma="STRATIO"):
+    """Baja los archivos de una carpeta del SFTP de Comfandi (VPN). Sirve a los dos lados: Fabric escribe su salida SFTP
+    en el mismo servidor (ruta de pruebas). Guarda la fecha de modificacion de cada archivo: es la evidencia de CP-05."""
+    import datetime as _dt
     import re
     from ..acceso import stratio_pg
-    dest = gestor.carpeta(lote, "STRATIO", clave)
+    dest = gestor.carpeta(lote, plataforma, clave)
     os.makedirs(dest, exist_ok=True)
     t, sf = stratio_pg.sftp()
-    locs = []
+    locs, info = [], []
     try:
         for a in sf.listdir_attr(directorio):
             if a.st_mode is not None and (a.st_mode & 0o170000) == 0o040000:
@@ -96,11 +99,13 @@ def bajar_sftp_stratio(lote, clave, directorio, patron=None, log=print):
             if not (os.path.exists(loc) and os.path.getsize(loc) == a.st_size):
                 sf.get(f"{directorio.rstrip('/')}/{a.filename}", loc)
             locs.append(loc)
+            info.append({"archivo": a.filename, "bytes": a.st_size,
+                         "escrito_utc": _dt.datetime.fromtimestamp(a.st_mtime, _dt.timezone.utc).isoformat(timespec="seconds")})
     finally:
         sf.close()
         t.close()
-    m = {"directorio": directorio, "patron": patron, "lector": _lector(locs)}
-    gestor.registrar(lote, "STRATIO", clave, f"sftp:{directorio}", locs, m)
+    m = {"directorio": directorio, "patron": patron, "lector": _lector(locs), "archivos_sftp": info}
+    gestor.registrar(lote, plataforma, clave, f"sftp:{directorio}", locs, m)
     return dest, locs, m
 
 

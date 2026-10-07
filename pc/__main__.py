@@ -444,7 +444,8 @@ def c_descargar(a):
                 if lado == "FABRIC":
                     fn = {"delta": lambda: C.bajar_delta_fabric(a.lote, k, src["ruta"]),
                           "files": lambda: C.bajar_files_fabric(a.lote, k, src["ruta"]),
-                          "pg": lambda: C.bajar_pg_fabric(a.lote, k, src["ruta"], _where(o))}[src["tipo"]]
+                          "pg": lambda: C.bajar_pg_fabric(a.lote, k, src["ruta"], _where(o)),
+                          "sftp": lambda: C.bajar_sftp_stratio(a.lote, k, src["ruta"], src.get("patron"), plataforma="FABRIC")}[src["tipo"]]
                 else:
                     fn = {"hdfs": lambda: C.bajar_hdfs_stratio(a.lote, k, src["ruta"], src.get("desde"), particion=src.get("particion")),
                           "pg": lambda: C.bajar_pg_stratio(a.lote, k, src["ruta"], _where(o)),

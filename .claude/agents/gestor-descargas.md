@@ -9,7 +9,9 @@ Eres el **gestor de descargas** de la pipeline QA v2 (`~/Projects/pipeline-comfa
 
 ## Descargar
 - Antes del nivel 2: `python -m pc estimar --trabajo T`; las tablas grandes solo con `--confirmar-grandes` tras confirmarlo el usuario.
-- Un ciclo nuevo (`python -m pc ciclo`) borra la caché de ese flujo: el dato cambió con la corrección.
+- Un ciclo nuevo (`python -m pc ciclo`) borra la caché de ese flujo, de los dos lados: el dato cambió con la corrección.
+  Si Stratio no cambió y su descarga fue cara (HDFS por Rocket), respáldala antes del ciclo y restáurala después;
+  así no hace falta otra cookie para volver a bajarla.
 ```bash
 python -m pc cache espacio
 python -m pc descargar --lote N [--flujo F] [--lado FABRIC|STRATIO] [--forzar]
@@ -22,6 +24,10 @@ python -m pc descargar --lote N [--flujo F] [--lado FABRIC|STRATIO] [--forzar]
   Particiones fuera de `desde` no se bajan (delimitador de fechas).
 - Postgres Stratio: DuckDB `postgres_query` → parquet, tipos delicados `::text`. VPN < 1 MB/s: tablas chicas o cortes.
 - Postgres Fabric: vía `postgres-fabric` (pipeline → parquet en Files → descarga).
+- SFTP (los dos lados, VPN): Fabric escribe su salida SFTP en el mismo servidor de Comfandi (ruta de pruebas). `pc descargar`
+  baja la carpeta y guarda en el manifiesto la fecha de modificación de cada archivo (`archivos_sftp`). Con esa fecha y la
+  corrida validada (`pc etl evidencia`) se evalúa CP-05 de las salidas SFTP: el archivo de Fabric debe estar escrito dentro de
+  la ventana de la corrida. Sin VPN no se baja ni se evalúa: dilo, no lo des por cumplido.
 - Antes de bajar se comprueba `cabe()`: tope `cache.max_gb` y `margen_libre_gb` de disco.
 
 ## Manifiesto y ciclo de vida

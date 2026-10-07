@@ -560,8 +560,11 @@ def flujo(enc, f, etl, ev, sem, tablas, ver, otros=None, decisiones=None):
     io = etl.get("io_medido") or {}
     cols_io = {x.get("tabla"): x for x in (io.get("entradas") or []) + (io.get("salidas") or [])}
     ent = []
+    salidas_del_flujo = {((o.get("fabric") or {}).get("ruta") or "").lower() for o in f["objetos"]}
     for e in ev.get("entradas") or []:
         t = e.get("entrada")
+        if (t or "").lower() in salidas_del_flujo:   # una salida registrada del flujo no es su entrada (rol invertido del validador)
+            continue
         cl = e.get("commit_leido_por_la_corrida") or {}
         po = e.get("productor_segun_orquestador") or {}
         fila = {"entrada": t, "tipo": e.get("tipo"), "parametro_del_flujo": (band.get(t) or {}).get("bandera"),

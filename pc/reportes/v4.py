@@ -334,6 +334,19 @@ def _cp05_evidencia(trabajo, f, o):
             return {"estado": "OK", "detalle": f"{s['archivos_escritos_en_la_corrida']} archivo(s) escritos dentro de la {ventana}",
                     "evidencia": {k: s.get(k) for k in ("archivos_escritos_en_la_corrida", "particiones_escritas_en_la_corrida", "ultima_escritura_utc")},
                     "medido_en": "evidencia del flujo (listado de OneLake)"}
+    if src.get("tipo") == "sftp":
+        # salida SFTP: la fecha de modificacion de cada archivo (medida al descargarlo) dentro de la corrida validada
+        from ..cache import gestor
+        from ..rapido import delta_remoto as dr
+        meta = (gestor.manifiesto(trabajo)["entradas"].get(f"FABRIC/{o['clave']}") or {}).get("meta") or {}
+        arch = meta.get("archivos_sftp") or []
+        ini, fin = dr.a_utc(cv.get("inicio_utc")), dr.a_utc(cv.get("fin_utc"))
+        if arch and ini and fin:
+            fuera = [a for a in arch if not (ini <= dr.a_utc(a["escrito_utc"]) <= fin)]
+            return {"estado": "FALLA" if fuera else "OK",
+                    "detalle": "; ".join(f"{a['archivo']} escrito {a['escrito_utc']}" for a in arch) +
+                               (f" fuera de la {ventana}" if fuera else f" dentro de la {ventana}"),
+                    "evidencia": {"archivos_sftp": arch}, "medido_en": "fecha de modificacion del archivo en el SFTP (medida al descargarlo)"}
     if src.get("tipo") == "pg":
         cop = [a for a in ev.get("actividades") or [] if a.get("tipo") == "Copy"]
         if cop and all(a.get("estado") == "Succeeded" for a in cop):
