@@ -423,10 +423,25 @@ def construir_cotejo_flujo(trabajo, f):
         otros.append({"flujo": g["nombre_fabric"],
                       "entradas": [x.get("ruta") for x in ((e2.get("inventario") or {}).get("correccion") or {}).get("entradas") or []]})
     ver = (L.leer(trabajo, "v4/verificaciones.json", {}) or {}).get(n)
-    doc = F2.flujo(enc, f, etl, ev, sem, tablas, ver, otros)
+    doc = F2.flujo(enc, f, etl, ev, sem, tablas, ver, otros, (L.leer(trabajo, "v4/decisiones_flujo.json", {}) or {}).get(n))
     doc["encabezado"]["faltantes"] = F2.faltantes_flujo(doc)
     L.guardar(trabajo, rel, doc)
     return doc
+
+
+def decidir_comprobacion(trabajo, flujo, comprobacion, decision, causa, causa_medida=False, por="QA"):
+    """Decision de una persona sobre una comprobacion del flujo que no cumple. JUSTIFICADA exige causa medida."""
+    if decision not in ("JUSTIFICADA", "DEVUELTO", "A_VERIFICAR"):
+        raise ValueError("decision: JUSTIFICADA | DEVUELTO | A_VERIFICAR")
+    if decision == "JUSTIFICADA" and not (causa and causa_medida):
+        raise ValueError("JUSTIFICADA exige la causa y causa_medida=True")
+    d = L.leer(trabajo, "v4/decisiones_flujo.json", {}) or {}
+    d.setdefault(flujo, {})[comprobacion] = {"decision": decision, "causa": causa, "causa_medida": bool(causa_medida),
+                                             "decidido_por": {"quien": por, "usuario": L.usuario(), "utc": _ahora()}}
+    L.guardar(trabajo, "v4/decisiones_flujo.json", d)
+    L.bitacora(trabajo, "coordinador", "decidir_comprobacion", {"comprobacion": comprobacion, "decision": decision, "causa": causa},
+               estado="DECISION", flujo=flujo)
+    return d[flujo][comprobacion]
 
 
 def verificar(trabajo, flujo, por, decision, nota):

@@ -363,6 +363,12 @@ def c_semaforo(a):
         if a.flujo and f["nombre_fabric"] != a.flujo:
             continue
         etl = (L.leer(a.lote, f"etl/veredictos/{f['nombre_fabric']}.json") or {}).get("resumen")
+        ev = L.leer(a.lote, f"etl/evidencia/{f['nombre_fabric']}.json") or {}
+        cv = ev.get("corrida_validada") or {}
+        if etl is not None and not etl.get("estado_corrida") and cv.get("estado"):
+            # validado sin ejecutar (lo corrio un orquestador): la corrida es la medida en Fabric (pc etl evidencia)
+            etl = dict(etl, estado_corrida=cv["estado"], inicio_utc=cv.get("inicio_utc"), fin_utc=cv.get("fin_utc"),
+                       corrida_desde="evidencia")
         cot = {o["clave"]: L.leer(a.lote, f"cotejo_rapido/{o['clave']}.json") for o in f["objetos"]}
         cot = {k: v for k, v in cot.items() if v}
         s = semaforo.evaluar(f["nombre_fabric"], f["grupo"], etl, cot, claves_esperadas=[o["clave"] for o in f["objetos"]])

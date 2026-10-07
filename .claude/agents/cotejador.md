@@ -34,7 +34,7 @@ Formato: `docs/REPORTES_V4.md`. Stratio es la verdad.
 ## El cotejo de tabla (formato 2, obligatorio antes de publicar)
 `cotejo_<clave>_vN.json` (`pc/reportes/formato2.py`): `encabezado` (estado, resumen exacto, cómo se leyó cada lado) ·
 `controles.resumen` (una palabra por control, por familia VG / ID / CP; VG-09 va dentro de VG) · `controles.detalle`
-(qué midió Stratio, qué midió Fabric, la comparación con cifras y la decisión) · `justificaciones` · `metricas`
+(qué midió Stratio, qué midió Fabric, `medicion` con el insumo completo de cada lado —esquema, conteo, nulos y distintos por columna, huella por columna, duplicados, muestra—, la comparación con cifras y la decisión) · `justificaciones` · `metricas`
 (nulos, distintos, mínimos, máximos y sumas por columna de cada lado). Solo lleva la versión vigente.
 
 Palabras del resumen: `ok` · `justificado` · `por_verificar` · `pendiente` · `advertencia` · `falla` · `no_evaluado` · `no_aplica`.

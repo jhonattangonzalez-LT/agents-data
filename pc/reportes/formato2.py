@@ -50,9 +50,10 @@ def _lado(m, cod):
     return {"estado": e or "NO_EVALUADO"}
 
 
-def _como_se_leyo(m, ruta):
+def _como_se_leyo(m, ruta, referencia=None):
+    """`referencia`: el lado no se leyo hoy de la plataforma sino de una copia local anterior (se declara cual y por que)."""
     if not m:
-        return None
+        return {"ruta": ruta, "referencia": referencia} if referencia else None
     e, n0, n1, n2 = m.get("encabezado") or {}, m.get("nivel_0") or {}, m.get("nivel_1") or {}, m.get("nivel_2") or {}
     d = n2.get("descarga") or {}
     uc = n0.get("ultimo_commit") or {}
@@ -68,6 +69,8 @@ def _como_se_leyo(m, ruta):
     if h:
         out["huella"] = {"algoritmo": h.get("algoritmo"), "alcance": h.get("alcance"), "filas_hasheadas": h.get("filas_hasheadas"),
                          "columnas_excluidas": h.get("columnas_excluidas") or []}
+    if referencia:
+        out["referencia"] = referencia
     return out
 
 
@@ -153,6 +156,87 @@ def _medido(cod, s, f, ms, mf, cr, cc, vg09):
         if a or b:
             dist.append(f"columnas que incumplen: Stratio {a}, Fabric {b}")
     return m, dist
+
+
+def _cols(m):
+    n0 = (m or {}).get("nivel_0") or {}
+    return n0.get("columnas") or []
+
+
+def _perfil(m):
+    return ((m or {}).get("nivel_2") or {}).get("perfil") or {}
+
+
+def _lado_medicion(cod, m):
+    """Lo que ESE lado midio para el control, completo (no solo el estado): el insumo con el que se decide."""
+    if not m:
+        return None
+    n1, n2 = (m.get("nivel_1") or {}), (m.get("nivel_2") or {})
+    pf, cols, h = _perfil(m), _cols(m), (n2.get("hash") or {})
+    filas = n2.get("filas") if n2.get("filas") is not None else n1.get("filas")
+    if cod == "VG-01":
+        return {"columnas": [c["nombre"] for c in cols], "en_minusculas": [c["nombre"].lower() for c in cols],
+                "repetidos_sin_distinguir_mayusculas": sorted({c["nombre"].lower() for c in cols
+                                                              if [x["nombre"].lower() for x in cols].count(c["nombre"].lower()) > 1})}
+    if cod == "VG-02":
+        mal = " ,;{}()\n\t="
+        return {"columnas": [c["nombre"] for c in cols], "con_caracteres_no_validos": [c["nombre"] for c in cols if any(ch in c["nombre"] for ch in mal)]}
+    if cod == "VG-03":
+        return {"tipo_por_columna": {c["nombre"]: c["tipo"] for c in cols},
+                "no_materializables": [c["nombre"] for c in cols if str(c["tipo"]).lower() in ("void", "interval", "null")]}
+    if cod == "VG-04":
+        dec = {c["nombre"]: c["tipo"] for c in cols if str(c["tipo"]).lower().startswith("decimal")}
+        return {"columnas_decimales": dec, "fuera_de_rango_38": [k for k, t in dec.items() if _prec(t) > 38]}
+    if cod == "VG-05":
+        return {"tipo_por_columna": {c["nombre"]: c["tipo"] for c in cols},
+                "anidadas": [c["nombre"] for c in cols if any(x in str(c["tipo"]).lower() for x in ("struct", "array", "map"))]}
+    if cod == "VG-06":
+        return {"longitud_del_nombre": {c["nombre"]: len(c["nombre"]) for c in cols}, "mayores_a_128": [c["nombre"] for c in cols if len(c["nombre"]) > 128]}
+    if cod == "CP-02":
+        return {"num_columnas": len(cols), "esquema": [{"posicion": c.get("orden"), "nombre": c["nombre"], "tipo": c["tipo"],
+                                                      "nullable": c.get("nullable")} for c in cols],
+                "huellas_esquema": (m.get("nivel_0") or {}).get("huellas_esquema")}
+    if cod == "CP-01" or cod == "ID-01":
+        return {"filas": filas, "fuente_del_conteo": "nivel 2, dato completo" if n2.get("filas") is not None else n1.get("fuente"),
+                "archivos": (n2.get("descarga") or {}).get("archivos") or n1.get("archivos")}
+    if cod == "CP-03":
+        return {"sha256_dataset": h.get("hash_dataset"), "algoritmo": h.get("algoritmo"), "alcance": h.get("alcance"),
+                "orden_canonico": h.get("orden_canonico"), "filas_hasheadas": h.get("filas_hasheadas"),
+                "columnas_incluidas": h.get("columnas_incluidas"), "columnas_excluidas": h.get("columnas_excluidas"),
+                "metodo_hash_columna": h.get("metodo_hash_columna"), "hash_por_columna": h.get("hash_por_columna"),
+                "hash_conjunto_columnas": h.get("hash_conjunto_columnas")}
+    if cod == "CP-04":
+        mu = n2.get("muestra") or {}
+        return {"limite": mu.get("limite"), "columnas": [c["nombre"] for c in cols], "filas": mu.get("filas")}
+    if cod == "CP-05":
+        n0 = m.get("nivel_0") or {}
+        return {"version_delta": n0.get("version_delta"), "ultimo_commit": n0.get("ultimo_commit")}
+    if cod == "ID-02":
+        return {"filas": h.get("filas_hasheadas", filas), "filas_distintas": h.get("filas_distintas_por_hash"),
+                "duplicados_exactos": h.get("filas_duplicadas_exactas"), "metodo": h.get("filas_distintas_metodo")}
+    if cod in ("ID-03", "ID-04"):
+        t = {k: {"nulos": v.get("nulos"), "pct_nulos": v.get("pct_nulos"), "registros": v.get("registros")} for k, v in pf.items()}
+        out = {"nulos_por_columna": t}
+        if cod == "ID-03":
+            out["columnas_100_pct_nulas"] = [k for k, v in pf.items() if v.get("registros") and v.get("nulos") == v.get("registros")]
+        else:
+            out["columnas_con_nulos"] = [k for k, v in pf.items() if v.get("nulos")]
+        return out
+    if cod == "ID-05":
+        return {"distintos_por_columna": {k: {"distintos": v.get("valores_distintos"), "registros": v.get("registros"),
+                                               "pct_cardinalidad": v.get("pct_cardinalidad"), "candidata_a_llave": v.get("candidata_a_llave")}
+                                           for k, v in pf.items()},
+                "candidatas_a_llave": [k for k, v in pf.items() if v.get("candidata_a_llave")]}
+    if cod == "ID-06":
+        return {"distintos_por_columna": {k: v.get("valores_distintos") for k, v in pf.items()},
+                "constantes": {k: v.get("valor_minimo_lexicografico", v.get("minimo")) for k, v in pf.items() if v.get("es_constante")}}
+    return None
+
+
+def _prec(t):
+    import re
+    x = re.search(r"decimal\((\d+)", str(t).lower())
+    return int(x.group(1)) if x else 0
 
 
 def _base(cod, cri, s, f, cr, cc, vg09, nivel_ctl, nivel_alc):
@@ -252,8 +336,11 @@ def cotejo(enc, f, o, ms, mf, cr, cc, difs, vg09, anterior=None, origen_decision
         else:
             dec = ("La regla se cumple porque Fabric no empeora respecto a Stratio, pero la medicion muestra algo que debe quedar "
                    "registrado y decidido por una persona: la tabla queda en revision hasta entonces.")
+        med = None if cod == "VG-09" else {"stratio": _lado_medicion(cod, ms), "fabric": _lado_medicion(cod, mf)}
         det = {"nombre": c["nombre"], "nivel": c["nivel"], "decide": rol == "decide", "rol": rol, "criterio": cri,
-               "criterio_texto": CONTROLES["criterios"].get(cri), "stratio": s, "fabric": fa, "comparacion": medido,
+               "criterio_texto": CONTROLES["criterios"].get(cri), "stratio": s, "fabric": fa,
+               **({"medicion": med} if med and (med["stratio"] is not None or med["fabric"] is not None) else {}),
+               "comparacion": medido,
                "regla": base, "resultado": pal, "decision": dec}
         if avisos:
             det["advertencias"] = avisos
@@ -335,8 +422,8 @@ def cotejo(enc, f, o, ms, mf, cr, cc, difs, vg09, anterior=None, origen_decision
            "flujo": {"fl": f.get("fl"), "fabric": f["nombre_fabric"], "stratio": f.get("nombre_stratio")},
            "grupo": grupo, "version": enc["version"],
            "objeto": {"stratio": (o.get("stratio") or {}).get("ruta"), "fabric": (o.get("fabric") or {}).get("ruta")},
-           "como_se_leyo": {"stratio": _como_se_leyo(ms, (o.get("stratio") or {}).get("ruta")),
-                            "fabric": _como_se_leyo(mf, (o.get("fabric") or {}).get("ruta"))},
+           "como_se_leyo": {"stratio": _como_se_leyo(ms, (o.get("stratio") or {}).get("ruta"), (o.get("stratio") or {}).get("referencia")),
+                            "fabric": _como_se_leyo(mf, (o.get("fabric") or {}).get("ruta"), (o.get("fabric") or {}).get("referencia"))},
            "version_anterior": anterior, "verdad": "STRATIO", "nivel_alcanzado": nivel,
            "sin_analizar": sin_analizar,
            "trazabilidad": {k: enc.get(k) for k in ("id", "trabajo", "generado_utc", "mediciones", "esperando") if enc.get(k) is not None}}
@@ -389,7 +476,7 @@ def _tabla_corta(t):
     return (t or "").split(".")[-1].lower()
 
 
-def flujo(enc, f, etl, ev, sem, tablas, ver, otros=None):
+def flujo(enc, f, etl, ev, sem, tablas, ver, otros=None, decisiones=None):
     """Arma el cotejo de flujo (formato 2). ev = etl/evidencia/<flujo>.json (medido en Fabric)."""
     n = f["nombre_fabric"]
     ev, etl = ev or {}, etl or {}
@@ -434,9 +521,15 @@ def flujo(enc, f, etl, ev, sem, tablas, ver, otros=None):
     # ---- validador ETL
     cita = ev.get("corrida_citada_por_el_validador") or {}
     gen = raw.get("generado_utc")
-    # valido la corrida si corrio DESPUES de ella y (la ejecuto el mismo, o la valido sin re-ejecutar tras el orquestador)
-    probo = bool(gen and cv.get("fin_utc") and gen >= cv["fin_utc"][:19]) and (
-        bool(cita.get("coincide_con_la_validada")) or raw.get("se_ejecuto") is False)
+    # El validador prueba la corrida de dos formas (decision de QA 2026-10-07):
+    #  · la ejecuto el mismo: pruebas antes/despues sobre ESA corrida;
+    #  · la corrio un orquestador: el validador no re-ejecuta; vale su validacion estatica POSTERIOR a la corrida
+    #    (despliegue, rutas, entradas legibles) junto con la evidencia de la corrida medida en Fabric.
+    despues = bool(gen and cv.get("fin_utc") and gen >= cv["fin_utc"][:19])
+    por_ejecucion = despues and bool(cita.get("coincide_con_la_validada")) and raw.get("se_ejecuto") is not False
+    por_orquestador = (despues and raw.get("se_ejecuto") is False and bool(orq.get("corrida_que_invoco_al_flujo"))
+                       and bool(raw.get("pasa_validacion")))
+    probo = por_ejecucion or por_orquestador
     pruebas = []
     for p in raw.get("pruebas") or []:
         q = {"prueba": p.get("prueba") if p.get("prueba") != "(sin nombre)" else "actividad_o_objeto_sin_prueba",
@@ -445,6 +538,9 @@ def flujo(enc, f, etl, ev, sem, tablas, ver, otros=None):
         pruebas.append(q)
     val = {"resultado": r.get("resultado_validador"), "veredicto": r.get("veredicto_validador"), "corrio_utc": gen,
            "conteo": raw.get("resumen"), "valido_la_corrida_aprobada": probo,
+           "modo": ("ejecuto y probo la corrida" if por_ejecucion else
+                    "validacion estatica posterior a la corrida del orquestador + evidencia medida" if por_orquestador else
+                    "no corresponde a la corrida validada"),
            "pruebas": pruebas, "omitidas": [p for p in pruebas if p["resultado"] == "OMITIDO"],
            "advertencias": r.get("advertencias") or [], "bloqueantes": r.get("bloqueantes") or []}
     if not probo:
@@ -452,7 +548,8 @@ def flujo(enc, f, etl, ev, sem, tablas, ver, otros=None):
                        (f"el validador corrio a las {gen} y la corrida validada es la de {cv.get('inicio_utc')}." if gen else "no hay veredicto del validador."))
     ejec["validador"] = val
     chk("El validador ETL probo la corrida validada", "CUMPLE" if probo else "NO_CUMPLE",
-        f"validador {gen} · corrida validada {cv.get('inicio_utc')}–{cv.get('fin_utc')}")
+        f"validador {gen} · corrida validada {cv.get('inicio_utc')}–{cv.get('fin_utc')} · " + val["modo"] +
+        (" (el validador no re-ejecuta lo que corre un orquestador; la corrida se prueba con la evidencia de Fabric)" if por_orquestador else ""))
     chk("El validador no reporta bloqueantes", "CUMPLE" if not val["bloqueantes"] else "NO_CUMPLE",
         f"{len(val['bloqueantes'])} bloqueante(s), {len(val['advertencias'])} advertencia(s)")
 
@@ -494,6 +591,37 @@ def flujo(enc, f, etl, ev, sem, tablas, ver, otros=None):
             fila["parametro_del_flujo"] = (band.get(t) or {}).get("bandera")
             fila["columnas"] = (cols_io.get(t) or {}).get("columnas")
         sal.append(fila)
+    # ---- ingesta por Copy: la entrada (archivo de origen) la mide la propia actividad (filas y bytes leidos)
+    fuera = []
+    if f["grupo"] == "ingesta" and not ent:
+        dest_obj = {((o.get("fabric") or {}).get("ruta") or "").replace("Files/", "").strip("/").lower() for o in f["objetos"]}
+        sal_act = {x.get("actividad"): x for x in raw.get("salidas") or []}
+        act = {a_["actividad"]: a_ for a_ in ev.get("actividades") or []}
+        copias = [x for x in raw.get("entradas") or [] if (act.get(x.get("actividad")) or {}).get("tipo") == "Copy" or x.get("actividad") in sal_act]
+        alcance = [x for x in copias if ((sal_act.get(x.get("actividad")) or {}).get("carpeta_real") or "").strip("/").lower() in dest_obj]
+        if not alcance:                      # el destino final lo escribe otra actividad (p. ej. particionado): todas cuentan
+            alcance = copias
+        for x in alcance:
+            a_ = act.get(x.get("actividad")) or {}
+            so = sal_act.get(x.get("actividad")) or {}
+            ent.append({"entrada": x.get("ruta_completa"), "tipo": "archivo de origen, medido por la actividad Copy",
+                        "origen": x.get("tipo"), "actividad": x.get("actividad"), "estado": a_.get("estado"),
+                        "inicio_utc": a_.get("inicio_utc"), "fin_utc": a_.get("fin_utc"),
+                        "filas_leidas": a_.get("filas_leidas"), "filas_copiadas": a_.get("filas_copiadas"),
+                        "filas_omitidas": a_.get("filas_omitidas"), "archivos_leidos": a_.get("archivos_leidos"),
+                        "bytes_leidos": a_.get("bytes_leidos"), "bytes_escritos": a_.get("bytes_escritos"),
+                        "escribe_en": so.get("ruta_completa")})
+        en_alc = {x.get("actividad") for x in alcance}
+        fuera = [a_ for a_ in ev.get("actividades") or [] if a_["actividad"] not in en_alc and a_.get("tipo") == "Copy"]
+        if ent:
+            malas = [e["actividad"] for e in ent if e.get("estado") != "Succeeded"]
+            chk("Las actividades que cargan las tablas de este trabajo terminaron Succeeded", "CUMPLE" if not malas else "NO_CUMPLE",
+                f"{len(ent)} actividad(es) en alcance" + (f"; no exitosas: {malas}" if malas else "") +
+                (f"; fuera del alcance: {len(fuera)} ({[a_['actividad'] for a_ in fuera if a_.get('estado') != 'Succeeded']} no exitosas)" if fuera else ""))
+            perd = [f"{e['actividad']} leyo {e.get('filas_leidas')} y copio {e.get('filas_copiadas')}" for e in ent
+                    if e.get("filas_leidas") is None or e.get("filas_leidas") != e.get("filas_copiadas")]
+            chk("Cada Copy en alcance copio todas las filas que leyo del origen", "CUMPLE" if not perd else "NO_CUMPLE",
+                "; ".join(perd) if perd else "; ".join(f"{e['actividad']} {e['filas_leidas']} filas" for e in ent[:8]))
     no_tablas = [x["ruta"] for x in corr.get("salidas") or [] if "." not in (x.get("ruta") or "") and "/" not in (x.get("ruta") or "")]
 
     delta_ent = [e for e in ent if e.get("tipo") == "tabla Delta"]
@@ -505,9 +633,13 @@ def flujo(enc, f, etl, ev, sem, tablas, ver, otros=None):
         chk("Las entradas producidas dentro de la cadena vienen de actividades Succeeded", "CUMPLE" if not malas else "NO_CUMPLE",
             f"producidas por una actividad no exitosa: {malas}" if malas else
             f"{sum(1 for e in delta_ent if isinstance(e.get('producida_por'), dict))} de {len(delta_ent)} entradas producidas dentro de la cadena")
-        camb = [e["entrada"] for e in delta_ent if e.get("cambio_despues_de_iniciar_la_corrida")]
+    camb = [e["entrada"] for e in delta_ent if e.get("cambio_despues_de_iniciar_la_corrida")] + [
+        f"{e['entrada']} ({e['archivos_escritos_despues_de_la_corrida']} archivo(s) hasta {e.get('ultima_escritura_utc')})"
+        for e in ent if e.get("tipo") == "carpeta de archivos" and e.get("archivos_escritos_despues_de_la_corrida")]
+    if ent and any(e.get("tipo") in ("tabla Delta", "carpeta de archivos") for e in ent):
         chk("Ninguna entrada cambio despues de iniciar la corrida", "CUMPLE" if not camb else "NO_CUMPLE",
-            f"cambiaron despues: {camb} (la salida ya no refleja la entrada vigente)" if camb else "ninguna entrada tiene commits posteriores")
+            f"cambiaron despues: {camb} (la salida ya no refleja la entrada vigente)" if camb else
+            "ninguna entrada (tabla o carpeta) fue escrita despues de iniciar la corrida")
     sd = [s for s in sal if s.get("tabla")]
     if sd:
         no = [s["tabla"] for s in sd if not s.get("escrita_por_la_corrida_validada")]
@@ -535,7 +667,9 @@ def flujo(enc, f, etl, ev, sem, tablas, ver, otros=None):
     mis_salidas = {_tabla_corta(s.get("tabla")) for s in sd}
     abajo = sorted({o_["flujo"] for o_ in (otros or []) if o_["flujo"] != n and mis_salidas & {_tabla_corta(x) for x in o_["entradas"]}}
                    | set(dep_val.get("downstream") or []))
-    seccion = {"roles": ({"origen": "actividad Copy del pipeline (origen y destino)", "corregidos_respecto_al_validador": False}
+    seccion = {"roles": ({"origen": "actividad Copy del pipeline (origen y destino)", "corregidos_respecto_al_validador": False,
+                          "actividades_copy_fuera_del_alcance": [{"actividad": a_["actividad"], "estado": a_.get("estado"),
+                                                                 **({"error": a_["error"]} if a_.get("error") else {})} for a_ in fuera]}
                          if r.get("roles_desde") == "actividad_copy" else
                          {"origen": "codigo del flujo (extract.py / load.py) + _delta_log", "zip": inv.get("zip"), "capa": inv.get("capa"),
                           "corregidos_respecto_al_validador": bool(corr.get("invertido")),
@@ -597,21 +731,37 @@ def flujo(enc, f, etl, ev, sem, tablas, ver, otros=None):
                     "como_se_resolvieron_los_avisos": [
                         {"tabla": t["clave"], "estado_final": t["estado"], "resumen": t["resumen"]} for t in tabs]}
 
+    # ---- decisiones de una persona sobre comprobaciones que no cumplen (causa medida, igual que una diferencia)
+    for c in comp:
+        d_ = (decisiones or {}).get(c["comprobacion"])
+        if d_ and c["resultado"] == "NO_CUMPLE":
+            c["decision"] = d_
+            if d_.get("decision") == "JUSTIFICADA":
+                c["resultado"] = "JUSTIFICADO"
+    # ---- semaforo rojo levantado por una persona (los motivos quedan a la vista, con la causa)
+    lev = (decisiones or {}).get("semaforo ROJO")
+    rojo = (sem or {}).get("estado") == "ROJO"
+    if semaforo and rojo and lev:
+        semaforo["levantado"] = lev
+    rojo_vigente = rojo and not (lev and lev.get("decision") == "JUSTIFICADA")
     # ---- estado
     ej = cv.get("estado") or r.get("estado_corrida")
     est = [t["estado"] for t in tabs]
     fallan = [c["comprobacion"] for c in comp if c["resultado"] == "NO_CUMPLE"]
+    justificadas = [c["comprobacion"] for c in comp if c["resultado"] == "JUSTIFICADO"]
+    alcance_ok = f["grupo"] == "ingesta" and any(c["comprobacion"].startswith("Las actividades que cargan") and c["resultado"] == "CUMPLE" for c in comp)
     if f["grupo"] == "orquestador":
         estado = "APROBADO" if ej == "Completed" else ("DEVUELTO" if ej in ("Failed", "Cancelled") else "EN_CURSO")
-    elif (sem or {}).get("estado") == "ROJO" or ej in ("Failed", "Cancelled") or (ver or {}).get("decision") == "CORREGIR" or "DEVUELTO" in est:
-        estado = "DEVUELTO"
+    elif (rojo_vigente or (ej in ("Failed", "Cancelled") and not alcance_ok)
+          or (ver or {}).get("decision") == "CORREGIR" or "DEVUELTO" in est):
+        estado = "DEVUELTO"     # una corrida fallida devuelve el flujo, salvo que lo fallido este fuera del alcance: eso lo decide una persona
     elif not est or any(e in (None, "EN_CURSO") for e in est):
         estado = "EN_CURSO"
     elif "EN_REVISION" in est or fallan or any(c["resultado"] == "NO_EVALUADO" for c in comp):
         estado = "EN_REVISION"
     elif "APROBADO_CON_VERIFICACION" in est:
         estado = "APROBADO_CON_VERIFICACION"
-    elif "APROBADO_CON_JUSTIFICACION" in est:
+    elif "APROBADO_CON_JUSTIFICACION" in est or justificadas or (rojo and not rojo_vigente):
         estado = "APROBADO_CON_JUSTIFICACION"
     else:
         estado = "APROBADO"
@@ -650,6 +800,8 @@ def faltantes_flujo(doc):
     if not sec.get("salidas"):
         f.append("salidas")
     for x in sec.get("entradas") or []:
+        if "Copy" in str(x.get("tipo")) and x.get("filas_leidas") is None:
+            f.append(f"entrada {x['entrada']}: la actividad Copy no reporta filas leidas")
         if x.get("tipo") == "tabla Delta" and x.get("version_leida") is None:
             f.append(f"entrada {x['entrada']}: sin version leida")
         if not x.get("tipo"):

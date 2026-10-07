@@ -2,6 +2,30 @@
 
 Cada mejora se comparte con el equipo (commit + push al repositorio). `SIN_COMPARTIR` = falta hacerlo.
 
+## M-008 · 2026-10-07 · SIN_COMPARTIR
+
+**Qué:** Cotejo de tabla: cada control lleva «medicion» con lo que midio cada lado completo (VG: columnas, tipos, longitudes; CP-02 esquema; CP-01/ID-01 conteo; CP-03 SHA-256 y huella por columna; CP-04 las 10 filas; CP-05 commit; ID-02 duplicados; ID-03/ID-04 nulos por columna; ID-05 distintos y candidatas; ID-06 distintos y constantes), como ya hacia VG-09 con los dos contratos. Semaforo: para un flujo validado sin ejecutar (orquestador) usa la corrida medida en la evidencia
+
+**Por qué:** QA pidio el 2026-10-07 ver en cada control las mediciones obtenidas en Stratio y en Fabric, no solo la explicacion; el semaforo marcaba ROJO por corrida None en flujos del orquestador
+
+**Archivos:** `pc/reportes/formato2.py`, `pc/__main__.py`, `.claude/agents/cotejador.md` · por Jhonattan-LT
+
+## M-007 · 2026-10-07 · SIN_COMPARTIR
+
+**Qué:** Cotejo de flujo: (1) un flujo que corre dentro de un orquestador se valida con la validacion estatica del validador posterior a la corrida mas la evidencia medida en Fabric; (2) la comprobacion «ninguna entrada cambio despues» incluye carpetas de Files; (3) ingestas por Copy: las entradas se documentan con las filas leidas/copiadas de cada actividad, las comprobaciones se acotan a las actividades que cargan las tablas del trabajo y una falla fuera del alcance deja el flujo en revision en vez de devuelto; (4) decisiones de una persona sobre comprobaciones del flujo (v4.decidir_comprobacion)
+
+**Por qué:** El validador en modo sin ejecutar no cita la corrida (comprobado el 2026-10-07); los insumos bronze de agrupadoras cambiaron despues de la corrida validada sin que el reporte lo marcara; ingesta-novar tiene 30 Copy y falla en una fuera del alcance. QA autorizo aplicar el criterio necesario el 2026-10-07
+
+**Archivos:** `pc/reportes/formato2.py`, `pc/reportes/v4.py` · por Jhonattan-LT
+
+## M-006 · 2026-10-07 · SIN_COMPARTIR
+
+**Qué:** Cache de resolucion DNS por proceso (pc/acceso/dns.py, activado en pc/__init__.py): cada nombre se resuelve una vez cada 10 min
+
+**Por qué:** Con la VPN activa los DNS de la VPN no responden nombres publicos de Fabric/OneLake: 9-16 s por llamada HTTP y espera sin limite si la VPN cae (causa del cuelgue de pc etl evidencia del 2026-10-06, localizado en socket.getaddrinfo). Medido: listar OneLake pasa de ~9 s a ~0,5 s por llamada
+
+**Archivos:** `pc/acceso/dns.py`, `pc/__init__.py` · por Jhonattan-LT
+
 ## M-005 · 2026-10-07 · SIN_COMPARTIR
 
 **Qué:** Formato 2 de los reportes v4 (cotejo de tabla: encabezado, controles resumen/detalle, justificaciones, metricas; cotejo de flujo: ejecucion, analitica/ingesta, orquestacion, comprobaciones, semaforo), evidencia del flujo medida en Fabric (pc etl evidencia), compuerta de completitud (pc v4 incompletos; publicar se niega con faltantes), plan de ejecucion del ETL (pc etl ejecutar --validar --dependencias|--encadenados|--orquestador) e instrucciones de 7 agentes
