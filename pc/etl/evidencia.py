@@ -155,7 +155,7 @@ def medir(trabajo, flujo, dias=3):
     # ---- salidas: que version se midio y que corrida la escribio
     salidas, entradas = [], []
     rutas_sal = [x["ruta"] for x in corr.get("salidas") or [] if _es_delta(x.get("ruta"))]
-    rutas_ent = [x["ruta"] for x in corr.get("entradas") or []]
+    rutas_ent = [x["ruta"] for x in corr.get("entradas") or []] or list((etl.get("resumen") or {}).get("entradas") or [])
     medidas = {}
     for o in f["objetos"]:
         m = L.leer(trabajo, f"v4/mediciones/FABRIC/{o['clave']}.json") or {}

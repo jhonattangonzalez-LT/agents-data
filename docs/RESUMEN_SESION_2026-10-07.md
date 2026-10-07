@@ -70,3 +70,20 @@ Todo lo de la sesión (propuestas de los cotejadores, roles, definiciones de pip
   (277 de moves_agrup verificado; 57.783 y 58.060 sin verificar).
 - Memoria: `pc comparar` abre DuckDB con 8 GB; con cuatro cotejadores a la vez una consulta sobre `origenes` murió (exit 137).
   Tablas grandes: una a la vez. Scripts de solo lectura en `trabajos/_sesion_2026-10-07/` (`grande.py <clave>`, `x.py`, `cot/`).
+
+## Avance 2026-10-07 03:30–11:20 UTC (sesión del coordinador, retomada) · para retomar tras reiniciar
+Nada queda corriendo. Todo el estado está en disco.
+- **Ejecutado en Fabric (23/23)**: ingesta-novar (Failed por saenlinea_691, justificado por QA), TAB_CTRL y DET_APO (ciclo v3, Completed),
+  `orq_agrupadoras` 06:22–08:17 UTC (Failed en la actividad 21 calculo_trab_ben_cuota_monetaria, posterior a los flujos del lote),
+  calculo_pila, subsidio_vivienda, formulario comercial, homologaciones, adr2 y los 3 históricos SSF (09:39–10:14 UTC).
+- **Medido nivel 2 los dos lados**: las 41 tablas. Cotejadas todas.
+- **Cerrado**: ingesta-novar (4 tablas, APROBADO_CON_JUSTIFICACION, publicado en OneLake sin el bloque `medicion`: republicar al final).
+  Históricos SSF: diferencias justificadas por cortes registradas (decisión QA 07-10). Pendientes de decisión QA en SSF:
+  (1) gold_ssf_empresas_historico 9 columnas texto→número en la Delta intermedia, sin pérdida; (2) gold_ssf_afiliados_historico 11 columnas igual;
+  (3) pacs SECT_PRIMARIO solo en Stratio desde el corte 2026-09 (verificar con Comfandi); (4) pacs códigos étnicos constantes en Fabric en 2026-08/09
+  (defecto FL-0344 conocido, en revisión).
+- **Pendiente**: analizar y registrar las diferencias de agrupadoras (L11-complemento y 6 de L11-resto) y de los flujos sueltos; presentar a QA las que
+  no se justifiquen; `pc v4 incompletos` = COMPLETO; publicar; Links_Lote11; adaptar el generador del acta al formato 2; acta lote 11.
+- Estado por tabla: `trabajos/_sesion_2026-10-07/estado_tablas.md`. Cuadre SSF por corte: `ssf_cortes.json`. Scripts: `difs_novar.py`, `difs_ssf.py`, `ssf_cortes.py`.
+- Destinos_norm (Stratio vacía hoy) y vacaciones_empresas (Stratio vacía) se cotejan contra copias locales declaradas en `stratio.referencia` del lote.json.
+- Corregido hoy: semáforo con corrida de la evidencia (orquestador); id de diferencia = siguiente número libre (v4.registrar_diferencia).

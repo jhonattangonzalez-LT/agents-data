@@ -316,6 +316,32 @@ def _version_anterior(trabajo, flujo, rel):
     return {"version": ea.get("version"), "estado_que_tenia": ea.get("estado"), "motivo_del_nuevo_ciclo": ciclo.get("motivo")}
 
 
+def _cp05_evidencia(trabajo, f, o):
+    """CP-05 desde la evidencia del flujo (pc etl evidencia): la salida tiene commit, archivos o copia dentro de la corrida validada."""
+    ev = L.leer(trabajo, f"etl/evidencia/{f['nombre_fabric']}.json") or {}
+    cv = ev.get("corrida_validada") or {}
+    src = o.get("fabric") or {}
+    ruta = (src.get("ruta") or "").lower()
+    if not cv or not ruta:
+        return None
+    ventana = f"corrida {cv.get('run_id')} {cv.get('inicio_utc')}–{cv.get('fin_utc')}"
+    for s in ev.get("salidas") or []:
+        if (s.get("tabla") or "").lower() == ruta and s.get("commits_en_la_corrida_validada"):
+            c = s["commits_en_la_corrida_validada"][-1]
+            return {"estado": "OK", "detalle": f"commit v{c['version']} del {c['utc']} ({c.get('operacion')}, {c.get('filas_escritas')} filas) dentro de la {ventana}",
+                    "evidencia": {"commits_en_la_corrida": s["commits_en_la_corrida_validada"]}, "medido_en": "evidencia del flujo (_delta_log)"}
+        if (s.get("destino") or "").lower() == ruta and s.get("archivos_escritos_en_la_corrida"):
+            return {"estado": "OK", "detalle": f"{s['archivos_escritos_en_la_corrida']} archivo(s) escritos dentro de la {ventana}",
+                    "evidencia": {k: s.get(k) for k in ("archivos_escritos_en_la_corrida", "particiones_escritas_en_la_corrida", "ultima_escritura_utc")},
+                    "medido_en": "evidencia del flujo (listado de OneLake)"}
+    if src.get("tipo") == "pg":
+        cop = [a for a in ev.get("actividades") or [] if a.get("tipo") == "Copy"]
+        if cop and all(a.get("estado") == "Succeeded" for a in cop):
+            return {"estado": "OK", "detalle": "; ".join(f"{a['actividad']} copio {a.get('filas_copiadas')} filas ({a.get('fin_utc')})" for a in cop) + f" dentro de la {ventana}",
+                    "evidencia": {"copias": cop}, "medido_en": "evidencia del flujo (actividad Copy)"}
+    return None
+
+
 def construir_cotejo(trabajo, f, o):
     """Cotejo de tabla, formato 2 (pc/reportes/formato2.py): encabezado · controles · justificaciones · metricas."""
     from . import formato2 as F2
@@ -333,7 +359,8 @@ def construir_cotejo(trabajo, f, o):
     if not ms or not mf:
         enc["esperando"] = "STRATIO" if not ms else "FABRIC"
     difs = ((L.leer(trabajo, "v4/diferencias.json", {}) or {}).get(k)) or []
-    doc = F2.cotejo(enc, f, o, ms, mf, cr, cc, difs, _vg09(ms, mf), _version_anterior(trabajo, f["nombre_fabric"], rel))
+    doc = F2.cotejo(enc, f, o, ms, mf, cr, cc, difs, _vg09(ms, mf), _version_anterior(trabajo, f["nombre_fabric"], rel),
+                    cp05=_cp05_evidencia(trabajo, f, o))
     doc["encabezado"]["faltantes"] = F2.faltantes_cotejo(doc)
     L.guardar(trabajo, rel, doc)
     return doc
@@ -352,7 +379,8 @@ def registrar_diferencia(trabajo, clave, control, tipo, descripcion, filas_afect
         raise ValueError("maximo 5 ejemplos por diferencia")
     d = L.leer(trabajo, "v4/diferencias.json", {}) or {}
     lst = d.setdefault(clave, [])
-    id_dif = id_dif or f"D{len(lst) + 1}"
+    # siguiente numero libre (no el largo de la lista: si se borro una entrada, el largo reutilizaria un id existente)
+    id_dif = id_dif or f"D{max([int(x['id'][1:]) for x in lst if str(x.get('id', '')).startswith('D') and x['id'][1:].isdigit()] or [0]) + 1}"
     previa = next((x for x in lst if x["id"] == id_dif), None) or {}
     nueva = {"id": id_dif, "control": control, "nivel": NIVEL[control], "tipo": tipo or previa.get("tipo"),
              "columna": columna or previa.get("columna"), "descripcion": descripcion or previa.get("descripcion"),

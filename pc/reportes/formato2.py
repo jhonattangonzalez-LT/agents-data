@@ -293,7 +293,7 @@ def _palabra(base, dd, avisos):
     return "advertencia" if avisos else "ok"
 
 
-def cotejo(enc, f, o, ms, mf, cr, cc, difs, vg09, anterior=None, origen_decision=None):
+def cotejo(enc, f, o, ms, mf, cr, cc, difs, vg09, anterior=None, origen_decision=None, cp05=None):
     """Arma el cotejo de tabla (formato 2). `enc` trae lo tecnico (id, trabajo, generado_utc, mediciones)."""
     nivel = 2 if cc else (1 if cr else -1)
     grupo = f["grupo"]
@@ -304,6 +304,8 @@ def cotejo(enc, f, o, ms, mf, cr, cc, difs, vg09, anterior=None, origen_decision
         s, fa = _lado(ms, cod), _lado(mf, cod)
         if cod == "CP-05":
             s = {"estado": "NO_APLICA", "detalle": "la corrida citada es la de Fabric; Stratio no se re-ejecuta en QA"}
+            if cp05 and fa.get("estado") in (None, "NO_EVALUADO", "PENDIENTE", "NO_MEDIDO"):
+                fa = cp05          # el rapido corrio sin ventana (flujo de orquestador): vale la evidencia medida de la corrida
         if cod == "VG-09":
             s = {"estado": "MEDIDO" if (vg09 or {}).get("contrato_stratio") else "NO_MEDIDO", "valor": f"contrato de {len((vg09 or {}).get('contrato_stratio') or [])} columnas"}
             fa = {"estado": "MEDIDO" if (vg09 or {}).get("contrato_fabric") else "NO_MEDIDO", "valor": f"contrato de {len((vg09 or {}).get('contrato_fabric') or [])} columnas"}
@@ -640,7 +642,19 @@ def flujo(enc, f, etl, ev, sem, tablas, ver, otros=None, decisiones=None):
         chk("Ninguna entrada cambio despues de iniciar la corrida", "CUMPLE" if not camb else "NO_CUMPLE",
             f"cambiaron despues: {camb} (la salida ya no refleja la entrada vigente)" if camb else
             "ninguna entrada (tabla o carpeta) fue escrita despues de iniciar la corrida")
-    sd = [s for s in sal if s.get("tabla")]
+    # salidas Postgres: no tienen _delta_log; las escribe una actividad Copy de la corrida (se prueba con sus filas copiadas)
+    spg = [s for s in sal if s.get("tabla") and s.get("version_vigente") is None]
+    if spg:
+        copias = [a_ for a_ in (ev.get("actividades") or []) if a_.get("tipo") == "Copy"]
+        ok_ = [a_ for a_ in copias if a_.get("estado") == "Succeeded" and (a_.get("filas_copiadas") or 0) > 0]
+        for s_ in spg:
+            s_["tipo"] = "tabla Postgres (sin _delta_log)"
+            s_["escrita_por"] = [{"actividad": a_["actividad"], "estado": a_["estado"], "filas_copiadas": a_.get("filas_copiadas"),
+                                  "inicio_utc": a_.get("inicio_utc"), "fin_utc": a_.get("fin_utc")} for a_ in copias]
+            s_.pop("nota", None)
+        chk("Cada salida Postgres la escribio una actividad Copy exitosa de la corrida validada", "CUMPLE" if ok_ and len(ok_) == len(copias) else "NO_CUMPLE",
+            "; ".join(f"{a_['actividad']} {a_['estado']} {a_.get('filas_copiadas')} filas copiadas" for a_ in copias) or "la corrida no tiene actividad Copy")
+    sd = [s for s in sal if s.get("tabla") and s.get("version_vigente") is not None]
     if sd:
         no = [s["tabla"] for s in sd if not s.get("escrita_por_la_corrida_validada")]
         chk("Cada salida se escribio dentro de la corrida validada", "CUMPLE" if not no else "NO_CUMPLE",
