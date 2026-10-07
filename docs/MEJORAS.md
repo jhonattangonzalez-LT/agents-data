@@ -2,6 +2,38 @@
 
 Cada mejora se comparte con el equipo (commit + push al repositorio). `SIN_COMPARTIR` = falta hacerlo.
 
+## M-005 · 2026-10-07 · SIN_COMPARTIR
+
+**Qué:** Formato 2 de los reportes v4 (cotejo de tabla: encabezado, controles resumen/detalle, justificaciones, metricas; cotejo de flujo: ejecucion, analitica/ingesta, orquestacion, comprobaciones, semaforo), evidencia del flujo medida en Fabric (pc etl evidencia), compuerta de completitud (pc v4 incompletos; publicar se niega con faltantes), plan de ejecucion del ETL (pc etl ejecutar --validar --dependencias|--encadenados|--orquestador) e instrucciones de 7 agentes
+
+**Por qué:** Los reportes decian CUMPLE sin mostrar que se midio en cada lado, un control podia cumplir con alerta en los dos lados sin registro, el cotejo de flujo citaba una corrida distinta de la que escribio el dato y no detallaba dependencias; QA pidio el formato y las reglas el 2026-10-06 (comprobacion fallida = EN_REVISION; toda diferencia registrada con ejemplo y explicacion)
+
+**Archivos:** `pc/reportes/formato2.py`, `pc/reportes/v4.py`, `pc/etl/evidencia.py`, `pc/__main__.py`, `.claude/agents/etl-validador.md`, `.claude/agents/cotejador.md`, `.claude/agents/publicador-reportes.md`, `.claude/agents/semaforo.md`, `.claude/agents/medidor-completo.md`, `.claude/agents/medidor-rapido-fabric.md`, `.claude/agents/medidor-rapido-stratio.md` · por Jhonattan-LT
+
+## M-004 · 2026-10-06 · SIN_COMPARTIR
+
+**Qué:** La descarga Delta de Fabric limpia de la cache los parquet de versiones anteriores
+
+**Por qué:** Al re-descargar una tabla reescrita (tabla_agrupadoras v7->v8) quedaban los parquet viejos en la carpeta y el nivel 2 medio 724+731=1.455 filas en vez de 731.
+
+**Archivos:** `pc/medir/completo.py` · por Jhonattan-LT
+
+## M-003 · 2026-10-06 · SIN_COMPARTIR
+
+**Qué:** Carpeta de desborde de DuckDB por conexion (cache/.spill/<pid>_<hilo>)
+
+**Por qué:** Con la medicion del nivel 2 y la mesa de analisis del cotejador corriendo a la vez, ambos DuckDB escribian los mismos duckdb_temp_storage_*.tmp y la medicion de tablas grandes fallaba con IO Error (moves, 124 M filas). Luego tambien fallo dentro de un mismo proceso: pc medir mide 2 objetos en hilos con conexiones distintas que compartian la carpeta por pid; se paso a pid+hilo.
+
+**Archivos:** `pc/medir/completo.py` · por Jhonattan-LT
+
+## M-002 · 2026-10-06 · SIN_COMPARTIR
+
+**Qué:** Descarga HDFS por particion Hive exacta (objeto stratio.particion, p. ej. periodo_foto=202509)
+
+**Por qué:** Las tablas fotos de Fabric guardan UNA foto por corrida; en Stratio hay 48 particiones (~36 GB). Para cotejar la misma foto sin bajar todo, se baja solo esa particion y se conserva la carpeta Hive para que la columna de particion siga en el dato.
+
+**Archivos:** `pc/acceso/rocket.py`, `pc/medir/completo.py`, `pc/__main__.py` · por Jhonattan-LT
+
 ## M-001 · 2026-10-05 · COMPARTIDA
 
 **Qué:** Versión inicial de la pipeline QA v2: coordinador, 11 agentes, reportes_v4, ETL v10, Stratio probado, acta v4

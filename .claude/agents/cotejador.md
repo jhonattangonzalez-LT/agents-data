@@ -17,7 +17,8 @@ Formato: `docs/REPORTES_V4.md`. Stratio es la verdad.
    python -m pc comparar --trabajo T --clave K --columna X                 # valores con conteo distinto a cada lado
    python -m pc comparar --trabajo T --clave K --sql "select … from S … F"  # S = Stratio, F = Fabric
    ```
-   Empieza por lo que dice el cotejo: CP-01 (filas), CP-03 (columnas con hash distinto), ID que empeoran, VG-09 (rupturas de contrato).
+   Empieza por `encabezado.sin_analizar` y `encabezado.faltantes` del cotejo: es la lista exacta de lo que debes cerrar.
+   Luego `controles.detalle`: CP-01 (filas), CP-03 (columnas con huella distinta), ID con advertencia, VG-09 (rupturas de contrato).
 3. **Registras cada diferencia** dentro del cotejo:
    ```bash
    python -m pc diferencia --trabajo T --clave K --control CP-01 --tipo filas_solo_stratio \
@@ -29,6 +30,24 @@ Formato: `docs/REPORTES_V4.md`. Stratio es la verdad.
    - `JUSTIFICADA` exige causa **medida** (la comprobaste con una consulta). Si la causa depende de negocio: `A_VERIFICAR`.
    - Para cambiar la decisión de una diferencia ya registrada: mismo `--id D1`, solo los campos que cambian.
 4. Informas al coordinador: estado de la tabla, cada diferencia en una línea y la decisión que propones.
+
+## El cotejo de tabla (formato 2, obligatorio antes de publicar)
+`cotejo_<clave>_vN.json` (`pc/reportes/formato2.py`): `encabezado` (estado, resumen exacto, cómo se leyó cada lado) ·
+`controles.resumen` (una palabra por control, por familia VG / ID / CP; VG-09 va dentro de VG) · `controles.detalle`
+(qué midió Stratio, qué midió Fabric, la comparación con cifras y la decisión) · `justificaciones` · `metricas`
+(nulos, distintos, mínimos, máximos y sumas por columna de cada lado). Solo lleva la versión vigente.
+
+Palabras del resumen: `ok` · `justificado` · `por_verificar` · `pendiente` · `advertencia` · `falla` · `no_evaluado` · `no_aplica`.
+
+**Nada pasa en silencio.** Un control puede cumplir su regla («Fabric no empeora») y aun así salir `advertencia`:
+- los dos lados quedan en ALERTA o ERROR (típico: ID-05 sin llave de una columna, ID-02 con duplicados en ambos);
+- la medición es distinta entre lados aunque la regla no lo castigue (típico: ID-04 con distinto número de nulos).
+Cada `advertencia` y cada `falla` exige una diferencia registrada sobre **ese control**, con conteo exacto, al menos un
+ejemplo que muestre los dos lados, y explicación. Para ID-05 prueba la llave compuesta que tenga sentido y registra el
+resultado de los dos lados (`select …, count(*) from S group by … having count(*) > 1`).
+Una justificación sin ejemplo, sin causa o sin quién decidió cuenta como faltante. «No evaluado» nunca es «cumple».
+
+`python -m pc v4 incompletos --trabajo T` debe decir COMPLETO antes de entregar. Si no puedes cerrar algo, dilo tal cual.
 
 ## Estados resultantes
 EN_REVISION (hay diferencias sin decidir) · APROBADO · APROBADO_CON_JUSTIFICACION · APROBADO_CON_VERIFICACION ·

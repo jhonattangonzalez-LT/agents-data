@@ -28,3 +28,8 @@ Escribe `lotes/N/rapido/FABRIC/<clave>.json` y, si ya existe el de Stratio, el c
 - deletion vectors (nulos aproximados), conteo de pies distinto del `numRecords` del log,
 - CP-05 en ERROR: la corrida citada no escribió la tabla → posible rol invertido (avisar al etl-validador v10).
 CSV en Files/: sin pie, requiere descarga (dilo, no lo inventes).
+
+## Cada control lleva su evidencia
+El cotejo (formato 2) muestra, por control, qué midió este lado: `estado`, `valor`, `detalle` y `evidencia`
+(conteo, lista de columnas, huella, duplicados). Un control con solo el estado no sirve. Si no pudiste medir uno,
+déjalo `NO_EVALUADO` con el motivo: el cotejo lo marcará como faltante y no se publicará hasta medirlo.

@@ -114,10 +114,105 @@ def c_roles(a):
 
 
 # ----------------------------------------------------------------- etl
+def _etl_validar(lote, flujos, ejecutar, V):
+    """Lanza el validador sobre `flujos`, espera y deja registrado el lanzamiento. Devuelve el estado del notebook."""
+    lz = V.lanzar(flujos, ejecutar=ejecutar, corrida_qa=f"lote{lote}")
+    hist = L.leer(lote, "etl/lanzamientos.json", []) or []
+    hist.append(lz)
+    L.guardar(lote, "etl/lanzamientos.json", hist)
+    L.bitacora(lote, "etl-validador", "lanzar_validador", {"run": lz["run"], "flujos": flujos, "ejecutar": ejecutar}, estado="INICIO")
+    r = V.seguir(lz, avisar=lambda e, s: print(f"{datetime.datetime.now():%H:%M:%S} validador {flujos} {e} {s}s", flush=True))
+    lz.update(estado=r.get("status"), fin_utc=r.get("endTimeUtc"), fallo=r.get("failureReason"))
+    L.guardar(lote, "etl/lanzamientos.json", hist)
+    return r.get("status")
+
+
+def _etl_ejecutar(a, V):
+    """Plan de ejecucion del ETL. Nada corre en paralelo: cada paso espera al anterior y se detiene si uno falla.
+      --validar x --dependencias a,b     ejecuta a, luego b (sin validarlos) y despues ejecuta y valida x
+      --validar y,z,m --encadenados      y, z y m son dependencias entre si: ejecuta y valida cada uno, en ese orden
+      --validar a,b --orquestador orq    ejecuta el orquestador UNA vez y valida a y b sin re-ejecutarlos"""
+    validar = [x for x in (a.validar or "").split(",") if x]
+    if not validar:
+        raise SystemExit("--validar es obligatorio")
+    modos = sum(bool(x) for x in (a.dependencias, a.encadenados, a.orquestador))
+    if modos > 1:
+        raise SystemExit("elige uno: --dependencias | --encadenados | --orquestador")
+    faltan = [x for x in validar if not L.flujo(a.lote, x)]
+    if faltan:
+        raise SystemExit(f"no estan en el trabajo: {faltan}")
+    plan = {"validar": validar, "modo": "orquestador" if a.orquestador else "encadenados" if a.encadenados else
+            "dependencias" if a.dependencias else "directo", "pasos": []}
+
+    def paso(tipo, nombre, **extra):
+        plan["pasos"].append(dict({"tipo": tipo, "flujo": nombre, "utc": datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds")}, **extra))
+        L.guardar(a.lote, "etl/plan_ejecucion.json", plan)
+
+    def correr(nombre, tolerar=False):
+        r = V.lanzar_flujo(nombre)
+        L.bitacora(a.lote, "etl-validador", "ejecutar_productor", {"flujo": nombre, "run": r.get("run"), "estado": r.get("estado"),
+                   "inicio_utc": r.get("inicio_utc"), "fin_utc": r.get("fin_utc"), "para": validar},
+                   estado="OK" if r.get("estado") == "Completed" else "ERROR", flujo=validar[0])
+        paso("ejecutar_sin_validar", nombre, run=r.get("run"), estado=r.get("estado"), inicio_utc=r.get("inicio_utc"), fin_utc=r.get("fin_utc"))
+        print(f"{nombre}: {r.get('estado')}", flush=True)
+        if r.get("estado") != "Completed" and not tolerar:
+            raise SystemExit(f"se detiene el plan: {nombre} termino {r.get('estado')} · {str(r.get('error'))[:300]}")
+
+    if a.orquestador:
+        # el orquestador ejecuta los flujos; no se re-ejecutan. Si falla, igual se valida: la comprobacion
+        # «la falla del orquestador es posterior a este flujo» decide flujo por flujo (pc etl evidencia).
+        correr(a.orquestador, tolerar=True)
+        est = _etl_validar(a.lote, validar, False, V)
+        paso("validar_sin_ejecutar", ",".join(validar), estado=est, orquestador=a.orquestador)
+    elif a.encadenados:
+        for x in validar:                                   # uno por uno, en el orden dado
+            est = _etl_validar(a.lote, [x], True, V)
+            paso("ejecutar_y_validar", x, estado=est)
+            if est != "Completed":
+                raise SystemExit(f"se detiene el plan: el validador de {x} termino {est}")
+    else:
+        for d in [x for x in (a.dependencias or "").split(",") if x and x not in validar]:
+            correr(d)
+        for x in validar:
+            est = _etl_validar(a.lote, [x], True, V)
+            paso("ejecutar_y_validar", x, estado=est)
+            if est != "Completed":
+                raise SystemExit(f"se detiene el plan: el validador de {x} termino {est}")
+    d_ = L.leer(a.lote, "lote.json")
+    for f_ in d_["flujos"]:
+        if f_["nombre_fabric"] in validar:
+            if a.orquestador:
+                f_["orquestador"] = a.orquestador
+            if a.dependencias:
+                f_["dependencias"] = [x for x in a.dependencias.split(",") if x]
+    L.guardar(a.lote, "lote.json", d_)
+    print("plan terminado; sigue: pc etl recoger y pc etl evidencia", flush=True)
+
+
 def c_etl(a):
     from .etl import validador as V
     if a.accion == "desplegar":
         _p(V.desplegar())
+        return
+    if a.accion == "ejecutar":
+        _etl_ejecutar(a, V)
+        a.accion = "recoger"
+        c_etl(a)
+        a.accion, a.flujos = "evidencia", a.validar
+        c_etl(a)
+        return
+    if a.accion == "evidencia":
+        from .etl import evidencia as E
+        d = L.leer(a.lote, "lote.json")
+        for n in (a.flujos.split(",") if a.flujos else [f["nombre_fabric"] for f in d["flujos"]]):
+            try:
+                e = E.medir(a.lote, n)
+                v = e.get("corrida_validada") or {}
+                print(f"{n}: corrida {v.get('inicio_utc')} {v.get('estado')} · {len(e['entradas'])} entrada(s) · {len(e['salidas'])} salida(s)", flush=True)
+            except Exception as x:
+                L.bitacora(a.lote, "etl-validador", "medir_evidencia", estado="ERROR", flujo=n, error=f"{type(x).__name__}: {str(x)[:200]}")
+                print(f"{n}: ERROR {type(x).__name__}: {str(x)[:200]}", flush=True)
+        _v4(a.lote)
         return
     if a.accion == "lanzar":
         d = L.leer(a.lote, "lote.json")
@@ -345,7 +440,7 @@ def c_descargar(a):
                           "files": lambda: C.bajar_files_fabric(a.lote, k, src["ruta"]),
                           "pg": lambda: C.bajar_pg_fabric(a.lote, k, src["ruta"], _where(o))}[src["tipo"]]
                 else:
-                    fn = {"hdfs": lambda: C.bajar_hdfs_stratio(a.lote, k, src["ruta"], src.get("desde")),
+                    fn = {"hdfs": lambda: C.bajar_hdfs_stratio(a.lote, k, src["ruta"], src.get("desde"), particion=src.get("particion")),
                           "pg": lambda: C.bajar_pg_stratio(a.lote, k, src["ruta"], _where(o)),
                           "sftp": lambda: C.bajar_sftp_stratio(a.lote, k, src["ruta"], src.get("patron"))}[src["tipo"]]
                 L.bitacora(a.lote, "gestor-descargas", "descargar", {"lado": lado, "origen": src.get("ruta")}, estado="INICIO",
@@ -497,8 +592,19 @@ def c_v4(a):
     from .reportes import v4
     if a.accion == "construir":
         _p(v4.construir(a.lote))
+    elif a.accion == "incompletos":
+        v4.construir(a.lote)
+        falta = v4.incompletos(a.lote)
+        for k, v in falta.items():
+            print(f"{k}:\n  - " + "\n  - ".join(v))
+        print("COMPLETO: se puede publicar" if not falta else f"INCOMPLETO: {len(falta)} archivo(s); no se publica hasta completarlos")
     elif a.accion == "publicar":
         v4.construir(a.lote)
+        falta = v4.incompletos(a.lote)
+        if falta:
+            for k, v in falta.items():
+                print(f"{k}:\n  - " + "\n  - ".join(v))
+            raise SystemExit(f"NO SE PUBLICA: {len(falta)} archivo(s) con informacion incompleta (pc v4 incompletos --trabajo {a.lote})")
         for h in v4.publicar(a.lote, bucket=not a.sin_bucket):
             print(f"{'OK ' if h['head_ok'] else 'MAL'} {h['tipo']:16s} v{h.get('version')} {h['ruta']}"
                   + ("  + bucket" if h.get("bucket") else "") + (f"  bucket ERROR {h['bucket_error']}" if h.get("bucket_error") else ""))
@@ -569,7 +675,8 @@ def main(argv=None):
     x.add_argument("accion", choices=["disponibles", "armar"]); x.add_argument("--lote"); x.add_argument("--responsable")
     x.add_argument("--flujos"); x.set_defaults(fn=c_lote_final)
     x = s.add_parser("roles"); x.add_argument("--flujo", required=True); x.add_argument("--veredicto"); x.set_defaults(fn=c_roles)
-    x = s.add_parser("etl"); x.add_argument("accion", choices=["desplegar", "lanzar", "recoger"]); x.add_argument("--trabajo", "--lote", dest="lote")
+    x = s.add_parser("etl"); x.add_argument("accion", choices=["desplegar", "lanzar", "recoger", "ejecutar", "evidencia"]); x.add_argument("--trabajo", "--lote", dest="lote")
+    x.add_argument("--validar"); x.add_argument("--dependencias"); x.add_argument("--encadenados", action="store_true"); x.add_argument("--orquestador")
     x.add_argument("--flujos"); x.add_argument("--plan", action="store_true", help="EJECUTAR=False: solo prevuelo")
     x.add_argument("--esperar", action="store_true"); x.set_defaults(fn=c_etl)
     for nombre, fn in (("rapido", c_rapido), ("descargar", c_descargar), ("medir", c_medir), ("cotejar", c_cotejar),
@@ -585,7 +692,7 @@ def main(argv=None):
     x.add_argument("--compuerta", choices=["revision_qa", "revision_comfandi", "aprobacion"])
     x.add_argument("--decision", choices=["APROBADO", "CON_OBSERVACIONES", "RECHAZADO"]); x.add_argument("--persona"); x.add_argument("--notas")
     x.set_defaults(fn=c_revision)
-    x = s.add_parser("v4"); x.add_argument("accion", choices=["construir", "publicar"])
+    x = s.add_parser("v4"); x.add_argument("accion", choices=["construir", "publicar", "incompletos"])
     x.add_argument("--trabajo", "--lote", dest="lote", required=True); x.add_argument("--sin-bucket", action="store_true"); x.set_defaults(fn=c_v4)
     x = s.add_parser("diferencia", help="el cotejador registra una diferencia exacta (max 5 ejemplos)")
     x.add_argument("--trabajo", "--lote", dest="lote", required=True); x.add_argument("--clave", required=True)

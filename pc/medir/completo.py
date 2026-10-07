@@ -47,6 +47,9 @@ def bajar_delta_fabric(lote, clave, tabla, ws=None, lh=None, log=print):
     with ThreadPoolExecutor(PAR["onelake_hilos"]) as ex:
         list(ex.map(lambda t: ol.bajar(t[0], t[1], t[2], ws, lh), tareas))
     archivos = [os.path.join(dest, urllib.parse.unquote(a["path"])) for a in vig]
+    # una re-descarga deja en la cache los parquet de versiones anteriores y la medicion los leeria: fuera
+    from ..acceso.rocket import _limpiar_obsoletos
+    _limpiar_obsoletos(dest, [t[1] for t in tareas], log)
     meta = {"tabla": tabla, "base": base, "version_delta": dl["version"], "ultimo_commit": dl["ultimo_commit"],
             "deletion_vectors": len(dvs), "column_mapping": dl["column_mapping"], "lector": "delta" if dvs or dl["column_mapping"] else "parquet",
             "segundos": round(time.time() - t0, 1)}
@@ -67,11 +70,11 @@ def bajar_files_fabric(lote, clave, directorio, ws=None, lh=None, log=print):
     return dest, locs, meta
 
 
-def bajar_hdfs_stratio(lote, clave, ruta_hdfs, desde=None, log=print):
+def bajar_hdfs_stratio(lote, clave, ruta_hdfs, desde=None, log=print, particion=None):
     from ..acceso import rocket
     dest = gestor.carpeta(lote, "STRATIO", clave)
-    locs, m = rocket.bajar(ruta_hdfs, dest, desde=desde, log=log)
-    m.update(ruta=ruta_hdfs, desde=desde, lector=_lector(locs))
+    locs, m = rocket.bajar(ruta_hdfs, dest, desde=desde, log=log, particion=particion)
+    m.update(ruta=ruta_hdfs, desde=desde, particion=particion, lector=_lector(locs))
     gestor.registrar(lote, "STRATIO", clave, f"hdfs:{ruta_hdfs}", locs, m)
     return dest, locs, m
 
@@ -204,7 +207,9 @@ def base_csv(con, archivos, csv=None):
 
 def conectar():
     m = CFG["medicion"]
-    spill = os.path.join(RAIZ, "cache", ".spill")
+    # una carpeta de desborde por CONEXION (proceso + hilo): dos DuckDB en la misma carpeta se pisan los .tmp (IO Error)
+    import threading
+    spill = os.path.join(RAIZ, "cache", ".spill", f"{os.getpid()}_{threading.get_ident()}")
     return motor.conectar(spill, memoria=m["duckdb_memoria"], hilos=m["duckdb_hilos"])
 
 

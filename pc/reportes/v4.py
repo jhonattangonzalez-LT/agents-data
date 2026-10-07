@@ -308,7 +308,17 @@ def _valor(m, cod):
     return (m.get("estado_controles") or {}).get(cod, {}).get("estado")
 
 
+def _version_anterior(trabajo, flujo, rel):
+    ant, ciclo = _anterior(trabajo, flujo, rel)
+    if not ant:
+        return None
+    ea = ant.get("encabezado") or {}
+    return {"version": ea.get("version"), "estado_que_tenia": ea.get("estado"), "motivo_del_nuevo_ciclo": ciclo.get("motivo")}
+
+
 def construir_cotejo(trabajo, f, o):
+    """Cotejo de tabla, formato 2 (pc/reportes/formato2.py): encabezado · controles · justificaciones · metricas."""
+    from . import formato2 as F2
     k = o["clave"]
     rel = f"v4/cotejos/{k}.json"
     ms, mf = L.leer(trabajo, f"v4/mediciones/STRATIO/{k}.json"), L.leer(trabajo, f"v4/mediciones/FABRIC/{k}.json")
@@ -317,127 +327,16 @@ def construir_cotejo(trabajo, f, o):
     cr = L.leer(trabajo, f"cotejo_rapido/{k}.json")
     idx = (L.leer(trabajo, "cotejos/indice.json", {}) or {}).get(k)
     cc = json.load(open(idx["archivo"])) if idx and os.path.exists(idx["archivo"]) else None
-    nivel = 2 if cc else (1 if cr else -1)
-    enc = _encabezado(trabajo, "pc.v4/cotejo@1", f, None, {"stratio": (o.get("stratio") or {}).get("ruta"),
-                                                            "fabric": (o.get("fabric") or {}).get("ruta")}, None, nivel, rel)
-    enc["verdad"] = "STRATIO"
-    enc["mediciones"] = {l.lower(): {"version": m["encabezado"]["version"], "nivel_alcanzado": m["encabezado"]["nivel_alcanzado"],
-                                     "sha256": _sha(m)} for l, m in (("STRATIO", ms), ("FABRIC", mf)) if m}
+    enc = {"id": str(uuid.uuid4()), "version": version(trabajo, f["nombre_fabric"]), "trabajo": str(trabajo), "generado_utc": _ahora(),
+           "mediciones": {l.lower(): {"version": m["encabezado"]["version"], "nivel_alcanzado": m["encabezado"]["nivel_alcanzado"],
+                                      "sha256": _sha(m)} for l, m in (("STRATIO", ms), ("FABRIC", mf)) if m}}
     if not ms or not mf:
         enc["esperando"] = "STRATIO" if not ms else "FABRIC"
-    vg09 = _vg09(ms, mf)
     difs = ((L.leer(trabajo, "v4/diferencias.json", {}) or {}).get(k)) or []
-    comp = {0: {}, 1: {}, 2: {}}
-    for c in CAT:
-        cod = c["codigo"]
-        rol = _rol(cod, f["grupo"])
-        fila = {"rol": rol, "stratio": _valor(ms, cod), "fabric": _valor(mf, cod)}
-        rr = ((cr or {}).get("controles") or {}).get(cod) or {}
-        res = rr.get("resultado")
-        if res == "PENDIENTE_NIVEL_2":
-            res = None
-        if cod == "VG-09":
-            res = vg09["estado"] if vg09["estado"] != "PENDIENTE" else None
-        elif cc and cod in ("CP-01", "CP-03", "ID-02", "ID-05", "CP-04"):
-            v = cc["veredictos"]
-            reg = v["controles"].get("regresiones") or []
-            res = {"CP-01": "CUMPLE" if v["filas"]["delta"] == 0 else "NO_CUMPLE",
-                   "CP-03": "CUMPLE" if v["hash"]["igual"] else "NO_CUMPLE",
-                   "ID-02": "NO_CUMPLE" if "ID-02" in reg else "CUMPLE",
-                   "ID-05": "NO_CUMPLE" if "ID-05" in reg else "CUMPLE", "CP-04": "INFORMATIVO"}[cod]
-            if cod == "CP-03":
-                iguales, distintas = v["hash"].get("columnas_hash_igual") or 0, v["hash"].get("columnas_hash_distinto") or []
-                fila.update(columnas_hash_igual=iguales, columnas_hash_distinto=distintas,
-                            identidad_columnas_pct=round(100.0 * iguales / max(1, iguales + len(distintas)), 2))
-            if cod == "CP-01":
-                fila.update(delta=v["filas"]["delta"], pct=v["filas"]["pct"])
-        if cod == "CP-01" and cr and not cc:
-            fila.update(delta=cr["filas"]["delta"], pct=cr["filas"]["pct"])
-        if res in ("CUMPLE", "NO_CUMPLE") and rol == "informa":
-            fila["comparacion"] = res
-            res = "INFORMATIVO"
-        if rol == "no_aplica":
-            res = "NO_APLICA"
-        dd = [d for d in difs if d.get("control") == cod]
-        if res == "NO_CUMPLE" and dd:
-            ds = {d["decision"] for d in dd}
-            res = ("NO_CUMPLE" if "DEVUELTO" in ds else "A_VERIFICAR" if "A_VERIFICAR" in ds else
-                   "PENDIENTE_DECISION" if "PENDIENTE" in ds else "JUSTIFICADO")
-        if dd:
-            fila["diferencias"] = [d["id"] for d in dd]
-        fila["resultado"] = res or ("PENDIENTE" if nivel < c["nivel"] else "NO_EVALUADO")
-        comp[c["nivel"]][cod] = fila
-    doc = {"encabezado": enc,
-           "estado_controles": {cod: {"nivel": NIVEL[cod], "rol": comp[NIVEL[cod]][cod]["rol"],
-                                      "resultado": comp[NIVEL[cod]][cod]["resultado"]} for cod in NIVEL}}
-    doc["nivel_0"] = {"esquema": (cr or {}).get("esquema"), "comparacion": comp[0]}
-    doc["nivel_1"] = {"filas": (cr or {}).get("filas"), "nulos_distintos": (cr or {}).get("nulos_distintos"),
-                      "vacias_solo_en_fabric": (cr or {}).get("vacias_solo_en_fabric"),
-                      "constantes_solo_en_fabric": (cr or {}).get("constantes_solo_en_fabric"), "comparacion": comp[1]}
-    if cc:
-        v = cc["veredictos"]
-        doc["nivel_2"] = {"criterio": cc["criterio"], "exigencias": cc["exigencias"], "dato": v["dato"], "filas": v["filas"],
-                          "hash": v["hash"], "esquema": v["esquema"], "nulos": v["nulos"], "cardinalidad": v["cardinalidad"],
-                          "perfil": v["perfil"], "regresiones": v["controles"].get("regresiones"),
-                          "mejoras": v["controles"].get("mejoras"), "comparacion": comp[2]}
-    else:
-        doc["nivel_2"] = {"estado": "PENDIENTE", "comparacion": comp[2]}
-    doc["VG-09_contrato"] = vg09
-    doc["diferencias"] = difs
-    enc["estado"] = _estado_tabla(doc, nivel, difs)
-    falta = _sin_analizar(doc, difs) if nivel >= 2 else []
-    if falta:
-        enc["sin_analizar"] = falta
-    enc["resumen"] = _resumen_tabla(doc)
+    doc = F2.cotejo(enc, f, o, ms, mf, cr, cc, difs, _vg09(ms, mf), _version_anterior(trabajo, f["nombre_fabric"], rel))
+    doc["encabezado"]["faltantes"] = F2.faltantes_cotejo(doc)
     L.guardar(trabajo, rel, doc)
     return doc
-
-
-def _sin_analizar(doc, difs):
-    """Diferencias medibles (filas o huella distintas, rupturas de contrato) que nadie analizo todavia."""
-    n2 = doc.get("nivel_2") or {}
-    medibles = []
-    if (n2.get("filas") or {}).get("delta"):
-        medibles.append("CP-01")
-    if n2.get("hash") and not n2["hash"].get("igual"):
-        medibles.append("CP-03")
-    if (doc.get("VG-09_contrato") or {}).get("rupturas"):
-        medibles.append("VG-09")
-    cubiertos = {d["control"] for d in difs}
-    return [m for m in medibles if m not in cubiertos]
-
-
-def _estado_tabla(doc, nivel, difs):
-    if nivel < 2:
-        return "EN_CURSO"
-    if _sin_analizar(doc, difs):          # nada se aprueba en silencio: el cotejador debe registrar lo que vio
-        return "EN_REVISION"
-    res = [x["resultado"] for x in doc["estado_controles"].values() if x["rol"] == "decide"]
-    ds = {d["decision"] for d in difs}
-    if "DEVUELTO" in ds:
-        return "DEVUELTO"
-    if "NO_CUMPLE" in res or "PENDIENTE" in ds or "PENDIENTE_DECISION" in res:
-        return "EN_REVISION"
-    if "A_VERIFICAR" in ds or "A_VERIFICAR" in res:
-        return "APROBADO_CON_VERIFICACION"
-    if "JUSTIFICADA" in ds or "JUSTIFICADO" in res:
-        return "APROBADO_CON_JUSTIFICACION"
-    return "APROBADO"
-
-
-def _resumen_tabla(doc):
-    fam = {}
-    for cod, x in doc["estado_controles"].items():
-        if x["rol"] != "decide":
-            continue
-        a = fam.setdefault(cod[:2], [0, 0])
-        if x["resultado"] in ("CUMPLE", "JUSTIFICADO"):
-            a[0] += 1
-        if x["resultado"] not in ("PENDIENTE", "NO_EVALUADO", "NO_APLICA"):
-            a[1] += 1
-    fl = (doc.get("nivel_2") or {}).get("filas") or (doc.get("nivel_1") or {}).get("filas") or {}
-    return ((f"filas {fl.get('stratio')} → {fl.get('fabric')} · " if fl else "") +
-            " · ".join(f"{k} {v[0]}/{v[1]}" for k, v in sorted(fam.items())) + f" · {len(doc['diferencias'])} diferencia(s)")
 
 
 def registrar_diferencia(trabajo, clave, control, tipo, descripcion, filas_afectadas, ejemplos, decision="PENDIENTE",
@@ -507,90 +406,27 @@ def _reclasificar(pruebas, cambios):
 
 
 def construir_cotejo_flujo(trabajo, f):
+    """Cotejo de flujo, formato 2: encabezado · ejecucion · analitica|ingesta · orquestacion · comprobaciones · tablas · semaforo.
+    La evidencia de la corrida y de las dependencias la mide `pc etl evidencia` (etl/evidencia/<flujo>.json)."""
+    from . import formato2 as F2
     n = f["nombre_fabric"]
     rel = f"v4/flujos/{n}.json"
     etl = L.leer(trabajo, f"etl/veredictos/{n}.json")
+    ev = L.leer(trabajo, f"etl/evidencia/{n}.json")
     sem = L.leer(trabajo, f"semaforo/{n}.json")
     tablas = [L.leer(trabajo, f"v4/cotejos/{o['clave']}.json") for o in f["objetos"]]
-    enc = _encabezado(trabajo, "pc.v4/cotejo_flujo@1", f, rel=rel)
-    enc["orquestador"] = f.get("orquestador")
-    doc = {"encabezado": enc}
-    if etl:
-        r, inv, raw = etl["resumen"], etl.get("inventario") or {}, etl.get("veredicto") or {}
-        corr, conf = inv.get("correccion") or {}, inv.get("confirmacion_delta") or {}
-        doc["ejecucion"] = {"item": n, "tipo_item": r.get("tipo"), "run_id": (raw.get("corrida_fabric") or {}).get("id"),
-                            "inicio_utc": r.get("inicio_utc"), "fin_utc": r.get("fin_utc"), "estado": r.get("estado_corrida"),
-                            "duracion_s": r.get("duracion_s"), "actividades": raw.get("metricas_corrida"),
-                            "validador": {"resultado": r.get("resultado_validador"), "lanzamiento": etl.get("lanzamiento"),
-                                          "tiempos_s": raw.get("tiempos_segundos")},
-                            "pruebas": _reclasificar(raw.get("pruebas"), corr.get("cambios") or [])}
-        doc["dependencias"] = {"declaradas": f.get("dependencias") or [], "orquestador": f.get("orquestador"),
-                               "validador": raw.get("dependencias"), "existencia": raw.get("existencia"),
-                               "ejecutadas_por_qa": [e.get("detalle") for e in L.leer_bitacora(trabajo)
-                                                     if e["accion"] == "ejecutar_productor" and e.get("flujo") == n]}
-        if r.get("roles_desde") == "actividad_copy":
-            doc["roles"] = {"desde": "actividad Copy (origen/destino del pipeline)", "invertidos_por_validador": False}
-            doc["entradas"] = [{"ruta": x} for x in r.get("entradas") or []]
-            doc["salidas"] = [{"ruta": x, "datos": (r.get("datos_salida") or {}).get(x)} for x in r.get("salidas") or []]
-        else:
-            com = {x["ruta"]: x for x in (conf.get("entradas") or []) + (conf.get("salidas") or [])}
-            band = {x["ruta"]: x for x in (corr.get("entradas") or []) + (corr.get("salidas") or [])}
-            doc["roles"] = {"desde": "código del flujo + _delta_log", "zip": inv.get("zip"), "capa": inv.get("capa"),
-                            "invertidos_por_validador": corr.get("invertido"), "coherentes_con_delta": conf.get("roles_coherentes")}
-
-            def mk(fila):
-                b, c_ = band.get(fila["tabla"]) or {}, com.get(fila["tabla"]) or {}
-                return dict(fila, parametro=b.get("bandera"), rol_segun_validador=b.get("rol_validador"),
-                            commits_en_corrida=c_.get("commits_en_ventana"))
-            io = etl.get("io_medido") or {}      # medido una vez al recoger el ETL y guardado en disco
-            ent = io.get("entradas") if io else _filas_delta([x["ruta"] for x in corr.get("entradas") or []])
-            sal = io.get("salidas") if io else _filas_delta([x["ruta"] for x in corr.get("salidas") or []])
-            doc["entradas"] = [mk(x) for x in ent]
-            doc["salidas"] = [mk(x) for x in sal]
-            if io:
-                doc["roles"]["io_medido_utc"] = io.get("utc")
-        if f["grupo"] == "analitica":
-            an = etl.get("revision_analitica") or {}
-            ce = {c for x in doc.get("entradas", []) for c in x.get("columnas") or []}
-            cs = {c for x in doc.get("salidas", []) for c in x.get("columnas") or []}
-            doc["analitica"] = {
-                "transformacion": {"filas_entrada": sum(x.get("filas") or 0 for x in doc.get("entradas", [])),
-                                   "filas_salida": sum(x.get("filas") or 0 for x in doc.get("salidas", [])),
-                                   "conservadas": sorted(ce & cs), "descartadas": sorted(ce - cs), "derivadas": sorted(cs - ce),
-                                   "roles": "corregidos"},
-                "consultado_al_validador": {k2: an.get(k2) for k2 in ("veredicto", "ruta_onelake", "ambiente", "transformacion")} if an else None}
-    doc["tablas"] = [{"clave": o["clave"], "fabric": (o.get("fabric") or {}).get("ruta"), "stratio": (o.get("stratio") or {}).get("ruta"),
-                      "estado": (t or {}).get("encabezado", {}).get("estado"), "resumen": (t or {}).get("encabezado", {}).get("resumen"),
-                      "nivel_alcanzado": (t or {}).get("encabezado", {}).get("nivel_alcanzado")}
-                     for o, t in zip(f["objetos"], tablas)]
-    if sem:
-        doc["semaforo"] = {k2: sem.get(k2) for k2 in ("estado", "motivos_rojo", "avisos", "evaluado_utc")}
+    enc = {"id": str(uuid.uuid4()), "version": version(trabajo, n), "trabajo": str(trabajo), "generado_utc": _ahora(),
+           "version_anterior": _version_anterior(trabajo, n, rel)}
+    otros = []
+    for g in (L.leer(trabajo, "lote.json") or {}).get("flujos", []):
+        e2 = L.leer(trabajo, f"etl/veredictos/{g['nombre_fabric']}.json") or {}
+        otros.append({"flujo": g["nombre_fabric"],
+                      "entradas": [x.get("ruta") for x in ((e2.get("inventario") or {}).get("correccion") or {}).get("entradas") or []]})
     ver = (L.leer(trabajo, "v4/verificaciones.json", {}) or {}).get(n)
-    if ver:
-        doc["verificacion"] = ver
-    niveles = [t["nivel_alcanzado"] for t in doc["tablas"] if t["nivel_alcanzado"] is not None]
-    enc["nivel_alcanzado"] = min(niveles) if niveles else -1
-    enc["estado"] = _estado_flujo(f, doc, ver)
+    doc = F2.flujo(enc, f, etl, ev, sem, tablas, ver, otros)
+    doc["encabezado"]["faltantes"] = F2.faltantes_flujo(doc)
     L.guardar(trabajo, rel, doc)
     return doc
-
-
-def _estado_flujo(f, doc, ver):
-    ej = (doc.get("ejecucion") or {}).get("estado")
-    if f["grupo"] == "orquestador":
-        return "APROBADO" if ej == "Completed" else ("DEVUELTO" if ej in ("Failed", "Cancelled") else "EN_CURSO")
-    if (doc.get("semaforo") or {}).get("estado") == "ROJO" or ej in ("Failed", "Cancelled"):
-        return "DEVUELTO"
-    est = [t["estado"] for t in doc["tablas"]]
-    if (ver or {}).get("decision") == "CORREGIR" or "DEVUELTO" in est:
-        return "DEVUELTO"
-    if not est or any(e in (None, "EN_CURSO", "EN_REVISION") for e in est):
-        return "EN_CURSO"
-    if "APROBADO_CON_VERIFICACION" in est:
-        return "APROBADO_CON_VERIFICACION"
-    if "APROBADO_CON_JUSTIFICACION" in est:
-        return "APROBADO_CON_JUSTIFICACION"
-    return "APROBADO"
 
 
 def verificar(trabajo, flujo, por, decision, nota):
@@ -627,27 +463,32 @@ def expediente(trabajo, f):
     if cf.get("verificacion"):
         x = cf["verificacion"]
         out += [f"> Verificado por {x['por']} ({x['persona']}, {x['utc']}): {x['nota']}", ""]
-    if cf["encabezado"].get("reemplaza_a"):
-        r = cf["encabezado"]["reemplaza_a"]
-        out += [f"> Reemplaza a v{r['version']} ({r['estado']}). Corrección: {r.get('motivo')}", ""]
-    ej = cf.get("ejecucion") or {}
-    out += ["## Ejecución", "", f"Estado **{ej.get('estado')}** · inicio {ej.get('inicio_utc')} · {ej.get('duracion_s')} s · run `{ej.get('run_id')}`", ""]
-    ro = cf.get("roles") or {}
-    out += ["## Entradas y salidas", "", f"Roles: {ro.get('desde')}" +
-            (" · el validador los tenía invertidos; se usaron los del código" if ro.get("invertidos_por_validador") else ""), ""]
-    out += [f"- entrada `{x.get('tabla') or x.get('ruta')}` · {x.get('filas')} filas" for x in cf.get("entradas") or []]
-    out += [f"- salida `{x.get('tabla') or x.get('ruta')}` · {x.get('filas')} filas · commits en la corrida: {x.get('commits_en_corrida')}"
-            for x in cf.get("salidas") or []]
+    if cf["encabezado"].get("version_anterior"):
+        r = cf["encabezado"]["version_anterior"]
+        out += [f"> Reemplaza a v{r['version']} (que estaba {r['estado_que_tenia']}). Corrección: {r.get('motivo_del_nuevo_ciclo')}", ""]
+    ej = (cf.get("ejecucion") or {}).get("corrida_validada") or {}
+    out += ["## Ejecución", "", f"Estado **{ej.get('estado')}** · inicio {ej.get('inicio_utc')} · {ej.get('duracion_s')} s · run `{ej.get('run_id')}`"
+            f" · lanzada por {ej.get('lanzada_por')}", ""]
+    sec = cf.get("analitica") or cf.get("ingesta") or {}
+    ro = sec.get("roles") or {}
+    out += ["## Entradas y salidas", "", f"Roles: {ro.get('origen')}" +
+            (" · el validador los tenía invertidos; se usaron los del código" if ro.get("corregidos_respecto_al_validador") else ""), ""]
+    out += [f"- entrada `{x.get('entrada')}` · versión leída {x.get('version_leida')} ({x.get('commit_utc')}) · {x.get('filas')} filas"
+            for x in sec.get("entradas") or []]
+    out += [f"- salida `{x.get('tabla') or x.get('destino')}` · escrita por la corrida: {x.get('escrita_por_la_corrida_validada', x.get('archivos_escritos_en_la_corrida'))}"
+            for x in sec.get("salidas") or []]
+    out += ["", "## Comprobaciones del flujo", ""]
+    out += [f"- {c['resultado']} · {c['comprobacion']} · {c['detalle']}" for c in cf.get("comprobaciones") or []]
     out += ["", "## Tablas", "", "| Tabla | Estado | Resumen |", "|---|---|---|"]
     out += [f"| `{t['clave']}` | {t['estado']} | {t['resumen']} |" for t in cf["tablas"]]
     out.append("")
     for o in f["objetos"]:
         co = L.leer(trabajo, f"v4/cotejos/{o['clave']}.json") or {}
-        if co.get("diferencias"):
+        if co.get("justificaciones"):
             out += [f"### Diferencias · {o['clave']}", ""]
-            for d in co["diferencias"]:
+            for d in co["justificaciones"]:
                 out += [f"- **{d['id']} · {d['control']} · {d['tipo']}**" + (f" · `{d['columna']}`" if d.get("columna") else "") +
-                        f" · {d['filas_afectadas']} fila(s) · **{d['decision']}**", f"  - {d['descripcion']}"]
+                        f" · {d['filas_afectadas']} fila(s) · **{d['decision']}**", f"  - {d['que_se_encontro']}"]
                 if d.get("causa"):
                     out.append(f"  - Causa{' (medida)' if d.get('causa_medida') else ''}: {d['causa']}")
                 out += [f"  - ejemplo: `{json.dumps(e, ensure_ascii=False, default=str)[:300]}`" for e in d.get("ejemplos") or []]
@@ -685,11 +526,30 @@ def construir(trabajo):
     return h
 
 
-def publicar(trabajo, bucket=True):
+def incompletos(trabajo):
+    """{archivo: [lo que falta]} de los cotejos de tabla y de flujo del trabajo. Vacio = todo completo."""
+    out = {}
+    for f in (L.leer(trabajo, "lote.json") or {}).get("flujos", []):
+        cf = L.leer(trabajo, f"v4/flujos/{f['nombre_fabric']}.json")
+        x = (cf or {}).get("encabezado", {}).get("faltantes") if cf else ["no existe el cotejo de flujo"]
+        if x:
+            out[f"flujo {f['nombre_fabric']}"] = x
+        for o in f["objetos"]:
+            co = L.leer(trabajo, f"v4/cotejos/{o['clave']}.json")
+            x = (co or {}).get("encabezado", {}).get("faltantes") if co else ["no existe el cotejo"]
+            if x:
+                out[f"tabla {o['clave']}"] = x
+    return out
+
+
+def publicar(trabajo, bucket=True, forzar_incompleto=False):
     """Publica SOLO mediciones, cotejos y cotejo de flujo en OneLake reportes_v4 (reescribe en sitio la vN del ciclo)
     y las dos mediciones al bucket v4. HEAD a todo. Log, expediente y acta quedan locales."""
     from ..acceso import bucket as B
     d = L.leer(trabajo, "lote.json")
+    falta = incompletos(trabajo)
+    if falta and not forzar_incompleto:
+        raise RuntimeError("no se publica: informacion incompleta en " + "; ".join(f"{k}: {v[:4]}" for k, v in list(falta.items())[:8]))
     pr = _pruebas(trabajo)
     base, hechos = L.dir_lote(trabajo), []
 

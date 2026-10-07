@@ -19,3 +19,8 @@ después de mostrarle la estimación al usuario y que confirme: entonces `--conf
 - VG-07, VG-08, ID-07, ID-08 no se calculan ni aparecen. El contrato observado queda en `contrato` (VG-09 lo compara en el cotejo).
 - `pc/medir/motor_v15.py`: no tocar `canonica()` ni `medir_hash()` (calibrado: ape_repleg y CLASE_DOCUMENTO idénticos).
 - Las tasas reales se guardan en `config/tasas_medidas.json` y afinan la estimación siguiente.
+
+## Cada control lleva su evidencia
+El cotejo (formato 2) muestra, por control, qué midió este lado: `estado`, `valor`, `detalle` y `evidencia`
+(conteo, lista de columnas, huella, duplicados). Un control con solo el estado no sirve. Si no pudiste medir uno,
+déjalo `NO_EVALUADO` con el motivo: el cotejo lo marcará como faltante y no se publicará hasta medirlo.

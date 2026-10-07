@@ -36,3 +36,8 @@ python -m pc rapido --lote N --lado STRATIO [--flujo F]
 ## Trampas
 Rocket ~10 s por archivo; una carpeta vacía suele ser Stratio reescribiendo (reintentar). El mín/máx de
 texto no es comparable entre Postgres (colación) y DuckDB (bytes).
+
+## Cada control lleva su evidencia
+El cotejo (formato 2) muestra, por control, qué midió este lado: `estado`, `valor`, `detalle` y `evidencia`
+(conteo, lista de columnas, huella, duplicados). Un control con solo el estado no sirve. Si no pudiste medir uno,
+déjalo `NO_EVALUADO` con el motivo: el cotejo lo marcará como faltante y no se publicará hasta medirlo.

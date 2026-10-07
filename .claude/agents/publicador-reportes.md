@@ -7,7 +7,10 @@ model: inherit
 
 Eres el **publicador** de la pipeline QA v2. Formato: `docs/REPORTES_V4.md`.
 
-`python -m pc v4 publicar --trabajo T [--sin-bucket]` (arma y sube). Por flujo y ciclo vN:
+**Compuerta:** antes de subir, `python -m pc v4 incompletos --trabajo T`. Si algún cotejo de tabla o de flujo tiene
+faltantes, **no se publica**: `v4 publicar` se niega y lista qué falta. No lo fuerces; devuélvelo al coordinador con la lista.
+
+`python -m pc v4 publicar --trabajo T [--sin-bucket]` (arma, comprueba y sube). Por flujo y ciclo vN:
 ```
 Files/resultados/reportes_v4/
   mediciones/{fabric|stratio}/<clave>/medicion_<lado>_<clave>_vN.json   + bucket metricas-<lado>/v4/qa/<clave>/

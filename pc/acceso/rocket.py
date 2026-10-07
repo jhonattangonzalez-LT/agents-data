@@ -93,9 +93,10 @@ def listar(ruta):
     return _reintentar(ir)
 
 
-def arbol(ruta, desde=None, hilos=3):
+def arbol(ruta, desde=None, hilos=3, particion=None):
     """[(ruta_completa, bytes, lastUpdated_ms)] recursivo. Ignora _SUCCESS, _* y .*.
-    `desde="fecha=2026-01-01"` salta particiones Hive anteriores a ese valor."""
+    `desde="fecha=2026-01-01"` salta particiones Hive anteriores a ese valor.
+    `particion="periodo_foto=202509"` baja SOLO esa particion Hive (p. ej. la misma foto que genero Fabric)."""
     archivos, pend = [], [ruta]
     with ThreadPoolExecutor(hilos) as ex:
         while pend:
@@ -109,6 +110,8 @@ def arbol(ruta, desde=None, hilos=3):
                         continue
                     if str(i.get("type", "")).lower() == "directory":
                         if desde and "=" in base and base.split("=")[0] == desde.split("=")[0] and base < desde:
+                            continue
+                        if particion and "=" in base and base.split("=")[0] == particion.split("=")[0] and base != particion:
                             continue
                         pend.append(nom)
                     else:
@@ -169,7 +172,7 @@ class ArchivoRocket(io.RawIOBase):
         return d
 
 
-def bajar(ruta, destino, desde=None, hilos=None, log=print):
+def bajar(ruta, destino, desde=None, hilos=None, log=print, particion=None):
     """Baja el arbol de `ruta` a `destino`. Un objeto a la vez entre procesos (candado),
     `hilos` dentro del objeto. Reanudable: salta lo que ya tiene el mismo tamano y baja a .part.
     Devuelve (archivos_locales, metadatos)."""
@@ -180,7 +183,7 @@ def bajar(ruta, destino, desde=None, hilos=None, log=print):
         fcntl.flock(lf, fcntl.LOCK_EX)
         if time.time() - t0 > 5:
             log(f"rocket: espere {time.time() - t0:.0f} s el turno")
-        arch = arbol(ruta, desde=desde)
+        arch = arbol(ruta, desde=desde, particion=particion)
         if not arch:
             raise RuntimeError(f"sin archivos en {ruta} (¿Stratio reescribiendo? reintentar)")
         os.makedirs(destino, exist_ok=True)

@@ -13,3 +13,7 @@ Eres el **semáforo** de la pipeline QA v2. `python -m pc semaforo --trabajo T [
   corregidos, falta un lado. La diferencia se **analiza en el nivel 2** y al salir de él se decide si es justificable.
 - **VERDE**: todo cumple en 0/1 → nivel 2.
 - Orquestador: por ejecución.
+
+El semáforo queda dentro del cotejo de flujo con su significado y con cómo se resolvió cada aviso en el nivel 2
+(estado final y resumen de cada tabla). Un AMARILLO sin esa explicación no sirve: los avisos deben terminar en una
+diferencia registrada o en un control `ok`.

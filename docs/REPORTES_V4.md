@@ -1,5 +1,16 @@
 # reportes_v4 · formato acordado e implementado (2026-10-05)
 
+> **Formato 2 (2026-10-06, mejora M-005).** Las secciones del cotejo y del cotejo de flujo descritas más abajo son las
+> del formato 1. Lo vigente está en `pc/reportes/formato2.py`:
+> - **cotejo de tabla**: `encabezado` (estado, resumen exacto, cómo se leyó cada lado, versión anterior) ·
+>   `controles.resumen` (una palabra por control, por familia VG / ID / CP; VG-09 dentro de VG) · `controles.detalle`
+>   (qué midió cada lado, comparación y decisión) · `justificaciones` · `metricas`.
+> - **cotejo de flujo**: `encabezado` · `ejecucion` (corrida validada, actividades, validador) · `analitica` o `ingesta`
+>   (roles, entradas, salidas, flujos dependientes) · `orquestacion` · `comprobaciones` · `tablas` · `semaforo`.
+> - Reglas nuevas: un control en alerta en los dos lados o con medición distinta exige una diferencia registrada; una
+>   comprobación del flujo que no cumple deja el flujo EN_REVISION; con faltantes (`pc v4 incompletos`) no se publica.
+> - La evidencia del flujo la mide `pc etl evidencia`; el plan de ejecución es `pc etl ejecutar`. Prompts: `docs/PROMPTS.md`.
+
 Decisiones confirmadas por el usuario e implementadas en `pc/reportes/v4.py`. Probado en Fabric real
 (trabajo `_prueba_v4`) y en una simulación local de Stratio (`_sim_formato`). Pendiente: Stratio real y el generador del acta.
 
