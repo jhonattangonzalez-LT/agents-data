@@ -48,6 +48,17 @@ def _mapa(x):
     return x if x is not None else {}
 
 
+def _rfc_iso(s):
+    """'Wed, 30 Sep 2026 19:37:26 GMT' (lastModified del listado de OneLake) -> ISO UTC."""
+    if not s:
+        return None
+    from email.utils import parsedate_to_datetime
+    try:
+        return parsedate_to_datetime(s).astimezone(datetime.timezone.utc).isoformat(timespec="seconds")
+    except (TypeError, ValueError):
+        return None
+
+
 def leer_log(base, ws=None, lh=None, todos_los_commits=True):
     """base = 'Tables/<esquema>/<tabla>'. Devuelve dict con vigentes, metaData, commits, version."""
     import pyarrow.parquet as pq
@@ -85,12 +96,16 @@ def leer_log(base, ws=None, lh=None, todos_los_commits=True):
     with ThreadPoolExecutor(PAR["onelake_hilos"]) as ex:
         textos = dict(ex.map(_leer, leer_jsons))
     commits = []
+    fecha_json = {v: p.get("lastModified") for v, p in leer_jsons}
     for v in sorted(textos):
         ci = None
+        mod_adds = []
         for ln in textos[v].splitlines():
             if not ln.strip():
                 continue
             a = json.loads(ln)
+            if "add" in a and a["add"].get("modificationTime"):
+                mod_adds.append(a["add"]["modificationTime"])
             if v > desde:
                 if "add" in a:
                     vigentes[a["add"]["path"]] = a["add"]
@@ -102,7 +117,15 @@ def leer_log(base, ws=None, lh=None, todos_los_commits=True):
                     proto = a["protocol"]
             if "commitInfo" in a:
                 ci = a["commitInfo"]
-        if ci is not None:
+        if ci is None or not ci.get("timestamp"):
+            # Tabla cargada con otra herramienta: el commit no trae commitInfo/fecha. La fecha sale de los
+            # archivos que escribio (modificationTime de sus add) o, si no escribio ninguno, del propio json.
+            utc = _ms_iso(max(mod_adds)) if mod_adds else _rfc_iso(fecha_json.get(v))
+            if mod_adds or ci is not None:
+                commits.append({"version": v, "utc": utc, "utc_origen": "modificationTime de los archivos" if mod_adds else "fecha del json del commit",
+                                "operacion": (ci or {}).get("operation") or "SIN_COMMITINFO",
+                                "metricas": (ci or {}).get("operationMetrics") or {"numFiles": str(len(mod_adds))}, "parametros": {}})
+        elif ci is not None:
             commits.append({"version": v, "utc": _ms_iso(ci.get("timestamp")), "operacion": ci.get("operation"),
                             "metricas": ci.get("operationMetrics") or {},
                             "parametros": {k: ci.get("operationParameters", {}).get(k)
