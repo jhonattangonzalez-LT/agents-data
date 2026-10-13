@@ -71,6 +71,7 @@ def c_lote(a):
         from . import coordinacion as K
         for x in K.siguiente(a.lote):
             print(f"{x['estado']:28s} {x['flujo']}\n   → {x['paso']}  [{x['agente']}]\n     {x['comando']}")
+            print(f"     código Stratio ↔ Fabric: {x['codigo']}")
     elif a.accion == "bitacora":
         for e in L.leer_bitacora(a.lote):
             if a.estado and e["estado"] != a.estado:
@@ -82,7 +83,8 @@ def c_lote(a):
         spec = json.load(open(a.json, encoding="utf8"))
         for f in spec if isinstance(spec, list) else [spec]:
             L.agregar_flujo(a.lote, f["nombre_fabric"], f["grupo"], f.get("objetos"), f.get("nombre_stratio"),
-                            f.get("fl"), f.get("orquestador"), f.get("dependencias"), f.get("notas"))
+                            f.get("fl"), f.get("orquestador"), f.get("dependencias"), f.get("notas"),
+                            version_stratio=f.get("version_stratio"))
         print(f"lote {a.lote}: {len(L.leer(a.lote, 'lote.json')['flujos'])} flujo(s)")
     elif a.accion == "tablero":
         filas = L.tablero(a.lote)
@@ -371,7 +373,9 @@ def c_semaforo(a):
                        corrida_desde="evidencia")
         cot = {o["clave"]: L.leer(a.lote, f"cotejo_rapido/{o['clave']}.json") for o in f["objetos"]}
         cot = {k: v for k, v in cot.items() if v}
-        s = semaforo.evaluar(f["nombre_fabric"], f["grupo"], etl, cot, claves_esperadas=[o["clave"] for o in f["objetos"]])
+        from . import codigo
+        s = semaforo.evaluar(f["nombre_fabric"], f["grupo"], etl, cot, claves_esperadas=[o["clave"] for o in f["objetos"]],
+                             avisos_codigo=None if f["grupo"] == "orquestador" else codigo.aviso_semaforo(a.lote, f["nombre_fabric"]))
         L.guardar(a.lote, f"semaforo/{f['nombre_fabric']}.json", s)
         L.bitacora(a.lote, "semaforo", "evaluar", {"estado": s["estado"], "motivos_rojo": s["motivos_rojo"], "avisos": s["avisos"]},
                    estado="OK" if s["estado"] == "VERDE" else "AVISO", flujo=f["nombre_fabric"])
@@ -404,7 +408,9 @@ def _rapido_desde_descarga(lote, f, o, carpeta, archivos, meta):
         if meta.get("lector") == "csv":
             r = stratio.medir_local_csv(archivos, (o.get("stratio") or {}).get("ruta"), (o.get("stratio") or {}).get("csv"))
         else:
-            r = stratio.medir_local(carpeta, (o.get("stratio") or {}).get("ruta"))
+            src = o.get("stratio") or {}
+            r = stratio.medir_local(carpeta, src.get("ruta"),
+                                    tipo_fuente="POSTGRES_EXTRAIDA_A_PARQUET" if src.get("tipo") == "pg" else "HDFS_PARQUET")
         r["objeto"].update(clave=k, flujo=f["nombre_fabric"], grupo=f["grupo"])
         L.guardar(lote, f"rapido/STRATIO/{k}.json", r)
         p = os.path.join(L.dir_lote(lote), "rapido", "STRATIO", f"{k}.pendiente.json")
@@ -663,6 +669,39 @@ def c_estimar(a):
         print(f"\n{len(g)} tabla(s) grande(s): el nivel 2 pide --confirmar-grandes (preguntar al usuario con la estimación).")
 
 
+def c_codigo(a):
+    from . import codigo
+    if a.accion == "bajar":
+        flujos = [a.flujo] if a.flujo else [f["nombre_fabric"] for f in L.leer(a.lote, "lote.json")["flujos"] if f["grupo"] != "orquestador"]
+        from .acceso import stratio_pg
+        if not stratio_pg.vpn_ok():
+            raise SystemExit("SIN VPN de Comfandi: Rocket no responde. Conectar la VPN y revisar las cookies (pc stratio cookie).")
+        for n in flujos:
+            r = codigo.bajar(a.lote, n, a.version, a.stratio, a.asset)
+            if r.get("pide"):
+                print(f"PIDE      {n}: {r['pide']}")
+                for v in r.get("versiones") or []:
+                    print(f"          v{v['version']:<4} actualizada {v['actualizado']}")
+                for c in r.get("candidatos") or []:
+                    print(f"          asset {c['asset']} · {c['nombre']} · grupo {c['grupo']} · {c['actualizado']}")
+            else:
+                st, fb = r["stratio"], r["fabric"] or {}
+                print(f"BAJADO    {n}: Stratio {r['nombre_stratio']} v{st['version']} ({st['actualizado']}, {st['nodos']} nodos"
+                      + ("" if st["es_la_mas_reciente"] else ", NO es la versión más reciente de Rocket") + ")"
+                      + (f" · Fabric {fb['zip']}" if fb else " · Fabric: SIN ZIP (¿ingesta por Copy?)"))
+    elif a.accion == "regla":
+        r = codigo.regla(a.lote, a.flujo, a.regla, a.lado_stratio, a.lado_fabric, a.resultado, a.impacto, a.id)
+        print(f"{a.flujo}: {len(r['reglas'])} regla(s) registradas")
+    elif a.accion == "cerrar":
+        r = codigo.cerrar(a.lote, a.flujo, a.veredicto, a.resumen)
+        print(f"{a.flujo}: revisión {r['veredicto']}" + (f" · distintas {r['reglas_distintas']}" if r["reglas_distintas"] else ""))
+    else:
+        for e in codigo.estado(a.lote):
+            print(f"{(e['veredicto'] or ('BAJADO' if e['bajado'] else 'PENDIENTE')):16s} {e['flujo']:45s} "
+                  f"Stratio {e['stratio'] or '?'} v{e['version_bajada'] or e['version_stratio'] or '?'} · reglas {e['reglas']}"
+                  + (f" · distintas {e['distintas']}" if e["distintas"] else ""))
+
+
 def c_stratio(a):
     from .acceso import rocket, stratio_pg
     if a.accion == "cookie":
@@ -730,6 +769,15 @@ def main(argv=None):
     x = s.add_parser("decision", help="expediente de decision de todo lo que espera a una persona")
     x.add_argument("--trabajo", "--lote", dest="lote", required=True); x.add_argument("--clave"); x.set_defaults(fn=c_decision)
     x = s.add_parser("stratio"); x.add_argument("accion", choices=["cookie", "vpn"]); x.set_defaults(fn=c_stratio)
+    x = s.add_parser("codigo", help="revisión del código Stratio (Rocket, versión dada por el usuario) contra Fabric")
+    x.add_argument("accion", choices=["bajar", "regla", "cerrar", "estado"])
+    x.add_argument("--trabajo", "--lote", dest="lote", required=True); x.add_argument("--flujo")
+    x.add_argument("--version", type=int, help="versión del workflow de Stratio que se trae (la da el usuario)")
+    x.add_argument("--stratio", help="nombre del workflow en Rocket (si no está en el trabajo)"); x.add_argument("--asset")
+    x.add_argument("--regla"); x.add_argument("--lado-stratio", help="nodo de Rocket y extracto"); x.add_argument("--lado-fabric", help="archivo del zip y extracto")
+    x.add_argument("--resultado", choices=["IGUAL", "DISTINTA", "SOLO_STRATIO", "SOLO_FABRIC"]); x.add_argument("--impacto")
+    x.add_argument("--id"); x.add_argument("--veredicto", choices=["IGUAL", "CON_DIFERENCIAS"]); x.add_argument("--resumen")
+    x.set_defaults(fn=c_codigo)
     a = p.parse_args(argv)
     a.fn(a)
 

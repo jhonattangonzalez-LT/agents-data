@@ -12,7 +12,10 @@ Eres el **semáforo** de la pipeline QA v2. `python -m pc semaforo --trabajo T [
 - **AMARILLO** (sigue al nivel 2 con avisos): un control 0/1 que no cumple (conteo, esquema, nulos…), roles
   corregidos, falta un lado. La diferencia se **analiza en el nivel 2** y al salir de él se decide si es justificable.
 - **VERDE**: todo cumple en 0/1 → nivel 2.
-- Orquestador: por ejecución.
+- **Código** (revisor-codigo): una revisión sin cerrar o con una regla de negocio DISTINTA da AMARILLO con el aviso
+  «código · …». No es ROJO por sí sola: la regla distinta la confirma una persona en `pc decision` (tipo CODIGO) y,
+  si se confirma, el flujo se devuelve.
+- Orquestador: por ejecución (sin revisión de código).
 
 El semáforo queda dentro del cotejo de flujo con su significado y con cómo se resolvió cada aviso en el nivel 2
 (estado final y resumen de cada tabla). Un AMARILLO sin esa explicación no sirve: los avisos deben terminar en una

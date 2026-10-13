@@ -123,13 +123,13 @@ def crear(lote, responsable_acta, descripcion="", fecha_entrega=None, pruebas=Fa
 
 
 def agregar_flujo(lote, nombre_fabric, grupo, objetos=None, nombre_stratio=None, fl=None, orquestador=None,
-                  dependencias=None, notas=None):
+                  dependencias=None, notas=None, version_stratio=None):
     assert grupo in GRUPOS, grupo
     d = leer(lote, "lote.json")
     if not d:
         raise FileNotFoundError(f"no existe el lote {lote}")
     d["flujos"] = [f for f in d["flujos"] if f["nombre_fabric"] != nombre_fabric]
-    d["flujos"].append({"nombre_fabric": nombre_fabric, "nombre_stratio": nombre_stratio, "fl": fl,
+    d["flujos"].append({"nombre_fabric": nombre_fabric, "nombre_stratio": nombre_stratio, "version_stratio": version_stratio, "fl": fl,
                         "grupo": grupo, "orquestador": orquestador, "dependencias": dependencias or [],
                         "objetos": objetos or [], "notas": notas, "agregado_por": usuario(), "agregado_utc": _ahora()})
     guardar(lote, "lote.json", d)

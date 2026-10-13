@@ -127,5 +127,98 @@
   "autor": "Jhonattan-LT",
   "estado": "COMPARTIDA",
   "commit": "561e7d1"
+ },
+ {
+  "id": "M-010",
+  "fecha": "2026-10-08T06:18:52+00:00",
+  "que": "Nivel 0/1 de Postgres de Fabric en tablas grandes: agregados troceados por rangos de ctid (TID Range Scan) y combinados de forma exacta (sumas; min/max recombinados en la base con el tipo declarado)",
+  "por_que": "La Copy de qa_v2_postgres pierde el socket (~35-48 s sin devolver filas) en agregados de barrido completo; mercadeo.ventas (19 GB, 2,35 M paginas) fallaba con errorCode 2200 Npgsql 'Exception while reading from stream'",
+  "archivos": [
+   "pc/pgfabric/sql.py",
+   "pc/rapido/postgres.py",
+   "config/pipeline.json"
+  ],
+  "autor": "Jhonattan-LT",
+  "estado": "SIN_COMPARTIR"
+ },
+ {
+  "id": "M-011",
+  "fecha": "2026-10-08T11:57:39+00:00",
+  "que": "Cotejo de flujo: (1) en ingestas por Copy cuyo origen externo (BD, AS400) no declara el validador, las entradas se toman de las actividades Copy medidas en la corrida (las Inactive quedan fuera del alcance y se listan); (2) una entrada del validador cuyo parametro no figura entre las entradas del codigo del flujo (pc roles) y no existe en el lakehouse se descarta y se anota en roles.entradas_del_validador_descartadas_por_el_codigo",
+  "por_que": "L8.2: sts-full y feco salian INCOMPLETO por 'entradas' vacias y core_validaciones_pac_03 / ssf_afiliados_02 por una tabla Postgres de salida que el validador ponia como entrada; roles por el codigo, no por el nombre",
+  "archivos": [
+   "pc/reportes/formato2.py"
+  ],
+  "autor": "Jhonattan-LT",
+  "estado": "SIN_COMPARTIR"
+ },
+ {
+  "id": "M-012",
+  "fecha": "2026-10-08T11:58:33+00:00",
+  "que": "Nivel 0/1 de Stratio calculado desde la descarga: una Postgres de Stratio extraida a parquet se etiqueta POSTGRES_EXTRAIDA_A_PARQUET (antes HDFS_PARQUET)",
+  "por_que": "L8.2 Tabla_cosechas se coteja contra credito.cosechas (Postgres) y el reporte decia que se leyo de HDFS",
+  "archivos": [
+   "pc/__main__.py"
+  ],
+  "autor": "Jhonattan-LT",
+  "estado": "SIN_COMPARTIR"
+ },
+ {
+  "id": "M-013",
+  "fecha": "2026-10-08T23:56:52+00:00",
+  "que": "Registro Delta: un commit sin commitInfo o sin fecha (tablas cargadas con otra herramienta) toma la fecha de los archivos que escribio (modificationTime de sus add) o, si no escribio ninguno, la del json del commit; se marca utc_origen",
+  "por_que": "L10-1: las entradas silver.sat_respuesta_* y silver.subsidios_encuestados (cargas manuales) salian 'sin version leida' en el cotejo de flujo y se habian leido como 'sin escrituras', lo que llevo a reportar tablas vacias que si tenian datos",
+  "archivos": [
+   "pc/rapido/delta_remoto.py"
+  ],
+  "autor": "Jhonattan-LT",
+  "estado": "SIN_COMPARTIR"
+ },
+ {
+  "id": "M-014",
+  "fecha": "2026-10-11T15:55:50+00:00",
+  "que": "pc roles encuentra el codigo de un flujo cuyo zip esta en una subcarpeta de version (<grupo>/<capa>/<flujo>/vN/<flujo>.zip): el candidato se busca tambien por el nombre del zip, y la capa y el grupo se leen saltando la carpeta vN",
+  "por_que": "tabla_base_reporte_aportes_v6 salia SIN_CODIGO; sin roles del codigo, el cotejo de flujo tomaba como entrada la Postgres public.detalle_aportes (que es la salida de su Copy) y bloqueaba la publicacion de L8.2 por una entrada sin medir",
+  "archivos": [
+   "pc/inventario/roles.py"
+  ],
+  "autor": "Jhonattan-LT",
+  "estado": "SIN_COMPARTIR"
+ },
+ {
+  "id": "M-015",
+  "fecha": "2026-10-12T19:11:35+00:00",
+  "que": "Evidencia de ejecucion: si una entrada Delta la escribe una Copy de la misma corrida antes del paso de computo, la version leida es la ultima de esa Copy (antes quedaba 'sin version leida'); el cotejo de flujo muestra la actividad productora",
+  "por_que": "tableros_web_service_16 copia silver.subsidios_encuestados dentro de la corrida (src_encuestados) y el cotejo de flujo no se podia publicar",
+  "archivos": [
+   "pc/etl/evidencia.py",
+   "pc/reportes/formato2.py"
+  ],
+  "autor": "Jhonattan-LT",
+  "estado": "SIN_COMPARTIR"
+ },
+ {
+  "id": "M-016",
+  "fecha": "2026-10-13T13:20:55+00:00",
+  "que": "Agente revisor-codigo y comando pc codigo: al comienzo del trabajo, en paralelo a los niveles 0/1 y 2, baja la version de Stratio que indica el usuario (Rocket: /assets, findAllVersions, findById) y el zip del flujo de Fabric, los deja en texto por nodo y por archivo, y registra cada regla de negocio como IGUAL, DISTINTA, SOLO_STRATIO o SOLO_FABRIC con la cita de los dos lados. La revision cerrada entra al semaforo (AMARILLO si esta sin cerrar o con una regla distinta), a pc decision (tipo CODIGO y reglas de la columna de cada diferencia) y a pc trabajo siguiente. El trabajo guarda version_stratio por flujo. Agentes alineados: cotejador (clasifica dato/error con la revision; redaccion precisa sin 'no medido' en una justificacion), semaforo, etl-validador, medidores y gestor de descargas (--trabajo T, trabajos/T).",
+  "por_que": "Una diferencia solo se puede clasificar como dato si la regla de negocio es la misma en los dos lados; hasta ahora la comparacion de codigo se hacia a mano y sin registrar la version de Stratio revisada, y en el lote 8 eso dejo justificaciones 'compatibles' sin cita. Con la version dada por el usuario y la regla citada nodo a nodo la clasificacion es precisa y trazable.",
+  "archivos": [
+   "pc/codigo.py",
+   "pc/__main__.py",
+   "pc/lote.py",
+   "pc/compuerta/semaforo.py",
+   "pc/coordinacion.py",
+   ".claude/agents/revisor-codigo.md",
+   ".claude/agents/cotejador.md",
+   ".claude/agents/semaforo.md",
+   ".claude/agents/etl-validador.md",
+   ".claude/agents/medidor-rapido-fabric.md",
+   ".claude/agents/medidor-rapido-stratio.md",
+   ".claude/agents/gestor-descargas.md",
+   "CLAUDE.md",
+   "README.md"
+  ],
+  "autor": "Jhonattan-LT",
+  "estado": "SIN_COMPARTIR"
  }
 ]

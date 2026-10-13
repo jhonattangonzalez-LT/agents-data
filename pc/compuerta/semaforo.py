@@ -1,7 +1,8 @@
 """Compuerta rapida: con el ETL Validator y el cotejo rapido, decide si el flujo sigue al nivel 2.
 
   VERDE    corrida OK, roles coherentes, nivel 0/1 cumple            -> se lanza el nivel 2
-  AMARILLO corrida OK pero hay avisos (roles corregidos, CP-05 sin ventana, informativos llamativos)
+  AMARILLO corrida OK pero hay avisos (roles corregidos, CP-05 sin ventana, informativos llamativos, revision de codigo
+           sin cerrar o con una regla de negocio distinta)
            -> sigue al nivel 2, y el aviso viaja al reporte
   ROJO     no admite justificacion: la corrida fallo, bloqueante real, salida sin commit en la corrida,
            o la tabla quedo vacia -> vuelve a desarrollo HOY; el nivel 2 no se lanza
@@ -12,9 +13,12 @@ Un hallazgo NO detiene el lote: el flujo en ROJO sale del lote y se confirma en 
 import datetime
 
 
-def evaluar(flujo, grupo, etl=None, cotejos=None, orquestador_hijos=None, claves_esperadas=None):
-    """etl = validador.resumen(...); cotejos = {clave: cotejo_rapido}; orquestador_hijos = [{flujo, estado}]."""
-    rojo, amarillo, verde = [], [], []
+def evaluar(flujo, grupo, etl=None, cotejos=None, orquestador_hijos=None, claves_esperadas=None, avisos_codigo=None):
+    """etl = validador.resumen(...); cotejos = {clave: cotejo_rapido}; orquestador_hijos = [{flujo, estado}];
+    avisos_codigo = pc.codigo.aviso_semaforo(...): revision Stratio <-> Fabric sin cerrar o con reglas distintas (AMARILLO:
+    una regla distinta la confirma una persona antes de devolver)."""
+    rojo, amarillo, verde = [], [], list()
+    amarillo += [f"código · {x}" for x in avisos_codigo or []]
     if grupo == "orquestador":
         if not etl or etl.get("estado_corrida") != "Completed":
             rojo.append(f"corrida del orquestador: {(etl or {}).get('estado_corrida') or 'sin corrida'}")

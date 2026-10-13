@@ -559,11 +559,16 @@ def flujo(enc, f, etl, ev, sem, tablas, ver, otros=None, decisiones=None):
     band = {x["ruta"]: x for x in (corr.get("entradas") or []) + (corr.get("salidas") or [])}
     io = etl.get("io_medido") or {}
     cols_io = {x.get("tabla"): x for x in (io.get("entradas") or []) + (io.get("salidas") or [])}
-    ent = []
+    ent, descartadas = [], []
     salidas_del_flujo = {((o.get("fabric") or {}).get("ruta") or "").lower() for o in f["objetos"]}
     for e in ev.get("entradas") or []:
         t = e.get("entrada")
         if (t or "").lower() in salidas_del_flujo:   # una salida registrada del flujo no es su entrada (rol invertido del validador)
+            continue
+        par = ((band.get(t) or {}).get("bandera") or "").replace("-", "_")
+        if par and e.get("tipo") is None and par not in _entradas_codigo(f["nombre_fabric"]):
+            descartadas.append({"ruta": t, "parametro": par,
+                                "motivo": "el codigo del flujo no la lee (no esta entre sus parametros de entrada); no existe en el lakehouse"})
             continue
         cl = e.get("commit_leido_por_la_corrida") or {}
         po = e.get("productor_segun_orquestador") or {}
@@ -573,7 +578,9 @@ def flujo(enc, f, etl, ev, sem, tablas, ver, otros=None, decisiones=None):
             fila.update(version_leida=cl.get("version"), commit_utc=cl.get("utc"), operacion=cl.get("operacion"),
                         filas=cl.get("filas_escritas") if cl.get("filas_escritas") is not None else (cols_io.get(t) or {}).get("filas"),
                         antiguedad_al_leer_h=e.get("antiguedad_al_leer_h"),
-                        producida_por=({"actividad_del_orquestador": po.get("actividad_del_orquestador"), "estado": po.get("estado"),
+                        producida_por=({"actividad_de_la_corrida_validada": po.get("actividad_de_la_corrida"), "estado": po.get("estado"),
+                                        "inicio_utc": po.get("inicio_utc"), "fin_utc": po.get("fin_utc")} if po.get("actividad_de_la_corrida") else
+                                       {"actividad_del_orquestador": po.get("actividad_del_orquestador"), "estado": po.get("estado"),
                                         "inicio_utc": po.get("inicio_utc"), "fin_utc": po.get("fin_utc")} if po else
                                        {"flujo": e.get("productor_segun_validador")} if e.get("productor_segun_validador") else
                                        "fuera de la cadena validada (commit anterior al orquestador)"),
@@ -603,6 +610,10 @@ def flujo(enc, f, etl, ev, sem, tablas, ver, otros=None, decisiones=None):
         sal_act = {x.get("actividad"): x for x in raw.get("salidas") or []}
         act = {a_["actividad"]: a_ for a_ in ev.get("actividades") or []}
         copias = [x for x in raw.get("entradas") or [] if (act.get(x.get("actividad")) or {}).get("tipo") == "Copy" or x.get("actividad") in sal_act]
+        if not copias:                       # origen externo (BD, AS400) que el validador no declara: lo mide la propia Copy
+            copias = [{"actividad": a_["actividad"], "tipo": "origen externo de la actividad Copy",
+                       "ruta_completa": f"origen de la actividad Copy «{a_['actividad']}»"}
+                      for a_ in ev.get("actividades") or [] if a_.get("tipo") == "Copy" and a_.get("estado") != "Inactive"]
         alcance = [x for x in copias if ((sal_act.get(x.get("actividad")) or {}).get("carpeta_real") or "").strip("/").lower() in dest_obj]
         if not alcance:                      # el destino final lo escribe otra actividad (p. ej. particionado): todas cuentan
             alcance = copias
@@ -692,7 +703,8 @@ def flujo(enc, f, etl, ev, sem, tablas, ver, otros=None, decisiones=None):
                           "corregidos_respecto_al_validador": bool(corr.get("invertido")),
                           "que_se_corrigio": [{"tabla": c_["ruta"], "el_validador_decia": c_.get("rol_validador"), "segun_el_codigo": c_.get("rol_codigo")}
                                               for c_ in corr.get("cambios") or []],
-                          "parametros_que_no_son_tablas": no_tablas}),
+                          "parametros_que_no_son_tablas": no_tablas,
+                          "entradas_del_validador_descartadas_por_el_codigo": descartadas}),
                "entradas": ent if ent else [{"entrada": x} for x in r.get("entradas") or []],
                "salidas": sal,
                "flujos_dependientes": {"de_los_que_depende": arriba, "que_dependen_de_este": abajo,
@@ -798,6 +810,29 @@ def flujo(enc, f, etl, ev, sem, tablas, ver, otros=None, decisiones=None):
     if ver:
         doc["verificacion"] = ver
     return doc
+
+
+_ENT_COD = {}
+
+
+def _entradas_codigo(flujo):
+    """Parametros de entrada segun el codigo del flujo (pc roles); vacio si no hay codigo legible."""
+    if flujo not in _ENT_COD:
+        try:
+            from ..inventario import roles
+            inv = roles.inventariar(flujo)
+            _ENT_COD[flujo] = set(inv.get("entradas") or []) if inv.get("estado") == "OK" else None
+        except Exception:
+            _ENT_COD[flujo] = None
+    return _ENT_COD[flujo] if _ENT_COD[flujo] is not None else _TODAS
+
+
+class _Todas(set):
+    def __contains__(self, x):
+        return True
+
+
+_TODAS = _Todas()
 
 
 def faltantes_flujo(doc):

@@ -58,7 +58,12 @@ def siguiente(trabajo):
             paso = ("el cotejador analiza las dos tablas y registra las diferencias", f"python -m pc comparar --trabajo {trabajo} --clave … · python -m pc diferencia …", "cotejador")
         else:
             paso = ("decisiones de una persona", f"python -m pc decision --trabajo {trabajo}", "coordinador")
+        rc = L.leer(trabajo, f"codigo/{n}/revision.json") or {}
+        codigo = ("no aplica" if f["grupo"] == "orquestador" else rc.get("veredicto") or
+                  ("en revisión" if L.leer(trabajo, f"codigo/{n}/fuente.json") else
+                   f"pendiente: python -m pc codigo bajar --trabajo {trabajo} --flujo {n} --version N  [revisor-codigo]"))
         out.append({"flujo": n, "grupo": f["grupo"], "estado": est or "EN_CURSO", "paso": paso[0], "comando": paso[1], "agente": paso[2],
+                    "codigo": codigo,
                     "tablas": {c.get("objeto", {}).get("fabric") or k: c.get("estado") for k, c in zip(k0, cot)}})
     return out
 
@@ -91,6 +96,17 @@ def _ejecucion(trabajo, f):
             "salidas": [(x.get("tabla") or x.get("ruta"), x.get("filas"), x.get("commits_en_corrida")) for x in cf.get("salidas") or []]}
 
 
+def _codigo(trabajo, flujo, columna=None):
+    """Lo que dice la revision de codigo para una diferencia: veredicto, version de Stratio y reglas que nombran la columna."""
+    r = L.leer(trabajo, f"codigo/{flujo}/revision.json")
+    if not r:
+        return {"veredicto": None, "aviso": "sin revision de codigo: no se sabe si la regla es igual en los dos lados"}
+    cols = [c.strip().lower() for c in (columna or "").split(",") if c.strip()]
+    rel = [x for x in r.get("reglas", []) if cols and any(c in " ".join(str(x.get(k) or "") for k in ("regla", "impacto", "stratio", "fabric")).lower() for c in cols)]
+    return {"veredicto": r.get("veredicto"), "version_stratio": r.get("version_stratio"),
+            "reglas_de_la_columna": [(x["id"], x["regla"], x["resultado"]) for x in rel]}
+
+
 def pendientes(trabajo, clave=None):
     """Todo lo que espera a una persona, con los datos para decidir."""
     out = []
@@ -115,6 +131,13 @@ def pendientes(trabajo, clave=None):
         pass
     for f in (L.leer(trabajo, "lote.json") or {}).get("flujos", []):
         n = f["nombre_fabric"]
+        rc = L.leer(trabajo, f"codigo/{n}/revision.json") or {}
+        if rc.get("veredicto") == "CON_DIFERENCIAS" and not rc.get("decision_persona"):
+            out.append({"tipo": "CODIGO", "flujo": n, "titulo": f"{n}: regla de negocio distinta entre Stratio y Fabric",
+                        "datos": {"version_stratio": rc.get("version_stratio"), "zip_fabric": rc.get("zip_fabric"),
+                                  "reglas": [x for x in rc.get("reglas", []) if x["resultado"] != "IGUAL"]},
+                        "opciones": [("devolver a desarrollo (error del flujo)", "(se informa la regla con el nodo de Rocket y el archivo de Fabric)"),
+                                     ("analizar más: confirmar con el dato del nivel 2", f"python -m pc comparar --trabajo {trabajo} --clave … --sql \"…\"")]})
         sem = L.leer(trabajo, f"semaforo/{n}.json")
         if sem and sem["estado"] == "ROJO":
             out.append({"tipo": "ROJO", "titulo": f"{n}: vuelve a desarrollo", "flujo": n, "datos": {"motivos": sem["motivos_rojo"], "ejecucion": _ejecucion(trabajo, f)},
@@ -140,7 +163,8 @@ def pendientes(trabajo, clave=None):
                                       "otras_diferencias": [(x["id"], x["tipo"], x["decision"]) for x in co["diferencias"] if x["id"] != d["id"]],
                                       "cifras": {"filas": (co.get("nivel_2") or {}).get("filas") or (co.get("nivel_1") or {}).get("filas"),
                                                  "dato": (co.get("nivel_2") or {}).get("dato")},
-                                      "lectura": _lectura(trabajo, f, o), "ejecucion": _ejecucion(trabajo, f)},
+                                      "lectura": _lectura(trabajo, f, o), "ejecucion": _ejecucion(trabajo, f),
+                                      "codigo": _codigo(trabajo, n, d.get("columna"))},
                             "opciones": [
                                 ("JUSTIFICAR (exige causa medida)", f"python -m pc diferencia --trabajo {trabajo} --clave {o['clave']} --id {d['id']} --control {d['control']} --decision JUSTIFICADA --causa \"…\" --medida"),
                                 ("VERIFICAR con QA o Comfandi", f"python -m pc diferencia --trabajo {trabajo} --clave {o['clave']} --id {d['id']} --control {d['control']} --decision A_VERIFICAR"),

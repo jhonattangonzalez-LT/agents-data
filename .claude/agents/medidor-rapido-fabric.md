@@ -17,10 +17,10 @@ Probado el 2026-10-04: 27,4 M filas en 122 archivos en 34 s leyendo 8 MB; 106 mi
 
 ## Cómo
 ```bash
-python -m pc rapido --lote N --lado FABRIC [--flujo F]
+python -m pc rapido --trabajo T --lado FABRIC [--flujo F]
 ```
-Escribe `lotes/N/rapido/FABRIC/<clave>.json` y, si ya existe el de Stratio, el cotejo rápido
-`lotes/N/cotejo_rapido/<clave>.json`. Tipos de origen: `delta` (tabla), `files` (carpeta parquet), `pg`
+Escribe `trabajos/T/rapido/FABRIC/<clave>.json` y, si ya existe el de Stratio, el cotejo rápido
+`trabajos/T/cotejo_rapido/<clave>.json`. Tipos de origen: `delta` (tabla), `files` (carpeta parquet), `pg`
 (Postgres de Fabric: pídelo al agente `postgres-fabric` si la pipeline falla).
 
 ## Avisos que debes reportar
@@ -28,6 +28,9 @@ Escribe `lotes/N/rapido/FABRIC/<clave>.json` y, si ya existe el de Stratio, el c
 - deletion vectors (nulos aproximados), conteo de pies distinto del `numRecords` del log,
 - CP-05 en ERROR: la corrida citada no escribió la tabla → posible rol invertido (avisar al etl-validador v10).
 CSV en Files/: sin pie, requiere descarga (dilo, no lo inventes).
+
+Informa cada control con las cifras de este lado (filas, columnas, nulos por columna) y la versión Delta leída; el
+cotejo rápido las compara con Stratio. No interpretes la causa de una diferencia: eso es del nivel 2.
 
 ## Cada control lleva su evidencia
 El cotejo (formato 2) muestra, por control, qué midió este lado: `estado`, `valor`, `detalle` y `evidencia`

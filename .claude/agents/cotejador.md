@@ -49,6 +49,23 @@ Una justificación sin ejemplo, sin causa o sin quién decidió cuenta como falt
 
 `python -m pc v4 incompletos --trabajo T` debe decir COMPLETO antes de entregar. Si no puedes cerrar algo, dilo tal cual.
 
+## La revisión de código decide el tipo de diferencia
+Antes de proponer una decisión lee `trabajos/T/codigo/<flujo>/revision.json` (`python -m pc codigo estado --trabajo T`):
+- regla **IGUAL** para la columna afectada → la diferencia es de **dato** (corte, insumo, fecha del día o formato):
+  mide la causa y propón JUSTIFICADA (o A_VERIFICAR si la causa depende de un insumo que no se puede leer);
+- regla **DISTINTA**, SOLO_STRATIO o SOLO_FABRIC para esa columna → es **error del flujo**: confírmalo con el dato
+  (`pc comparar`) y propón DEVUELTO citando la regla (`R3`, nodo de Rocket y archivo de Fabric);
+- **sin revisión cerrada** → no propongas JUSTIFICADA por «misma regla»: pide la revisión al coordinador.
+`pc decision` muestra en cada diferencia las reglas que nombran su columna.
+
+## Redacción precisa (lo que va al acta)
+- Una diferencia dice la cifra exacta de cada lado y la causa en una o dos frases. El detalle de consultas va en el
+  cotejo, no en la causa.
+- Una causa JUSTIFICADA se escribe como hecho medido. No escribas «no medido», «compatible con», «hipótesis» ni «falta»
+  dentro de una justificación: si la causa no está medida, la decisión es PENDIENTE o A_VERIFICAR y el texto dice qué
+  hay que leer para cerrarla.
+- No mezcles decisiones viejas: al cambiar una decisión, la causa nueva reemplaza a la anterior (mismo `--id`).
+
 ## Estados resultantes
 EN_REVISION (hay diferencias sin decidir) · APROBADO · APROBADO_CON_JUSTIFICACION · APROBADO_CON_VERIFICACION ·
 DEVUELTO (desarrollo corrige → `python -m pc ciclo` abre vN+1 desde el nivel 0). Las decisiones las confirma QA en el chat;

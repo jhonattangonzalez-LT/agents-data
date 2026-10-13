@@ -29,7 +29,8 @@ def candidatos_zip(flujo):
     """Zips cuyo nombre de carpeta corresponde al flujo ('03-moves' -> 'moves')."""
     base = re.sub(r"^\d+[a-z]?[-_]", "", flujo.strip()).replace("-", "_").lower()
     todos = [p for p in ol.listar(FAB["assets_flujos"], True) if p["name"].endswith(".zip")]
-    exactos = [p for p in todos if p["name"].split("/")[-2].lower() in (flujo.lower(), base)]
+    exactos = [p for p in todos if p["name"].split("/")[-2].lower() in (flujo.lower(), base)
+               or p["name"].split("/")[-1][:-4].lower() in (flujo.lower(), base)]   # <flujo>/vN/<flujo>.zip
     return exactos
 
 
@@ -129,8 +130,10 @@ def inventariar(flujo, zip_ruta=None, veredicto=None):
         evaluados.append((casan, c, r))
     evaluados.sort(key=lambda t: -t[0])
     casan, ruta, r = evaluados[0]
-    out = {"flujo": flujo, "estado": "OK", "zip": ruta, "capa": ruta.split("/")[-3],
-           "grupo_codigo": ruta.split("/")[-4], **r,
+    partes = ruta.split("/")
+    k = 1 if re.fullmatch(r"v\d+", partes[-2]) else 0   # <grupo>/<capa>/<flujo>/vN/<flujo>.zip
+    out = {"flujo": flujo, "estado": "OK", "zip": ruta, "capa": partes[-3 - k],
+           "grupo_codigo": partes[-4 - k], **r,
            "zips_alternativos": [c for _, c, _ in evaluados[1:]]}
     if veredicto:
         out["correccion"] = corregir_validador(veredicto, r)

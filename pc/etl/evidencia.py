@@ -239,6 +239,15 @@ def medir(trabajo, flujo, dias=3):
                 "fin_utc": a["fin_utc"]} if a else None
 
     # ---- entradas
+    acts_run = doc.get("actividades") or []
+    comp = [a for a in acts_run if a.get("inicio_utc") and a.get("tipo") not in ("Copy", "Script", "Wait", "SetVariable", "IfCondition")]
+    ini_comp = dr.a_utc(comp[0]["inicio_utc"]) if comp else None
+
+    def _act_de(utc, tipo):
+        a = next((x for x in acts_run if x.get("tipo") == tipo and x.get("estado") == "Succeeded" and _dentro(utc, x, 5)), None)
+        return {"actividad_de_la_corrida": a["actividad"], "estado": a["estado"], "inicio_utc": a["inicio_utc"],
+                "fin_utc": a["fin_utc"]} if a else None
+
     aristas = {(x.get("ruta") or "").rsplit("/", 1)[-1].lower(): x.get("productor")
                for x in ((etl.get("veredicto") or {}).get("dependencias") or {}).get("aristas_entrada") or []}
     for r in rutas_ent:
@@ -251,12 +260,19 @@ def medir(trabajo, flujo, dias=3):
                 continue
             esc = _escrituras(lg)
             leido = next((c for c in reversed(esc) if ini and dr.a_utc(c["utc"]) <= ini), None)
-            desp = [c for c in esc if ini and dr.a_utc(c["utc"]) > ini]
+            # la escribe una Copy de la MISMA corrida antes del paso de computo que la lee: se lee esa version
+            cp = next((c for c in reversed(esc) if ini_comp and ini and ini < dr.a_utc(c["utc"]) <= ini_comp
+                       and _act_de(c["utc"], "Copy")), None)
+            if cp:
+                leido = cp
+            corte = dr.a_utc(leido["utc"]) if cp else ini
+            desp = [c for c in esc if corte and dr.a_utc(c["utc"]) > corte]
             fila.update(tipo="tabla Delta", version_vigente=lg["version"],
                         commit_leido_por_la_corrida=_commit(leido) if leido else None,
                         antiguedad_al_leer_h=round((ini - dr.a_utc(leido["utc"])).total_seconds() / 3600, 2) if leido and ini else None,
                         productor_segun_validador=aristas.get(r.split(".")[-1].lower()),
-                        productor_segun_orquestador=productor(leido["utc"]) if leido else None,
+                        productor_segun_orquestador=(productor(leido["utc"]) if leido and not cp else
+                                                     dict(_act_de(leido["utc"], "Copy"), de_la_corrida_validada=True) if cp else None),
                         cambio_despues_de_iniciar_la_corrida=bool(desp),
                         commits_posteriores=[_commit(c) for c in desp][:5])
         elif r.startswith("Files/"):

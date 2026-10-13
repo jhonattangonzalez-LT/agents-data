@@ -1,7 +1,7 @@
 # Coordinador · Pipeline QA v2 · Comfandi / Quind (Stratio → Microsoft Fabric)
 
 En esta carpeta la sesión de chat **es el coordinador**. Recibe al usuario, hace las preguntas de cada fase,
-reparte el trabajo entre los 11 agentes de `.claude/agents/`, lleva el estado y **espera la respuesta de una persona
+reparte el trabajo entre los 12 agentes de `.claude/agents/`, lleva el estado y **espera la respuesta de una persona
 en cada decisión**. Los agentes no se llaman entre sí. Intérprete `~/Projects/.venv/bin/python` · herramientas `pc/`
 · CLI `python -m pc …`. Formato de reportes: `docs/REPORTES_V4.md`. Alcance: `docs/ALCANCE.md`.
 
@@ -16,7 +16,8 @@ en cada decisión**. Los agentes no se llaman entre sí. Intérprete `~/Projects
 
 | Fase | Qué preguntas o avisas | Comando de apoyo |
 |---|---|---|
-| **Arranque** | flujos; nombre en Fabric y en Stratio (informativo); FL si se conoce (nunca inventarlo); grupo (ingesta · analítica · orquestador); rutas de cada tabla a cada lado; ventana de fechas en tablas históricas | `pc trabajo crear` · `pc trabajo flujo --json` |
+| **Arranque** | flujos; nombre en Fabric y nombre del workflow en Stratio; **versión de Stratio (Rocket) que se trae** (nunca suponer la última); FL si se conoce (nunca inventarlo); grupo (ingesta · analítica · orquestador); rutas de cada tabla a cada lado; ventana de fechas en tablas históricas | `pc trabajo crear` · `pc trabajo flujo --json` (`version_stratio`) · `pc codigo bajar` sin `--version` lista las versiones |
+| **Código** | lanzar el `revisor-codigo` apenas está el trabajo (en paralelo a los niveles 0/1 y 2); presentar las reglas DISTINTAS con su cita de los dos lados y esperar: devolver · analizar más | `pc codigo bajar/regla/cerrar/estado` |
 | **Rutas desconocidas** | proponer las salidas reales que da el código del flujo y pedir confirmación | `pc roles --flujo F` |
 | **Productor faltante** | si una entrada de analítica está vacía o sin commit reciente: ¿ejecuto el flujo que la produce? | `pc etl …` |
 | **Antes de Stratio** | estado de cada cookie (duran 2–3 h, se admiten 1 a 3) y VPN. Si quedan < 15 min o no hay VPN, **pide** antes de seguir | `pc stratio cookie` · `pc stratio vpn` |
@@ -24,7 +25,7 @@ en cada decisión**. Los agentes no se llaman entre sí. Intérprete `~/Projects
 | **Semáforo ROJO** | presentar los motivos (cifras de cada lado) y confirmar la devolución a desarrollo | `pc decision` |
 | **Veredicto (salida del nivel 2)** | por cada diferencia pendiente, presentar el **expediente de decisión** completo y esperar: justificar · verificar · devolver · analizar más | `pc decision --trabajo T` |
 | **Verificación** | quién cierra (QA o Comfandi) y su decisión: APRUEBA · CORREGIR | `pc verificar` |
-| **Corrección** | cuando desarrollo re-ejecuta: abrir ciclo nuevo con el motivo | `pc ciclo --flujo F --motivo …` |
+| **Corrección** | cuando desarrollo re-ejecuta: abrir ciclo nuevo con el motivo y volver a bajar el código (zip nuevo; versión de Stratio si cambió) | `pc ciclo --flujo F --motivo …` · `pc codigo bajar` |
 | **Cierre** | qué expedientes entran al lote, quién es el responsable del acta, y las 3 compuertas | `pc lote disponibles` · `pc lote armar` · `pc revision …` · `pc acta generar` |
 
 **El expediente de decisión** (`python -m pc decision --trabajo T`) trae: qué pasó, el control y si decide o informa
@@ -36,11 +37,13 @@ de la persona. No elijas por ella.**
 ## 2. El ciclo de un flujo (una versión vN)
 
 ```
+revisión de código (Stratio vN de Rocket ↔ zip de Fabric) ───────────────────────────────┐ (en paralelo)
 ETL v10 (roles reales + corrida) ─► nivel 0 ─► nivel 1 ─► semáforo ─► estimar ─► descargar ─► nivel 2 ─► veredicto
             los niveles 0, 1 y 2 escriben el MISMO medicion/cotejo vN, en disco, a medida que avanzan
 ```
 | Paso | Agente | Comando |
 |---|---|---|
+| código de los dos lados: reglas de negocio IGUAL / DISTINTA | revisor-codigo | `pc codigo bajar --version N` · `pc codigo regla` · `pc codigo cerrar` |
 | roles reales + ejecutar y validar | etl-validador (v10) | `pc etl lanzar --trabajo T --esperar` · `pc etl recoger` |
 | niveles 0 y 1 de los dos lados + cotejo rápido | medidor-rapido-fabric / -stratio (Postgres: postgres-fabric) | `pc rapido --trabajo T` |
 | semáforo | semaforo | `pc semaforo --trabajo T` |

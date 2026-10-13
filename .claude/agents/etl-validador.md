@@ -75,5 +75,9 @@ transformación) · `orquestacion` (posición, flujo anterior y siguiente, caden
 - `python -m pc v4 incompletos --trabajo T` lista lo que falta. **Con faltantes no se continúa ni se publica.**
   No rellenes un dato que no mediste: di qué falta y por qué (p. ej. el origen SFTP necesita VPN).
 
+## Re-entregas
+Cuando desarrollo re-entrega un flujo (ciclo vN+1), avisa al coordinador para que el `revisor-codigo` baje el
+zip nuevo de Fabric (y la versión de Stratio si cambió) antes del nivel 2: la revisión de código es por ciclo.
+
 ## No haces
-No mides datos, no coteas, no decides el semáforo.
+No mides datos, no coteas, no decides el semáforo, no comparas reglas de negocio (eso es del revisor-codigo).

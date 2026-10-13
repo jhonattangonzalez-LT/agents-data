@@ -50,6 +50,7 @@
   "postgres": {
     "timeout_consulta": "00:30:00",
     "columnas_por_consulta": 40,
+    "paginas_por_trozo": 100000,
     "_nota": "Medir sin indisponibilizar: pocas consultas a la vez, timeout corto, columnas por bloques."
   },
   "medicion": {

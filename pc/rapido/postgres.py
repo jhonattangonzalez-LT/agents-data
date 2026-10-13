@@ -50,8 +50,21 @@ def medir(tabla, plataforma, ejecutor=None, where=None, ventana=None, columnas_p
     tam = columnas_por_consulta or CFG["postgres"]["columnas_por_consulta"]
     bloques = S.bloques(esq, tam)
     par = paralelo or (PAR["pg_stratio_consultas"] if plataforma == "STRATIO" else PAR["pg_fabric_corridas"])
+    trozos = [None]
+    tam_trozo = CFG["postgres"].get("paginas_por_trozo")
+    if plataforma == "FABRIC" and tam_trozo:
+        pag = ejecutor(S.paginas(tabla))
+        n_pag = int(pag[0]["paginas"] or 0) if pag else 0
+        if n_pag > tam_trozo:
+            trozos = S.trozos_ctid(n_pag, tam_trozo)
     with ThreadPoolExecutor(par) as ex:
-        res = list(ex.map(lambda b: ejecutor(S.agregados(tabla, b, where))[0], bloques))
+        if len(trozos) == 1:
+            res = list(ex.map(lambda b: ejecutor(S.agregados(tabla, b, where))[0], bloques))
+        else:
+            tareas = [(bi, w) for bi in range(len(bloques)) for w in trozos]
+            partes = list(ex.map(lambda t: ejecutor(S.agregados(tabla, bloques[t[0]], S.y(where, t[1])))[0], tareas))
+            res = [S.combinar(b, [p for (bi2, _), p in zip(tareas, partes) if bi2 == bi], ejecutor)
+                   for bi, b in enumerate(bloques)]
     filas = int(res[0]["n"])
     cols, agg_cols = [], {}
     for bi, b in enumerate(bloques):
@@ -73,9 +86,10 @@ def medir(tabla, plataforma, ejecutor=None, where=None, ventana=None, columnas_p
                 agg_cols[nombre].update(longitud_minima=r.get(f"lmin_{i}"), longitud_maxima=r.get(f"lmax_{i}"),
                                         cadenas_vacias=r.get(f"vac_{i}"))
     cols.sort(key=lambda c: c["orden"])
-    agg = {"filas": filas, "archivos": 0, "columnas": agg_cols, "pedidos": len(bloques) + 1, "bytes_leidos": 0}
+    agg = {"filas": filas, "archivos": 0, "columnas": agg_cols, "pedidos": len(bloques) * len(trozos) + 1, "bytes_leidos": 0}
     rep = nivel01._armar(plataforma, tabla, "POSTGRES", cols, agg, None, ventana, t0,
-                         {"tabla": tabla, "where": where, "consultas": len(bloques) + 1})
+                         {"tabla": tabla, "where": where, "consultas": len(bloques) * len(trozos) + 1,
+                          "trozos_ctid": len(trozos) if len(trozos) > 1 else None})
     rep["nivel1"]["fuente"] = "sql_en_base"
     rep["nivel0"]["esquema_postgres"] = esq
     return rep
