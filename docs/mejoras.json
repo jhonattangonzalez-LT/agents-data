@@ -139,7 +139,8 @@
    "config/pipeline.json"
   ],
   "autor": "Jhonattan-LT",
-  "estado": "SIN_COMPARTIR"
+  "estado": "COMPARTIDA",
+  "commit": "b82699b"
  },
  {
   "id": "M-011",
@@ -150,7 +151,8 @@
    "pc/reportes/formato2.py"
   ],
   "autor": "Jhonattan-LT",
-  "estado": "SIN_COMPARTIR"
+  "estado": "COMPARTIDA",
+  "commit": "b82699b"
  },
  {
   "id": "M-012",
@@ -161,7 +163,8 @@
    "pc/__main__.py"
   ],
   "autor": "Jhonattan-LT",
-  "estado": "SIN_COMPARTIR"
+  "estado": "COMPARTIDA",
+  "commit": "b82699b"
  },
  {
   "id": "M-013",
@@ -172,7 +175,8 @@
    "pc/rapido/delta_remoto.py"
   ],
   "autor": "Jhonattan-LT",
-  "estado": "SIN_COMPARTIR"
+  "estado": "COMPARTIDA",
+  "commit": "92f467c"
  },
  {
   "id": "M-014",
@@ -183,7 +187,8 @@
    "pc/inventario/roles.py"
   ],
   "autor": "Jhonattan-LT",
-  "estado": "SIN_COMPARTIR"
+  "estado": "COMPARTIDA",
+  "commit": "b82699b"
  },
  {
   "id": "M-015",
@@ -195,7 +200,8 @@
    "pc/reportes/formato2.py"
   ],
   "autor": "Jhonattan-LT",
-  "estado": "SIN_COMPARTIR"
+  "estado": "COMPARTIDA",
+  "commit": "b82699b"
  },
  {
   "id": "M-016",
@@ -219,6 +225,7 @@
    "README.md"
   ],
   "autor": "Jhonattan-LT",
-  "estado": "SIN_COMPARTIR"
+  "estado": "COMPARTIDA",
+  "commit": "b82699b"
  }
 ]
