@@ -45,6 +45,7 @@ Portada, Control de versiones, Participantes, y nueve puntos:
 7. Diferencias y su justificación     PUNTUAL: una fila por tabla con diferencia →
                                       diferencia (cifra) | ejemplo sacado de la comparación
                                       (columna y valor de cada lado) | justificación en una o dos oraciones
+                                      (reportes v4: modo compacto, ver «Punto 7 compacto»)
 8. Declaración y aprobación           firmas
 9. Anexo de evidencia                 al final: todos los enlaces, por flujo y por tabla
                                       (métrica Stratio, métrica Fabric, cotejo Stratio ↔ Fabric,
@@ -64,6 +65,19 @@ Reglas del formato:
   comparación (p. ej. «Sueldo: no nulos 431.800 → 0 (vacía en Fabric)») y la justificación en
   una línea. Si hay una acotación acordada con el usuario (por fecha, por generación, campos extra),
   la justificación ES la acotación.
+- **Punto 7 compacto (reportes v4, regla del usuario 2026-10-14).** Nunca se copia al acta la
+  justificación completa del cotejo (rutas, commits, horas, conteos intermedios): el acta del Lote 12
+  llegó a 110 páginas por eso. Por cada diferencia van tres columnas:
+  - **Diferencia:** tabla · Dn · control, y su cifra en UNA frase.
+  - **Ejemplo:** la clave en gris y debajo «STRATIO valor» y «FABRIC valor» en dos líneas, con el
+    color de cada lado.
+  - **Justificación:** solo la causa que cierra ese control, en 1 o 2 frases, con ✔. Debajo, en gris,
+    la decisión, quién y la fecha.
+
+  La causa corta se escribe a mano a partir de la justificación del cotejo, sin inventar nada, en
+  `actas/justif_corta_lote<N>.py`, con clave (tabla, Dn). El script de datos la aplica con
+  `compactar()` y marca `"sec7_compacta": True`. El generador se niega si falta alguna. El detalle
+  completo queda en el cotejo enlazado en el anexo. «Por qué se aprueba» va una sola vez por flujo.
 - **Enlaces: resueltos, nunca adivinados.** Un archivo cuyo nombre lleva la hora de publicación se
   resuelve listando su carpeta en OneLake; cada enlace se comprueba con HEAD. El generador se niega
   a emitir el acta si queda un enlace sin resolver, y `verificar.py --enlaces` vuelve a abrirlos todos.

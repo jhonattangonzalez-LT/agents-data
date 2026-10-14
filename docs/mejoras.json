@@ -227,5 +227,16 @@
   "autor": "Jhonattan-LT",
   "estado": "COMPARTIDA",
   "commit": "b82699b"
+ },
+ {
+  "id": "M-018",
+  "fecha": "2026-10-14T19:20:18+00:00",
+  "que": "Agente acta-entrega: punto 7 compacto en reportes v4. Por diferencia van tres columnas: la cifra en una frase; el ejemplo con la clave y STRATIO/FABRIC en dos líneas de color; y la justificación corta que cierra el control (✔) con la decisión, quién y la fecha. La causa corta se escribe en actas/justif_corta_loteN.py y el detalle completo queda en el cotejo enlazado.",
+  "por_que": "El acta del Lote 12 (Ola 3) ocupaba unas 110 páginas porque copiaba la justificación completa de cada cotejo (rutas, commits, horas). Con el modo compacto, el punto 7 pasa de 196.000 a 82.000 caracteres y el acta queda en unas 60 páginas.",
+  "archivos": [
+   "muestras/agente_acta-entrega_v1.md"
+  ],
+  "autor": "Jhonattan-LT",
+  "estado": "SIN_COMPARTIR"
  }
 ]

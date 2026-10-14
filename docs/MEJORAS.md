@@ -2,6 +2,14 @@
 
 Cada mejora se comparte con el equipo (commit + push al repositorio). `SIN_COMPARTIR` = falta hacerlo.
 
+## M-018 · 2026-10-14 · SIN_COMPARTIR
+
+**Qué:** Agente acta-entrega: punto 7 compacto en reportes v4. Por diferencia van tres columnas: la cifra en una frase; el ejemplo con la clave y STRATIO/FABRIC en dos líneas de color; y la justificación corta que cierra el control (✔) con la decisión, quién y la fecha. La causa corta se escribe en actas/justif_corta_loteN.py y el detalle completo queda en el cotejo enlazado.
+
+**Por qué:** El acta del Lote 12 (Ola 3) ocupaba unas 110 páginas porque copiaba la justificación completa de cada cotejo (rutas, commits, horas). Con el modo compacto, el punto 7 pasa de 196.000 a 82.000 caracteres y el acta queda en unas 60 páginas.
+
+**Archivos:** `muestras/agente_acta-entrega_v1.md` · por Jhonattan-LT
+
 ## M-016 · 2026-10-13 · COMPARTIDA
 
 **Qué:** Agente revisor-codigo y comando pc codigo: al comienzo del trabajo, en paralelo a los niveles 0/1 y 2, baja la version de Stratio que indica el usuario (Rocket: /assets, findAllVersions, findById) y el zip del flujo de Fabric, los deja en texto por nodo y por archivo, y registra cada regla de negocio como IGUAL, DISTINTA, SOLO_STRATIO o SOLO_FABRIC con la cita de los dos lados. La revision cerrada entra al semaforo (AMARILLO si esta sin cerrar o con una regla distinta), a pc decision (tipo CODIGO y reglas de la columna de cada diferencia) y a pc trabajo siguiente. El trabajo guarda version_stratio por flujo. Agentes alineados: cotejador (clasifica dato/error con la revision; redaccion precisa sin 'no medido' en una justificacion), semaforo, etl-validador, medidores y gestor de descargas (--trabajo T, trabajos/T).
