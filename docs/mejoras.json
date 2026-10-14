@@ -237,7 +237,8 @@
    "muestras/agente_acta-entrega_v1.md"
   ],
   "autor": "Jhonattan-LT",
-  "estado": "SIN_COMPARTIR"
+  "estado": "COMPARTIDA",
+  "commit": "6a4a9f1"
  },
  {
   "id": "M-019",
@@ -252,6 +253,7 @@
    "docs/REPORTES_V4.md"
   ],
   "autor": "Jhonattan-LT",
-  "estado": "SIN_COMPARTIR"
+  "estado": "COMPARTIDA",
+  "commit": "9c288c2"
  }
 ]
