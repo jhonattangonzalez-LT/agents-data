@@ -70,5 +70,9 @@ mediciones en el bucket `metricas-*/v4/qa/<clave>/`. Nada más sale del equipo l
 - **cotejo_flujo**: `encabezado` · `ejecucion` (corrida, actividades, validador, pruebas reclasificadas) ·
   `dependencias` · `roles` · `entradas` · `salidas` (filas, versión Delta, commits en la corrida, rol según el
   validador) · `analitica` (transformación con roles reales + lo que dijo el validador) · `tablas` · `semaforo` · `verificacion`.
+  · `revision_codigo` (M-019): versión de Stratio y zip de Fabric revisados, reglas IGUAL / no IGUAL y, por cada
+  regla que no es IGUAL, la cita de los dos lados, el impacto, la decisión (ACEPTADA · DEVOLVER · PENDIENTE) y los
+  comentarios de desarrollo y de QA; `bloquea` (alguna regla a DEVOLVER), `aclaraciones_pendientes` e `historial`.
+  Aclarar el código no re-ejecuta nada: se actualiza en la **misma vN** (`pc codigo comentar` / `pc codigo cotejo --publicar`).
 - **log_agentes**: una línea por evento (evento, ts, usuario, agente, acción, fase, nivel, flujo, clave, estado, duración, detalle, salidas, error).
 - **expediente**: .md del flujo listo para acta (ver `pc/reportes/v4.py → expediente`).

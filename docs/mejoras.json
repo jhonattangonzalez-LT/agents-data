@@ -238,5 +238,20 @@
   ],
   "autor": "Jhonattan-LT",
   "estado": "SIN_COMPARTIR"
+ },
+ {
+  "id": "M-019",
+  "fecha": "2026-10-14T20:12:28+00:00",
+  "que": "revisor-codigo: llave revision_codigo en el cotejo de flujo. Guarda la versión de Stratio y el zip revisados, las reglas IGUAL y no IGUAL con la cita de los dos lados, el impacto, la decisión (ACEPTADA · DEVOLVER · PENDIENTE) y los comentarios de desarrollo y de QA, además de bloquea, aclaraciones_pendientes e historial. Nuevos comandos pc codigo comentar y pc codigo cotejo --publicar. Las aclaraciones posteriores se registran en la misma vN. El semáforo respeta las decisiones.",
+  "por_que": "La revisión de código no bloquea las fases siguientes y sus diferencias se aclaran después (Lote 12: R2–R17 aceptadas el 14-10). Hasta ahora esas aclaraciones quedaban solo en archivos .md locales y no en el cotejo de flujo publicado, que es la evidencia que se cita en el acta.",
+  "archivos": [
+   "pc/codigo.py",
+   "pc/__main__.py",
+   "pc/reportes/v4.py",
+   ".claude/agents/revisor-codigo.md",
+   "docs/REPORTES_V4.md"
+  ],
+  "autor": "Jhonattan-LT",
+  "estado": "SIN_COMPARTIR"
  }
 ]

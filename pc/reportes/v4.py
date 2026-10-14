@@ -466,6 +466,11 @@ def construir_cotejo_flujo(trabajo, f):
     ver = (L.leer(trabajo, "v4/verificaciones.json", {}) or {}).get(n)
     doc = F2.flujo(enc, f, etl, ev, sem, tablas, ver, otros, (L.leer(trabajo, "v4/decisiones_flujo.json", {}) or {}).get(n))
     doc["encabezado"]["faltantes"] = F2.faltantes_flujo(doc)
+    if f.get("grupo") != "orquestador":           # revision de codigo Stratio <-> Fabric (M-019), con su historial
+        from .. import codigo as C
+        rc = C.para_cotejo(trabajo, n)
+        rc["historial"] = ((L.leer(trabajo, rel) or {}).get("revision_codigo") or {}).get("historial") or []
+        doc["revision_codigo"] = rc
     L.guardar(trabajo, rel, doc)
     return doc
 

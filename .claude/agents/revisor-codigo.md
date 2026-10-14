@@ -52,6 +52,24 @@ Requiere VPN de Comfandi y una cookie de Rocket vigente: `python -m pc stratio v
    ```
    `IGUAL` exige que todas las reglas sean IGUAL. `CON_DIFERENCIAS` exige al menos una que no lo sea.
 5. `python -m pc codigo estado --trabajo T` para el resumen del trabajo.
+6. **Aclaraciones posteriores (no bloquean las fases siguientes).** Si una regla no es IGUAL y se aclara después
+   (respuesta de desarrollo, verificación de QA, aceptación de la persona), regístralo sobre esa regla:
+   ```bash
+   python -m pc codigo comentar --trabajo T --flujo F --id R3 --decision ACEPTADA|DEVOLVER|PENDIENTE \
+     --comentario "respuesta de desarrollo, literal y fechada" --verificado-qa "qué verificó QA y con qué evidencia"
+   ```
+   La decisión la da una persona (el coordinador te la pasa): no la eliges tú. `ACEPTADA` = diferencia de forma o
+   intencional sin efecto en el dato aprobado; `DEVOLVER` = reglas de negocio desalineadas, bloquea; `PENDIENTE` = en
+   consulta. Lo que no verificó QA se escribe como «evidencia de desarrollo».
+7. **La revisión queda en el cotejo de flujo**, llave `revision_codigo`, en la **misma versión vN** (aclarar el código
+   no re-ejecuta nada). `cerrar` y `comentar` la actualizan en local. Cuando el cotejo ya está publicado, reescríbelo en
+   sitio con HEAD:
+   ```bash
+   python -m pc codigo cotejo --trabajo T [--flujo F] --publicar
+   ```
+   La llave trae la versión de Stratio y el zip revisados, el conteo de reglas, cada regla no IGUAL con la cita de los
+   dos lados, su impacto, su decisión y sus comentarios, `bloquea`, `aclaraciones_pendientes` e `historial`. Si el
+   cotejo aún no existe, la llave entra sola cuando se construye (`pc v4`).
 
 ## Precisión
 - Una regla es IGUAL solo si leíste los dos lados. «Parecido» no es IGUAL: si no estás seguro, es DISTINTA con la
@@ -66,7 +84,8 @@ Requiere VPN de Comfandi y una cookie de Rocket vigente: `python -m pc stratio v
 
 ## Lo que entregas al coordinador
 Por flujo: versión de Stratio revisada (y si es la más reciente de Rocket), zip de Fabric, número de reglas, las que no son
-IGUAL con su cita de los dos lados y su impacto en columnas, y el veredicto. Una regla DISTINTA no devuelve el flujo por sí
+IGUAL con su cita de los dos lados y su impacto en columnas, el veredicto, las decisiones y comentarios de cada regla, y si
+el cotejo de flujo quedó actualizado (y publicado, con HEAD) con su `revision_codigo`. Una regla DISTINTA no devuelve el flujo por sí
 sola: aparece en el semáforo como aviso y en `pc decision` para que una persona decida.
 
 ## No haces

@@ -10,6 +10,12 @@ Corre al comienzo, en paralelo a los niveles 0/1 y 2. Sirve para clasificar las 
   regla     registra una regla de negocio comparada (stratio: nodo y extracto · fabric: archivo y extracto · resultado)
   cerrar    cierra la revision: IGUAL (todas las reglas iguales) o CON_DIFERENCIAS (alguna DISTINTA o en un solo lado)
   estado    resumen por flujo del trabajo
+  comentar  respuesta de desarrollo / verificacion de QA / decision (ACEPTADA · DEVOLVER · PENDIENTE) sobre una regla
+  cotejo    escribe la llave `revision_codigo` en el cotejo de flujo de la version vigente (--publicar: en sitio + HEAD)
+
+`revision_codigo` en el cotejo de flujo: cerrar y comentar la actualizan solos en local (misma vN). Si la revision no
+bloquea (ninguna regla a DEVOLVER) las fases siguientes siguen; las aclaraciones posteriores quedan en esa misma version
+con su historial.
 
 Solo lectura en Rocket y en OneLake. La cookie de Rocket nunca se imprime. La API de Rocket se usa con GET:
   /assets (workflows) · /assets/findAllVersions/{assetId} · /workflows/findById/{versionId} (o /workflows/download/{id})
@@ -203,6 +209,7 @@ def cerrar(trabajo, flujo, veredicto, resumen):
     L.guardar(trabajo, f"codigo/{flujo}/revision.json", r)
     L.bitacora(trabajo, "revisor-codigo", "cerrar", {"veredicto": veredicto, "distintas": distintas}, flujo=flujo,
                estado="OK" if veredicto == "IGUAL" else "AVISO")
+    actualizar_cotejo(trabajo, flujo)      # la misma vN del cotejo de flujo queda con la revision vigente
     return r
 
 
@@ -227,6 +234,103 @@ def aviso_semaforo(trabajo, flujo):
     if not r or not r.get("veredicto"):
         return ["revision de codigo Stratio <-> Fabric sin cerrar: sin ella no se puede clasificar una diferencia como dato"]
     if r["veredicto"] == "CON_DIFERENCIAS":
-        return [f"regla de negocio distinta entre Stratio y Fabric ({', '.join(r['reglas_distintas'])}): si se confirma es "
-                "error del flujo y se devuelve a desarrollo"]
+        reglas = {g["id"]: g for g in r["reglas"]}
+        dev = [i for i in r["reglas_distintas"] if (reglas.get(i) or {}).get("decision") == "DEVOLVER"]
+        pend = [i for i in r["reglas_distintas"] if (reglas.get(i) or {}).get("decision") in (None, "PENDIENTE")]
+        if dev:
+            return [f"reglas de negocio desalineadas a devolver a desarrollo ({', '.join(dev)})"]
+        if pend:
+            return [f"regla de negocio distinta entre Stratio y Fabric ({', '.join(pend)}): si se confirma es "
+                    "error del flujo y se devuelve a desarrollo; si se aclara, se registra con pc codigo comentar"]
     return []
+
+
+# ----------------------------------------------------------------- revision_codigo en el cotejo de flujo (M-019)
+DECISIONES_REGLA = ("ACEPTADA", "DEVOLVER", "PENDIENTE")
+
+
+def comentar(trabajo, flujo, rid, decision, comentario, verificado_qa=None, por=None):
+    """Comentario y decision sobre una regla que no es IGUAL (respuesta de desarrollo, verificacion de QA, aceptacion).
+    No reabre la revision: deja el historial en la regla y actualiza el cotejo de flujo de la MISMA version."""
+    assert decision in DECISIONES_REGLA, decision
+    r = revision(trabajo, flujo)
+    x = next((g for g in r["reglas"] if g["id"] == rid), None)
+    if not x:
+        raise ValueError(f"{flujo}: no existe la regla {rid}")
+    c = {"decision": decision, "comentario": comentario, "verificado_qa": verificado_qa,
+         "por": por or L.usuario(), "utc": _ahora()}
+    x.setdefault("comentarios", []).append(c)
+    x["decision"] = decision
+    L.guardar(trabajo, f"codigo/{flujo}/revision.json", r)
+    L.bitacora(trabajo, "revisor-codigo", "comentar", {"id": rid, "decision": decision}, flujo=flujo,
+               estado="OK" if decision == "ACEPTADA" else "AVISO")
+    actualizar_cotejo(trabajo, flujo)
+    return x
+
+
+def para_cotejo(trabajo, flujo):
+    """La llave `revision_codigo` del cotejo de flujo: version de Stratio y zip revisados, conteo de reglas, cada regla
+    que no es IGUAL con la cita de los dos lados, su impacto, decision y comentarios, y si bloquea las fases siguientes."""
+    fu = L.leer(trabajo, f"codigo/{flujo}/fuente.json")
+    r = L.leer(trabajo, f"codigo/{flujo}/revision.json")
+    if not fu and not r:
+        return {"estado": "SIN_REVISION", "bloquea": False,
+                "nota": "sin revision de codigo registrada en este trabajo; no se evaluo («no se evaluo» no es «cumple»)"}
+    r = r or {"reglas": []}
+    st, fb = (fu or {}).get("stratio") or {}, (fu or {}).get("fabric") or {}
+    no_ig = [g for g in r["reglas"] if g["resultado"] != "IGUAL"]
+    devolver = [g["id"] for g in no_ig if g.get("decision") == "DEVOLVER"]
+    pendientes = [g["id"] for g in no_ig if g.get("decision") in (None, "PENDIENTE")]
+    estado = ("ABIERTA" if not r.get("veredicto") else r["veredicto"])
+    return {
+        "estado": estado,
+        "bloquea": bool(devolver),
+        "por_que_bloquea": (f"reglas a devolver a desarrollo: {', '.join(devolver)}" if devolver else None),
+        "aclaraciones_pendientes": pendientes,
+        "stratio": {"workflow": (fu or {}).get("nombre_stratio") or st.get("nombre"), "version": st.get("version"),
+                    "actualizado": st.get("actualizado"), "es_la_mas_reciente": st.get("es_la_mas_reciente"),
+                    "sha256": st.get("sha256")},
+        "fabric": {"zip": fb.get("zip"), "modificado": fb.get("modificado"), "sha256": fb.get("sha256")},
+        "reglas": {"total": len(r["reglas"]), "igual": len(r["reglas"]) - len(no_ig), "no_igual": len(no_ig)},
+        "reglas_no_iguales": [{"id": g["id"], "regla": g["regla"], "resultado": g["resultado"], "impacto": g.get("impacto"),
+                               "stratio": g["stratio"], "fabric": g["fabric"], "decision": g.get("decision") or "PENDIENTE",
+                               "comentarios": g.get("comentarios") or []} for g in no_ig],
+        "resumen": r.get("resumen"), "cerrado_por": r.get("cerrado_por"), "cerrado_utc": r.get("cerrado_utc"),
+        "actualizado_utc": _ahora(),
+    }
+
+
+def actualizar_cotejo(trabajo, flujo, publicar=False):
+    """Escribe `revision_codigo` en el cotejo de flujo local de la version vigente (la misma vN: aclarar el codigo no
+    re-ejecuta nada) y, con publicar=True, lo reescribe en sitio en OneLake con HEAD. None si aun no hay cotejo."""
+    rel = f"v4/flujos/{flujo}.json"
+    doc = L.leer(trabajo, rel)
+    if not doc:
+        return None
+    ant = doc.get("revision_codigo") or {}
+    nuevo = para_cotejo(trabajo, flujo)
+    hist = list(ant.get("historial") or [])
+    if ant and {k: v for k, v in ant.items() if k not in ("historial", "actualizado_utc")} != \
+            {k: v for k, v in nuevo.items() if k != "actualizado_utc"}:
+        hist.append({"utc": nuevo["actualizado_utc"], "por": L.usuario(), "estado_anterior": ant.get("estado"),
+                     "estado": nuevo["estado"], "bloqueaba": ant.get("bloquea"), "bloquea": nuevo["bloquea"],
+                     "pendientes_antes": ant.get("aclaraciones_pendientes"), "pendientes": nuevo["aclaraciones_pendientes"]})
+    nuevo["historial"] = hist
+    doc["revision_codigo"] = nuevo
+    doc.setdefault("encabezado", {})["revision_codigo_actualizada_utc"] = nuevo["actualizado_utc"]
+    L.guardar(trabajo, rel, doc)
+    out = {"flujo": flujo, "estado": nuevo["estado"], "bloquea": nuevo["bloquea"], "local": rel}
+    if publicar:
+        from .reportes import v4 as V4
+        datos = json.dumps(doc, ensure_ascii=False, indent=1).encode("utf8")
+        dest = V4.ruta_ol("cotejo_flujo", flujo, V4.version(trabajo, flujo), pruebas=V4._pruebas(trabajo))
+        ol.escribir(dest, datos)
+        h = ol.head(dest)
+        out.update(publicado=dest, head_ok=bool(h) and h["bytes"] == len(datos))
+        pub = L.leer(trabajo, "v4/publicado.json", {}) or {}
+        pub.setdefault("archivos", []).append({"ruta": dest, "head_ok": out["head_ok"], "tipo": "cotejo_flujo",
+                                               "version": V4.version(trabajo, flujo), "motivo": "revision_codigo",
+                                               "utc": nuevo["actualizado_utc"]})
+        L.guardar(trabajo, "v4/publicado.json", pub)
+    L.bitacora(trabajo, "revisor-codigo", "cotejo_flujo", out, flujo=flujo)
+    return out

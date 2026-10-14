@@ -692,6 +692,20 @@ def c_codigo(a):
     elif a.accion == "regla":
         r = codigo.regla(a.lote, a.flujo, a.regla, a.lado_stratio, a.lado_fabric, a.resultado, a.impacto, a.id)
         print(f"{a.flujo}: {len(r['reglas'])} regla(s) registradas")
+    elif a.accion == "comentar":
+        if not (a.flujo and a.id and a.decision and a.comentario):
+            raise SystemExit("comentar exige --flujo --id --decision --comentario")
+        x = codigo.comentar(a.lote, a.flujo, a.id, a.decision, a.comentario, a.verificado_qa, a.por)
+        print(f"{a.flujo} {a.id}: {x['decision']} ({len(x['comentarios'])} comentario(s)) · cotejo de flujo actualizado en local")
+    elif a.accion == "cotejo":
+        flujos = [a.flujo] if a.flujo else [f["nombre_fabric"] for f in L.leer(a.lote, "lote.json")["flujos"] if f["grupo"] != "orquestador"]
+        for n in flujos:
+            r = codigo.actualizar_cotejo(a.lote, n, publicar=a.publicar)
+            if not r:
+                print(f"SIN COTEJO {n}: aún no hay cotejo de flujo; la llave entra al construirlo (pc v4)")
+                continue
+            print(f"{r['estado']:16s} {n:45s} bloquea={r['bloquea']}"
+                  + (f" · publicado {r['publicado']} HEAD {'OK' if r['head_ok'] else 'FALLA'}" if a.publicar else " · local"))
     elif a.accion == "cerrar":
         r = codigo.cerrar(a.lote, a.flujo, a.veredicto, a.resumen)
         print(f"{a.flujo}: revisión {r['veredicto']}" + (f" · distintas {r['reglas_distintas']}" if r["reglas_distintas"] else ""))
@@ -770,13 +784,16 @@ def main(argv=None):
     x.add_argument("--trabajo", "--lote", dest="lote", required=True); x.add_argument("--clave"); x.set_defaults(fn=c_decision)
     x = s.add_parser("stratio"); x.add_argument("accion", choices=["cookie", "vpn"]); x.set_defaults(fn=c_stratio)
     x = s.add_parser("codigo", help="revisión del código Stratio (Rocket, versión dada por el usuario) contra Fabric")
-    x.add_argument("accion", choices=["bajar", "regla", "cerrar", "estado"])
+    x.add_argument("accion", choices=["bajar", "regla", "cerrar", "estado", "comentar", "cotejo"])
     x.add_argument("--trabajo", "--lote", dest="lote", required=True); x.add_argument("--flujo")
     x.add_argument("--version", type=int, help="versión del workflow de Stratio que se trae (la da el usuario)")
     x.add_argument("--stratio", help="nombre del workflow en Rocket (si no está en el trabajo)"); x.add_argument("--asset")
     x.add_argument("--regla"); x.add_argument("--lado-stratio", help="nodo de Rocket y extracto"); x.add_argument("--lado-fabric", help="archivo del zip y extracto")
     x.add_argument("--resultado", choices=["IGUAL", "DISTINTA", "SOLO_STRATIO", "SOLO_FABRIC"]); x.add_argument("--impacto")
     x.add_argument("--id"); x.add_argument("--veredicto", choices=["IGUAL", "CON_DIFERENCIAS"]); x.add_argument("--resumen")
+    x.add_argument("--decision", choices=["ACEPTADA", "DEVOLVER", "PENDIENTE"]); x.add_argument("--comentario")
+    x.add_argument("--verificado-qa", help="qué verificó QA y con qué evidencia"); x.add_argument("--por")
+    x.add_argument("--publicar", action="store_true", help="cotejo: reescribe en sitio el cotejo de flujo en OneLake (HEAD)")
     x.set_defaults(fn=c_codigo)
     a = p.parse_args(argv)
     a.fn(a)

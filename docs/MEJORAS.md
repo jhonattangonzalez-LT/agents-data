@@ -2,6 +2,14 @@
 
 Cada mejora se comparte con el equipo (commit + push al repositorio). `SIN_COMPARTIR` = falta hacerlo.
 
+## M-019 · 2026-10-14 · SIN_COMPARTIR
+
+**Qué:** revisor-codigo: llave revision_codigo en el cotejo de flujo. Guarda la versión de Stratio y el zip revisados, las reglas IGUAL y no IGUAL con la cita de los dos lados, el impacto, la decisión (ACEPTADA · DEVOLVER · PENDIENTE) y los comentarios de desarrollo y de QA, además de bloquea, aclaraciones_pendientes e historial. Nuevos comandos pc codigo comentar y pc codigo cotejo --publicar. Las aclaraciones posteriores se registran en la misma vN. El semáforo respeta las decisiones.
+
+**Por qué:** La revisión de código no bloquea las fases siguientes y sus diferencias se aclaran después (Lote 12: R2–R17 aceptadas el 14-10). Hasta ahora esas aclaraciones quedaban solo en archivos .md locales y no en el cotejo de flujo publicado, que es la evidencia que se cita en el acta.
+
+**Archivos:** `pc/codigo.py`, `pc/__main__.py`, `pc/reportes/v4.py`, `.claude/agents/revisor-codigo.md`, `docs/REPORTES_V4.md` · por Jhonattan-LT
+
 ## M-018 · 2026-10-14 · SIN_COMPARTIR
 
 **Qué:** Agente acta-entrega: punto 7 compacto en reportes v4. Por diferencia van tres columnas: la cifra en una frase; el ejemplo con la clave y STRATIO/FABRIC en dos líneas de color; y la justificación corta que cierra el control (✔) con la decisión, quién y la fecha. La causa corta se escribe en actas/justif_corta_loteN.py y el detalle completo queda en el cotejo enlazado.
