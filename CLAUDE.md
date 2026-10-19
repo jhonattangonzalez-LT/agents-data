@@ -51,6 +51,7 @@ en cada decisión**. Los agentes no se llaman entre sí. Intérprete `~/Projects
 | **Rutas desconocidas** | proponer las salidas reales que da el código del flujo y pedir confirmación | `pc roles --flujo F` |
 | **Productor faltante** | si una entrada de analítica está vacía o sin commit reciente: ¿ejecuto el flujo que la produce? | `pc etl …` |
 | **Antes de Stratio** | estado de cada cookie (duran 2–3 h, se admiten 1 a 3) y VPN. Si quedan < 15 min o no hay VPN, **pide** antes de seguir | `pc stratio cookie` · `pc stratio vpn` |
+| **Histórico incompleto en QA** | si una entrada de Fabric en QA no tiene el histórico completo (la diferencia cae en fechas que QA no tiene), **preguntar**: cotejar solo la ventana que QA sí tiene (cotejo por corte) y dejar la salvedad «el histórico se completa en producción», o pasar a analítica con esa salvedad, o devolver. La salvedad va escrita en la diferencia y en el cierre; nunca se recorta la ventana en silencio | `pc decision` · `pc comparar --sql` |
 | **Antes de descargar** | **siempre** avisar: tablas, MB, vía y tiempo estimado. Las grandes (> 100 M filas o 5 GB) solo con confirmación | `pc estimar` → `pc descargar [--confirmar-grandes]` |
 | **Semáforo ROJO** | presentar los motivos (cifras de cada lado) y confirmar la devolución a desarrollo | `pc decision` |
 | **Veredicto (salida del nivel 2)** | por cada diferencia pendiente, presentar el **expediente de decisión** completo y esperar: justificar · verificar · devolver · analizar más | `pc decision --trabajo T` |

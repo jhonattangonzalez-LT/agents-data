@@ -429,5 +429,17 @@
   "autor": "Jhonattan-LT",
   "estado": "COMPARTIDA",
   "commit": "1fdc3e7"
+ },
+ {
+  "id": "M-029",
+  "fecha": "2026-10-19T13:27:44+00:00",
+  "que": "Historico incompleto en QA: el coordinador pregunta si cotejar solo la ventana comun (cotejo por corte) o pasar a analitica, con la salvedad escrita de que el historico se completa en produccion; nunca se recorta la ventana en silencio",
+  "por_que": "En QA puede faltar historico de las entradas de Fabric y eso no debe bloquear ni justificarse sin decision",
+  "archivos": [
+   "CLAUDE.md",
+   ".claude/agents/cotejador.md"
+  ],
+  "autor": "Jhonattan-LT",
+  "estado": "SIN_COMPARTIR"
  }
 ]

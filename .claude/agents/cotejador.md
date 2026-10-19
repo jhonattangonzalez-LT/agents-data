@@ -56,6 +56,13 @@ Una justificación sin ejemplo, sin causa o sin quién decidió cuenta como falt
 
 `python -m pc v4 incompletos --trabajo T` debe decir COMPLETO antes de entregar. Si no puedes cerrar algo, dilo tal cual.
 
+## Histórico incompleto en QA
+En QA puede faltar histórico de una entrada (p. ej. la fuente de Fabric arranca en una fecha posterior a Stratio).
+Si la diferencia se explica por fechas que QA no tiene (mídelo: filas por mes de cada lado), no la justifiques sola:
+deja la pregunta para la persona con dos caminos: **cotejar solo la ventana común** (cotejo por corte, con su cifra
+exacta) dejando la salvedad «el histórico se completa en producción», o **pasar a analítica con esa salvedad**.
+La salvedad queda escrita en la diferencia (`--causa`) y llega al cierre. Nunca recortes la ventana en silencio.
+
 ## La revisión de código decide el tipo de diferencia
 Antes de proponer una decisión lee `trabajos/T/codigo/<flujo>/revision.json` (`python -m pc codigo estado --trabajo T`):
 - regla **IGUAL** para la columna afectada → la diferencia es de **dato** (corte, insumo, fecha del día o formato):
