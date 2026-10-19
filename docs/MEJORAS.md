@@ -2,13 +2,13 @@
 
 Cada mejora se comparte con el equipo (commit + push al repositorio). `SIN_COMPARTIR` = falta hacerlo.
 
-## M-029 · 2026-10-19 · SIN_COMPARTIR
+## M-029 · 2026-10-19 · COMPARTIDA
 
 **Qué:** Historico incompleto en QA: el coordinador pregunta si cotejar solo la ventana comun (cotejo por corte) o pasar a analitica, con la salvedad escrita de que el historico se completa en produccion; nunca se recorta la ventana en silencio
 
 **Por qué:** En QA puede faltar historico de las entradas de Fabric y eso no debe bloquear ni justificarse sin decision
 
-**Archivos:** `CLAUDE.md`, `.claude/agents/cotejador.md` · por Jhonattan-LT
+**Archivos:** `CLAUDE.md`, `.claude/agents/cotejador.md` · por Jhonattan-LT · compartida en b17de96
 
 ## M-028 · 2026-10-19 · COMPARTIDA
 
