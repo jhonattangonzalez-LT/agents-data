@@ -442,5 +442,24 @@
   "autor": "Jhonattan-LT",
   "estado": "COMPARTIDA",
   "commit": "b17de96"
+ },
+ {
+  "id": "M-030",
+  "fecha": "2026-10-19T13:35:45+00:00",
+  "que": "Revision de codigo con causa: resultado EQUIVALENTE (misma regla, distinta plataforma: HDFS vs Delta/Postgres, Spark SQL vs PySpark) que no bloquea; DISTINTA exige clase FUENTE (se pregunta, justificable si se mide la fuente equivalente) o LOGICA (join, filtro, calculo: grave, se propone devolver) y el porque; pc decision pregunta por regla segun su clase; las reglas a DEVOLVER entran al mensaje de desarrollo. Corrige el choque de --resumen con pc codigo cerrar",
+  "por_que": "Distinguir diferencias de lenguaje o plataforma (justificables) de desalineaciones de logica de negocio (graves) para decidir bien",
+  "archivos": [
+   "pc/codigo.py",
+   "pc/coordinacion.py",
+   "pc/mensajes.py",
+   "pc/grafo.py",
+   "pc/cierre.py",
+   "pc/salida.py",
+   "pc/__main__.py",
+   ".claude/agents/revisor-codigo.md",
+   ".claude/agents/cotejador.md"
+  ],
+  "autor": "Jhonattan-LT",
+  "estado": "SIN_COMPARTIR"
  }
 ]

@@ -232,11 +232,28 @@ def pendientes(trabajo, clave=None):
         n = f["nombre_fabric"]
         rc = L.leer(trabajo, f"codigo/{n}/revision.json") or {}
         if rc.get("veredicto") == "CON_DIFERENCIAS" and not rc.get("decision_persona"):
-            out.append({"tipo": "CODIGO", "flujo": n, "titulo": f"{n}: regla de negocio distinta entre Stratio y Fabric",
-                        "datos": {"version_stratio": rc.get("version_stratio"), "zip_fabric": rc.get("zip_fabric"),
-                                  "reglas": [x for x in rc.get("reglas", []) if x["resultado"] != "IGUAL"]},
-                        "opciones": [("devolver a desarrollo (error del flujo)", "(se informa la regla con el nodo de Rocket y el archivo de Fabric)"),
-                                     ("analizar más: confirmar con el dato del nivel 2", f"python -m pc comparar --trabajo {trabajo} --clave … --sql \"…\"")]})
+            # una pregunta por regla que no es igual ni equivalente y sigue sin decidir; la clase dice que se propone
+            for x in [g for g in rc.get("reglas", []) if g["resultado"] not in ("IGUAL", "EQUIVALENTE")
+                      and g.get("decision") in (None, "PENDIENTE")]:
+                clase = x.get("clase") or "SIN_CLASE"
+                base = f"python -m pc codigo comentar --trabajo {trabajo} --flujo {n} --id {x['id']}"
+                if clase == "LOGICA":
+                    titulo = f"{n} · {x['id']}: lógica de negocio distinta (grave)"
+                    opciones = [(f"DEVOLVER a desarrollo ({_equipo(f['grupo'])}): se genera el mensaje", f"{base} --decision DEVOLVER --comentario \"…\""),
+                                ("analizar más: medir su efecto en el dato del nivel 2", f"python -m pc diferenciar --trabajo {trabajo} --clave …"),
+                                ("ACEPTAR: no cambia el resultado (exige la medición que lo pruebe)", f"{base} --decision ACEPTADA --comentario \"…\" --verificado-qa \"…\"")]
+                elif clase == "FUENTE":
+                    titulo = f"{n} · {x['id']}: Fabric lee otra fuente o ventana"
+                    opciones = [("ACEPTAR: la fuente de Fabric es la equivalente migrada (medido)", f"{base} --decision ACEPTADA --comentario \"…\" --verificado-qa \"…\""),
+                                ("PREGUNTAR A COMFANDI qué fuente es la correcta", f"{base} --decision PENDIENTE --comentario \"consulta a Comfandi\""),
+                                (f"DEVOLVER a desarrollo ({_equipo(f['grupo'])})", f"{base} --decision DEVOLVER --comentario \"…\""),
+                                ("analizar más: medir las dos fuentes", f"python -m pc comparar --trabajo {trabajo} --clave … --sql \"…\"")]
+                else:
+                    titulo = f"{n} · {x['id']}: regla distinta sin clasificar (el revisor debe decir por qué difiere)"
+                    opciones = [("pedir al revisor de código la clase y el porqué", f"python -m pc codigo regla --trabajo {trabajo} --flujo {n} --id {x['id']} --clase … --porque \"…\" …")]
+                out.append({"tipo": "CODIGO", "flujo": n, "nodo": f"R:{n}/{x['id']}", "titulo": titulo,
+                            "datos": {"version_stratio": rc.get("version_stratio"), "zip_fabric": rc.get("zip_fabric"), "reglas": [x]},
+                            "opciones": opciones})
         sem = L.leer(trabajo, f"semaforo/{n}.json")
         if sem and sem["estado"] == "ROJO":
             out.append({"tipo": "ROJO", "titulo": f"{n}: vuelve a desarrollo", "flujo": n, "datos": {"motivos": sem["motivos_rojo"], "ejecucion": _ejecucion(trabajo, f)},
@@ -326,8 +343,12 @@ def tarjeta(x, trabajo=None, comandos=True):
     elif x["tipo"] == "CODIGO":
         out.append(f"Stratio v{d.get('version_stratio')} · zip Fabric {d.get('zip_fabric')}")
         for r in (d.get("reglas") or [])[:4]:
-            out.append(f"Regla {r.get('id')} {r.get('resultado')}: {_corto(r.get('regla'), 160)}")
+            out.append(f"Regla {r.get('id')} {r.get('resultado')} · {r.get('clase') or 'sin clase'}: {_corto(r.get('regla'), 160)}")
             out.append(f"   Rocket: {_corto(r.get('stratio'), 160)} · Fabric: {_corto(r.get('fabric'), 160)}")
+            if r.get("porque"):
+                out.append(f"Por qué difiere: {_corto(r.get('porque'), 220)}")
+            if r.get("propuesta"):
+                out.append(f"Propuesta: {r['propuesta']}")
     elif x["tipo"] == "TABLA_GRANDE":
         out.append(f"Estimado: {_fmt(d.get('filas'))} filas · {d.get('mb')} MB · {d.get('total')} vía {d.get('via')} (solo se estima el tiempo)")
     elif x["tipo"] == "VERIFICACION":

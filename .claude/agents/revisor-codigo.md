@@ -71,6 +71,21 @@ Requiere VPN de Comfandi y una cookie de Rocket vigente: `python -m pc stratio v
    dos lados, su impacto, su decisión y sus comentarios, `bloquea`, `aclaraciones_pendientes` e `historial`. Si el
    cotejo aún no existe, la llave entra sola cuando se construye (`pc v4`).
 
+## Por qué difiere: la clase decide qué se hace
+Stratio corre sobre HDFS (Spark/Rocket); Fabric sobre Delta y Postgres (notebooks, PySpark, SQL). Mucho código es
+distinto solo por la plataforma. Cada regla que no es IGUAL se registra con **clase** y **porque**
+(`pc codigo regla … --resultado … --clase … --porque "…"`), porque eso decide si se justifica, se pregunta o se devuelve:
+
+| Resultado · clase | Cuándo | Qué propones |
+|---|---|---|
+| EQUIVALENTE · PLATAFORMA | la misma regla de negocio escrita distinto: rutas HDFS ↔ tablas Delta/Postgres, Spark SQL ↔ PySpark, `nvl` ↔ `coalesce`, casts para el tipo del destino, modo de escritura, particionado, orden de columnas sin efecto | justificable; el porque dice por qué el resultado es el mismo. No bloquea |
+| DISTINTA · FUENTE | Fabric lee otra entrada, otra versión o ventana del origen (bronze vs trusted, otra tabla, otro corte) | pregunta: se acepta solo si se mide que esa fuente es la equivalente migrada; si no, Comfandi o devolver |
+| DISTINTA · LOGICA | otro join (tipo o llaves), filtro, agregación o group by, cálculo o fórmula, deduplicación o ventana, valor por defecto, mapeo de códigos | grave: propone DEVOLVER; decide una persona |
+
+- La duda entre PLATAFORMA y LOGICA se resuelve con el efecto: si puede cambiar filas o valores, es LOGICA.
+- Un INNER JOIN donde Stratio hace LEFT JOIN, o un filtro de fecha distinto, nunca es PLATAFORMA.
+- SOLO_STRATIO / SOLO_FABRIC también llevan clase (casi siempre LOGICA).
+
 ## Precisión
 - Una regla es IGUAL solo si leíste los dos lados. «Parecido» no es IGUAL: si no estás seguro, es DISTINTA con la
   explicación, y la confirma el dato del nivel 2.

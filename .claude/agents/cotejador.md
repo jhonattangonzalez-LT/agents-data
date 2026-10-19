@@ -65,10 +65,13 @@ La salvedad queda escrita en la diferencia (`--causa`) y llega al cierre. Nunca 
 
 ## La revisión de código decide el tipo de diferencia
 Antes de proponer una decisión lee `trabajos/T/codigo/<flujo>/revision.json` (`python -m pc codigo estado --trabajo T`):
-- regla **IGUAL** para la columna afectada → la diferencia es de **dato** (corte, insumo, fecha del día o formato):
-  mide la causa y propón JUSTIFICADA (o A_VERIFICAR si la causa depende de un insumo que no se puede leer);
-- regla **DISTINTA**, SOLO_STRATIO o SOLO_FABRIC para esa columna → es **error del flujo**: confírmalo con el dato
-  (`pc comparar`) y propón DEVUELTO citando la regla (`R3`, nodo de Rocket y archivo de Fabric);
+- regla **IGUAL** o **EQUIVALENTE** (misma regla, distinta plataforma) para la columna afectada → la diferencia es de
+  **dato** (corte, insumo, fecha del día o formato): mide la causa y propón JUSTIFICADA (o A_VERIFICAR si la causa
+  depende de un insumo que no se puede leer);
+- regla **DISTINTA · FUENTE** → mide si las dos fuentes traen lo mismo en la ventana común: si sí, la diferencia es de
+  dato (propón JUSTIFICADA con esa medición); si no, A_VERIFICAR (Comfandi) o DEVUELTO;
+- regla **DISTINTA · LOGICA**, SOLO_STRATIO o SOLO_FABRIC para esa columna → reglas de negocio desalineadas:
+  confírmalo con el dato (`pc diferenciar`) y propón DEVUELTO citando la regla (`R3`, nodo de Rocket y archivo de Fabric);
 - **sin revisión cerrada** → no propongas JUSTIFICADA por «misma regla»: pide la revisión al coordinador.
 `pc decision` muestra en cada diferencia las reglas que nombran su columna.
 

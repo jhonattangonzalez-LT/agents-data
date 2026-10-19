@@ -844,7 +844,11 @@ def c_codigo(a):
                       + ("" if st["es_la_mas_reciente"] else ", NO es la versión más reciente de Rocket") + ")"
                       + (f" · Fabric {fb['zip']}" if fb else " · Fabric: SIN ZIP (¿ingesta por Copy?)"))
     elif a.accion == "regla":
-        r = codigo.regla(a.lote, a.flujo, a.regla, a.lado_stratio, a.lado_fabric, a.resultado, a.impacto, a.id)
+        try:
+            r = codigo.regla(a.lote, a.flujo, a.regla, a.lado_stratio, a.lado_fabric, a.resultado, a.impacto, a.id,
+                             clase=a.clase, porque=a.porque)
+        except ValueError as e:
+            raise SystemExit(f"REGLA RECHAZADA: {e}")
         print(f"{a.flujo}: {len(r['reglas'])} regla(s) registradas")
     elif a.accion == "comentar":
         if not (a.flujo and a.id and a.decision and a.comentario):
@@ -972,7 +976,9 @@ def main(argv=None):
     x.add_argument("--version", type=int, help="versión del workflow de Stratio que se trae (la da el usuario)")
     x.add_argument("--stratio", help="nombre del workflow en Rocket (si no está en el trabajo)"); x.add_argument("--asset")
     x.add_argument("--regla"); x.add_argument("--lado-stratio", help="nodo de Rocket y extracto"); x.add_argument("--lado-fabric", help="archivo del zip y extracto")
-    x.add_argument("--resultado", choices=["IGUAL", "DISTINTA", "SOLO_STRATIO", "SOLO_FABRIC"]); x.add_argument("--impacto")
+    x.add_argument("--resultado", choices=["IGUAL", "EQUIVALENTE", "DISTINTA", "SOLO_STRATIO", "SOLO_FABRIC"]); x.add_argument("--impacto")
+    x.add_argument("--clase", choices=["PLATAFORMA", "FUENTE", "LOGICA"], help="por qué difiere (obligatorio si no es IGUAL)")
+    x.add_argument("--porque", help="por qué difiere y por qué es o no la misma regla de negocio (obligatorio si no es IGUAL)")
     x.add_argument("--id"); x.add_argument("--veredicto", choices=["IGUAL", "CON_DIFERENCIAS"]); x.add_argument("--resumen")
     x.add_argument("--decision", choices=["ACEPTADA", "DEVOLVER", "PENDIENTE"]); x.add_argument("--comentario")
     x.add_argument("--verificado-qa", help="qué verificó QA y con qué evidencia"); x.add_argument("--por")

@@ -83,6 +83,7 @@ def construir(trabajo, guardar=True):
             g.nodos[fid]["datos"]["codigo"] = rc.get("veredicto")
             for r in rc.get("reglas") or []:
                 rid = g.n(f"R:{n}/{r['id']}", "regla", r.get("regla", "")[:120], resultado=r.get("resultado"),
+                          clase=r.get("clase"), porque=r.get("porque"),
                           stratio=r.get("stratio"), fabric=r.get("fabric"), impacto=r.get("impacto"), decision=r.get("decision"))
                 g.a(fid, "tiene_regla", rid)
         ver = (L.leer(trabajo, "v4/verificaciones.json", {}) or {}).get(n)
@@ -237,7 +238,7 @@ def contexto(trabajo, flujo=None, nodo=None, para=None, g=None):
         out.append(f"  ciclo v{fd['version']} ({fd['alcance_ciclo']}): {fd.get('motivo_ciclo')}")
     for m in (fd.get("motivos_rojo") or [])[:3]:
         out.append(f"  ROJO: {m[:160]}")
-    distintas = [r for r in _vecinos(g, fid, "tiene_regla") if r["datos"].get("resultado") != "IGUAL"]
+    distintas = [r for r in _vecinos(g, fid, "tiene_regla") if r["datos"].get("resultado") not in ("IGUAL", "EQUIVALENTE")]
     for r in distintas[:4]:
         out.append(f"  regla {r['id'].split('/')[-1]} {r['datos'].get('resultado')}: {r['etiqueta'][:110]}")
     for o in _vecinos(g, fid, "contiene"):

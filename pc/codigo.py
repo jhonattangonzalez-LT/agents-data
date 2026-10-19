@@ -8,6 +8,14 @@ Corre al comienzo, en paralelo a los niveles 0/1 y 2. Sirve para clasificar las 
             versiones del workflow y se detiene. Guarda codigo/<flujo>/fuente.json (nombres, version, fechas, huellas),
             el JSON de Rocket y su texto por nodo, y el zip de Fabric extraido con su texto por paso.
   regla     registra una regla de negocio comparada (stratio: nodo y extracto · fabric: archivo y extracto · resultado)
+            y, si no es IGUAL, POR QUE difiere (clase + porque):
+              EQUIVALENTE · PLATAFORMA  misma regla de negocio escrita distinto por la plataforma o el lenguaje (HDFS vs
+                                        Delta/Postgres, Spark SQL vs PySpark, coalesce vs nvl, casts del destino):
+                                        justificable, con el porque escrito; no bloquea
+              DISTINTA · FUENTE         Fabric lee otra entrada, version o ventana de origen: se pregunta (justificable
+                                        solo si se mide que esa fuente es la equivalente migrada)
+              DISTINTA · LOGICA         otro join, filtro, agregacion, calculo, deduplicacion, valor por defecto o
+                                        mapeo de codigos: grave, se propone devolver; decide una persona
   cerrar    cierra la revision: IGUAL (todas las reglas iguales) o CON_DIFERENCIAS (alguna DISTINTA o en un solo lado)
   estado    resumen por flujo del trabajo
   comentar  respuesta de desarrollo / verificacion de QA / decision (ACEPTADA · DEVOLVER · PENDIENTE) sobre una regla
@@ -33,7 +41,16 @@ import zipfile
 from . import lote as L
 from .acceso import onelake as ol, rocket
 
-RESULTADOS = ("IGUAL", "DISTINTA", "SOLO_STRATIO", "SOLO_FABRIC")
+RESULTADOS = ("IGUAL", "EQUIVALENTE", "DISTINTA", "SOLO_STRATIO", "SOLO_FABRIC")
+CLASES = ("PLATAFORMA", "FUENTE", "LOGICA")
+PROPUESTA = {"PLATAFORMA": "JUSTIFICABLE: misma regla, distinta forma por plataforma o lenguaje",
+             "FUENTE": "PREGUNTAR: justificable solo si se mide que la fuente de Fabric es la equivalente migrada",
+             "LOGICA": "DEVOLVER: reglas de negocio desalineadas (grave); lo confirma una persona"}
+
+
+def es_igual(g):
+    """IGUAL o EQUIVALENTE (misma regla de negocio): no bloquea ni cuenta como diferencia del flujo."""
+    return (g or {}).get("resultado") in ("IGUAL", "EQUIVALENTE")
 VEREDICTOS = ("IGUAL", "CON_DIFERENCIAS")
 
 
@@ -174,21 +191,33 @@ def revision(trabajo, flujo):
     return L.leer(trabajo, f"codigo/{flujo}/revision.json") or {"flujo": flujo, "reglas": [], "veredicto": None}
 
 
-def regla(trabajo, flujo, texto, stratio, fabric, resultado, impacto=None, rid=None):
-    """Registra (o corrige, con el mismo id) una regla de negocio comparada en los dos lados."""
+def regla(trabajo, flujo, texto, stratio, fabric, resultado, impacto=None, rid=None, clase=None, porque=None):
+    """Registra (o corrige, con el mismo id) una regla de negocio comparada en los dos lados. Si no es IGUAL exige la
+    clase (por que difiere) y el porque: es lo que decide si se justifica, se pregunta o se devuelve."""
     assert resultado in RESULTADOS, resultado
+    if resultado == "EQUIVALENTE":
+        clase = "PLATAFORMA"
+    if resultado != "IGUAL":
+        if clase not in CLASES:
+            raise ValueError(f"una regla {resultado} exige --clase {CLASES}")
+        if resultado != "EQUIVALENTE" and clase == "PLATAFORMA":
+            raise ValueError("una diferencia solo de plataforma o lenguaje se registra como EQUIVALENTE")
+        if not porque:
+            raise ValueError("una regla que no es IGUAL exige --porque (por que difiere y por que es o no la misma regla)")
     if not L.leer(trabajo, f"codigo/{flujo}/fuente.json"):
         raise ValueError("primero: pc codigo bajar (la revision cita la version de Stratio y el zip de Fabric descargados)")
     r = revision(trabajo, flujo)
     rid = rid or f"R{len(r['reglas']) + 1}"
     r["reglas"] = [x for x in r["reglas"] if x["id"] != rid] + [{
         "id": rid, "regla": texto, "stratio": stratio, "fabric": fabric, "resultado": resultado, "impacto": impacto,
+        "clase": clase if resultado != "IGUAL" else None, "porque": porque,
+        "propuesta": PROPUESTA.get(clase) if resultado != "IGUAL" else None,
         "registrado_por": L.usuario(), "registrado_utc": _ahora()}]
     r["reglas"].sort(key=lambda x: int(x["id"][1:]) if x["id"][1:].isdigit() else 0)
     r["veredicto"] = None                       # cualquier cambio reabre la revision
     L.guardar(trabajo, f"codigo/{flujo}/revision.json", r)
-    L.bitacora(trabajo, "revisor-codigo", "regla", {"id": rid, "resultado": resultado}, flujo=flujo,
-               estado="OK" if resultado == "IGUAL" else "AVISO")
+    L.bitacora(trabajo, "revisor-codigo", "regla", {"id": rid, "resultado": resultado, "clase": clase}, flujo=flujo,
+               estado="OK" if resultado in ("IGUAL", "EQUIVALENTE") else "AVISO")
     return r
 
 
@@ -197,7 +226,7 @@ def cerrar(trabajo, flujo, veredicto, resumen):
     r = revision(trabajo, flujo)
     if not r["reglas"]:
         raise ValueError("no hay reglas registradas: una revision sin reglas no se cierra")
-    distintas = [x["id"] for x in r["reglas"] if x["resultado"] != "IGUAL"]
+    distintas = [x["id"] for x in r["reglas"] if not es_igual(x)]
     if veredicto == "IGUAL" and distintas:
         raise ValueError(f"no puede cerrar IGUAL con reglas distintas o en un solo lado: {distintas}")
     if veredicto == "CON_DIFERENCIAS" and not distintas:
@@ -224,7 +253,7 @@ def estado(trabajo):
                     "fabric_zip": ((fu or {}).get("fabric") or {}).get("zip"),
                     "reglas": len((r or {}).get("reglas", [])), "veredicto": (r or {}).get("veredicto"),
                     "distintas": (r or {}).get("reglas_distintas") or [x["id"] for x in (r or {}).get("reglas", [])
-                                                                       if x["resultado"] != "IGUAL"]})
+                                                                       if not es_igual(x)]})
     return out
 
 
@@ -236,9 +265,14 @@ def aviso_semaforo(trabajo, flujo):
     if r["veredicto"] == "CON_DIFERENCIAS":
         reglas = {g["id"]: g for g in r["reglas"]}
         dev = [i for i in r["reglas_distintas"] if (reglas.get(i) or {}).get("decision") == "DEVOLVER"]
+        logica = [i for i in r["reglas_distintas"] if (reglas.get(i) or {}).get("clase") == "LOGICA"
+                  and (reglas.get(i) or {}).get("decision") in (None, "PENDIENTE")]
         pend = [i for i in r["reglas_distintas"] if (reglas.get(i) or {}).get("decision") in (None, "PENDIENTE")]
         if dev:
             return [f"reglas de negocio desalineadas a devolver a desarrollo ({', '.join(dev)})"]
+        if logica:
+            return [f"lógica de negocio distinta entre Stratio y Fabric ({', '.join(logica)}: join, filtro o cálculo): "
+                    "grave; se propone devolver a desarrollo y lo confirma una persona"]
         if pend:
             return [f"regla de negocio distinta entre Stratio y Fabric ({', '.join(pend)}): si se confirma es "
                     "error del flujo y se devuelve a desarrollo; si se aclara, se registra con pc codigo comentar"]
@@ -278,7 +312,8 @@ def para_cotejo(trabajo, flujo):
                 "nota": "sin revision de codigo registrada en este trabajo; no se evaluo («no se evaluo» no es «cumple»)"}
     r = r or {"reglas": []}
     st, fb = (fu or {}).get("stratio") or {}, (fu or {}).get("fabric") or {}
-    no_ig = [g for g in r["reglas"] if g["resultado"] != "IGUAL"]
+    no_ig = [g for g in r["reglas"] if not es_igual(g)]
+    equiv = [g for g in r["reglas"] if g["resultado"] == "EQUIVALENTE"]
     devolver = [g["id"] for g in no_ig if g.get("decision") == "DEVOLVER"]
     pendientes = [g["id"] for g in no_ig if g.get("decision") in (None, "PENDIENTE")]
     estado = ("ABIERTA" if not r.get("veredicto") else r["veredicto"])
@@ -291,8 +326,12 @@ def para_cotejo(trabajo, flujo):
                     "actualizado": st.get("actualizado"), "es_la_mas_reciente": st.get("es_la_mas_reciente"),
                     "sha256": st.get("sha256")},
         "fabric": {"zip": fb.get("zip"), "modificado": fb.get("modificado"), "sha256": fb.get("sha256")},
-        "reglas": {"total": len(r["reglas"]), "igual": len(r["reglas"]) - len(no_ig), "no_igual": len(no_ig)},
-        "reglas_no_iguales": [{"id": g["id"], "regla": g["regla"], "resultado": g["resultado"], "impacto": g.get("impacto"),
+        "reglas": {"total": len(r["reglas"]), "igual": len(r["reglas"]) - len(no_ig) - len(equiv),
+                   "equivalente": len(equiv), "no_igual": len(no_ig)},
+        "reglas_equivalentes": [{"id": g["id"], "regla": g["regla"], "porque": g.get("porque"),
+                                 "stratio": g["stratio"], "fabric": g["fabric"]} for g in equiv],
+        "reglas_no_iguales": [{"id": g["id"], "regla": g["regla"], "resultado": g["resultado"], "clase": g.get("clase"),
+                               "porque": g.get("porque"), "propuesta": g.get("propuesta"), "impacto": g.get("impacto"),
                                "stratio": g["stratio"], "fabric": g["fabric"], "decision": g.get("decision") or "PENDIENTE",
                                "comentarios": g.get("comentarios") or []} for g in no_ig],
         "resumen": r.get("resumen"), "cerrado_por": r.get("cerrado_por"), "cerrado_utc": r.get("cerrado_utc"),

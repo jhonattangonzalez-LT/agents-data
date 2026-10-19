@@ -222,7 +222,7 @@ def generar(trabajo, comprobar_head=True):
         f, n = x["f"], x["flujo"]
         sem = L.leer(trabajo, f"semaforo/{n}.json") or {}
         rc = L.leer(trabajo, f"codigo/{n}/revision.json") or {}
-        distintas = [r for r in rc.get("reglas") or [] if r.get("resultado") != "IGUAL"]
+        distintas = [r for r in rc.get("reglas") or [] if r.get("resultado") not in ("IGUAL", "EQUIVALENTE")]
         out += [f"## {n} · v{x['version']} · {x['estado']}", "",
                 f"- Stratio `{x['stratio'] or '—'}` · {x['fl'] or 'sin FL'} · grupo {x['grupo']} · nodo `F:{n}`",
                 f"- Semáforo: {sem.get('estado') or '—'} · revisión de código: {rc.get('veredicto') or 'sin revisión'}"

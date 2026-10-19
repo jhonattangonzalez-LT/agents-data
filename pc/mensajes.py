@@ -86,7 +86,7 @@ def _reglas(rc, columna):
     cols = [c.strip().lower() for c in (columna or "").split(",") if c.strip()]
     out = []
     for r in rc.get("reglas") or []:
-        if r.get("resultado") == "IGUAL":
+        if r.get("resultado") in ("IGUAL", "EQUIVALENTE"):
             continue
         txt = " ".join(str(r.get(k) or "") for k in ("regla", "impacto", "stratio", "fabric")).lower()
         if not cols or any(c in txt for c in cols):
@@ -115,8 +115,9 @@ def seccion_desarrollo(trabajo, f):
     sem = L.leer(trabajo, f"semaforo/{n}.json") or {}
     rc = L.leer(trabajo, f"codigo/{n}/revision.json") or {}
     devs = [(o, fi, d) for o, fi, ds in _tablas(trabajo, f) for d in ds if d.get("decision") == "DEVUELTO"]
+    reglas_dev = [r for r in rc.get("reglas") or [] if r.get("decision") == "DEVOLVER"]
     rojo = sem.get("estado") == "ROJO"
-    if not rojo and not devs:
+    if not rojo and not devs and not reglas_dev:
         return None
     out = [f"*{n}* (Stratio `{f.get('nombre_stratio') or '—'}` · {f.get('fl') or 'sin FL'})"]
     if rojo:
@@ -127,6 +128,12 @@ def seccion_desarrollo(trabajo, f):
         if cv.get("inicio_utc"):
             out.append(f"Ejecución revisada: {cv.get('inicio_utc')} · estado {cv.get('estado')}"
                        + (f" · run `{cv.get('run_id') or cv.get('run')}`" if (cv.get("run_id") or cv.get("run")) else ""))
+    for r in reglas_dev:
+        out.append(f"• Regla de negocio distinta: {_limpio(r.get('regla'), 200)}")
+        out.append(f"  Stratio (Rocket v{rc.get('version_stratio')}): {_limpio(r.get('stratio'), 260)}")
+        out.append(f"  Fabric: {_limpio(r.get('fabric'), 260)}")
+        if r.get("porque"):
+            out.append(f"  Efecto: {_limpio(r.get('porque'), 300)}")
     dichas = set()
     for o, fi, d in devs:
         tabla = (o.get("fabric") or {}).get("ruta") or o["clave"]
@@ -143,7 +150,8 @@ def seccion_desarrollo(trabajo, f):
         for r in _reglas(rc, d.get("columna"))[:2]:
             out.append(f"  Stratio (Rocket v{rc.get('version_stratio')}): {_limpio(r.get('stratio'), 260)}")
             out.append(f"  Fabric: {_limpio(r.get('fabric'), 260)}")
-    fixes = [_limpio(r.get("impacto") or r.get("regla"), 260) for r in _reglas(rc, None)]
+    fixes = [_limpio(r.get("impacto") or f"que Fabric aplique la regla de Stratio: {r.get('regla')}", 260)
+             for r in (reglas_dev or _reglas(rc, None))]
     if fixes:
         out.append("Qué corregir: " + "; ".join(fixes[:4]))
     elif rojo and not devs:

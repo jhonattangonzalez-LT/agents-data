@@ -25,8 +25,11 @@ _ACTUAL = {"trabajo": None, "progreso": None, "log": None, "comando": None, "ini
 
 
 def activo(argv):
-    """(argv sin las banderas de salida, resumen?)."""
+    """(argv sin las banderas de salida, resumen?). --resumen/--detalle solo se leen en los comandos de LARGOS:
+    otros comandos tienen su propio --resumen (p. ej. pc codigo cerrar --resumen "...")."""
     resumen = os.environ.get("PC_RESUMEN") == "1"
+    if not argv or argv[0] not in LARGOS:
+        return list(argv), resumen
     if "--resumen" in argv:
         resumen = True
     if "--detalle" in argv:
