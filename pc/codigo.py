@@ -192,7 +192,7 @@ def revision(trabajo, flujo):
 
 
 def regla(trabajo, flujo, texto, stratio, fabric, resultado, impacto=None, rid=None, clase=None, porque=None,
-          medido=None, no_medido=None):
+          medido=None, no_medido=None, evidencia_fuente=None):
     """Registra (o corrige, con el mismo id) una regla de negocio comparada en los dos lados. Si no es IGUAL exige la
     clase (por que difiere) y el porque: es lo que decide si se justifica, se pregunta o se devuelve."""
     assert resultado in RESULTADOS, resultado
@@ -205,6 +205,17 @@ def regla(trabajo, flujo, texto, stratio, fabric, resultado, impacto=None, rid=N
             raise ValueError("una diferencia solo de plataforma o lenguaje se registra como EQUIVALENTE")
         if not porque:
             raise ValueError("una regla que no es IGUAL exige --porque (por que difiere y por que es o no la misma regla)")
+        if not medido:
+            raise ValueError("una regla que no es IGUAL exige --medido con las cifras que la sostienen")
+        if resultado == "EQUIVALENTE" and no_medido:
+            raise ValueError("EQUIVALENTE exige que todo este medido: mide lo que falta antes de registrarla")
+        if clase == "FUENTE" or evidencia_fuente:
+            ev = L.leer(trabajo, evidencia_fuente) if evidencia_fuente else None
+            if not ev:
+                raise ValueError("una diferencia de fuente exige --evidencia-fuente (pc fuente medir: contenido, linaje y frescura)")
+            if resultado == "EQUIVALENTE" and not ev.get("completa"):
+                raise ValueError("la evidencia de fuente no esta completa: " + " · ".join(ev.get("falta") or []))
+            no_medido = no_medido or ("; ".join(ev.get("falta") or []) or None)
     if not L.leer(trabajo, f"codigo/{flujo}/fuente.json"):
         raise ValueError("primero: pc codigo bajar (la revision cita la version de Stratio y el zip de Fabric descargados)")
     r = revision(trabajo, flujo)
@@ -212,7 +223,7 @@ def regla(trabajo, flujo, texto, stratio, fabric, resultado, impacto=None, rid=N
     r["reglas"] = [x for x in r["reglas"] if x["id"] != rid] + [{
         "id": rid, "regla": texto, "stratio": stratio, "fabric": fabric, "resultado": resultado, "impacto": impacto,
         "clase": clase if resultado != "IGUAL" else None, "porque": porque,
-        "medido": medido, "no_medido": no_medido,
+        "medido": medido, "no_medido": no_medido, "evidencia_fuente": evidencia_fuente,
         "propuesta": PROPUESTA.get(clase) if resultado != "IGUAL" else None,
         "registrado_por": L.usuario(), "registrado_utc": _ahora()}]
     r["reglas"].sort(key=lambda x: int(x["id"][1:]) if x["id"][1:].isdigit() else 0)
@@ -293,6 +304,8 @@ def comentar(trabajo, flujo, rid, decision, comentario, verificado_qa=None, por=
     x = next((g for g in r["reglas"] if g["id"] == rid), None)
     if not x:
         raise ValueError(f"{flujo}: no existe la regla {rid}")
+    if decision == "ACEPTADA" and x.get("no_medido"):
+        raise ValueError(f"no se acepta con algo sin medir: {x['no_medido']}")
     c = {"decision": decision, "comentario": comentario, "verificado_qa": verificado_qa,
          "por": por or L.usuario(), "utc": _ahora()}
     x.setdefault("comentarios", []).append(c)

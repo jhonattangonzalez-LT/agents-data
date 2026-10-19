@@ -235,6 +235,10 @@ def pendientes(trabajo, clave=None):
             # una pregunta por regla que no es igual ni equivalente y sigue sin decidir; la clase dice que se propone
             for x in [g for g in rc.get("reglas", []) if g["resultado"] not in ("IGUAL", "EQUIVALENTE")
                       and g.get("decision") in (None, "PENDIENTE")]:
+                if x.get("no_medido"):          # nada llega a una persona con algo sin medir: lo mide el agente
+                    out.append({"tipo": "POR_MEDIR", "flujo": n, "titulo": f"{n} · {x['id']}: falta medir {x['no_medido']}",
+                                "datos": {}, "opciones": []})
+                    continue
                 clase = x.get("clase") or "SIN_CLASE"
                 base = f"python -m pc codigo comentar --trabajo {trabajo} --flujo {n} --id {x['id']}"
                 eq = _equipo(f["grupo"])
@@ -400,9 +404,9 @@ def imprimir_pendientes(p, detalle=False, trabajo=None):
     if not p:
         print("Nada espera a una persona en este trabajo.")
         return
-    agente = [x for x in p if x["tipo"] == "SIN_ANALIZAR"]
-    total = sum(1 for x in p if x["tipo"] != "SIN_ANALIZAR")
-    persona = agrupar([x for x in p if x["tipo"] != "SIN_ANALIZAR"])
+    agente = [x for x in p if x["tipo"] in ("SIN_ANALIZAR", "POR_MEDIR")]
+    total = sum(1 for x in p if x["tipo"] not in ("SIN_ANALIZAR", "POR_MEDIR"))
+    persona = agrupar([x for x in p if x["tipo"] not in ("SIN_ANALIZAR", "POR_MEDIR")])
     if len(persona) < total:
         print(f"{total} decisión(es) agrupadas en {len(persona)} pregunta(s): las de igual causa se deciden juntas.")
     print(f"{len(persona)} pregunta(s) para una persona · {len(agente)} tabla(s) con trabajo pendiente del cotejador")
@@ -416,6 +420,6 @@ def imprimir_pendientes(p, detalle=False, trabajo=None):
         else:
             print(f"\n### {i}. " + tarjeta(x, trabajo))
     if agente:
-        print("\nPara el cotejador (no es decisión de una persona todavía):")
+        print("\nPara los agentes (no es decisión de una persona todavía: primero se mide):")
         for x in agente:
             print(f"  - {x['titulo']}")

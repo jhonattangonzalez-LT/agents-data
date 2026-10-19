@@ -671,6 +671,12 @@ def c_panel(a):
     servidor.servir(a.puerto)
 
 
+def c_fuente(a):
+    from . import fuente as FU
+    ev, rel = FU.medir(a.lote, a.flujo, a.fabric, a.stratio, a.contenido)
+    print(FU.texto(ev, rel))
+
+
 def c_grafo(a):
     from . import grafo as G
     if a.accion == "construir":
@@ -846,7 +852,8 @@ def c_codigo(a):
     elif a.accion == "regla":
         try:
             r = codigo.regla(a.lote, a.flujo, a.regla, a.lado_stratio, a.lado_fabric, a.resultado, a.impacto, a.id,
-                             clase=a.clase, porque=a.porque, medido=a.medido, no_medido=a.no_medido)
+                             clase=a.clase, porque=a.porque, medido=a.medido, no_medido=a.no_medido,
+                             evidencia_fuente=a.evidencia_fuente)
         except ValueError as e:
             raise SystemExit(f"REGLA RECHAZADA: {e}")
         print(f"{a.flujo}: {len(r['reglas'])} regla(s) registradas")
@@ -962,6 +969,12 @@ def main(argv=None):
     x = s.add_parser("panel", help="panel en vivo de los coordinadores (localhost, solo lectura)")
     x.add_argument("--puerto", type=int, default=8765)
     x.add_argument("--asegurar", action="store_true", help="si no esta arriba, lo arranca aparte y avisa"); x.set_defaults(fn=c_panel)
+    x = s.add_parser("fuente", help="evidencia de fuente equivalente: contenido, linaje y frescura (todo medido)")
+    x.add_argument("accion", choices=["medir"]); x.add_argument("--trabajo", "--lote", dest="lote", required=True)
+    x.add_argument("--flujo", required=True); x.add_argument("--fabric", required=True, help="Files/… o esquema.tabla que lee Fabric")
+    x.add_argument("--stratio", help="ruta HDFS del origen que lee Stratio (una consulta a Rocket: requiere VPN)")
+    x.add_argument("--contenido", help="lo medido entre las dos fuentes: filas S|F, SHA-256 o diferencias por llave")
+    x.set_defaults(fn=c_fuente)
     x = s.add_parser("grafo", help="grafo del coordinador: de donde se leyo, que se bajo, que se midio, que se decidio")
     x.add_argument("accion", choices=["construir", "contexto", "mermaid"]); x.add_argument("--trabajo", "--lote", dest="lote", required=True)
     x.add_argument("--flujo"); x.add_argument("--nodo"); x.add_argument("--para"); x.set_defaults(fn=c_grafo)
@@ -980,7 +993,8 @@ def main(argv=None):
     x.add_argument("--clase", choices=["PLATAFORMA", "FUENTE", "LOGICA"], help="por qué difiere (obligatorio si no es IGUAL)")
     x.add_argument("--porque", help="por qué difiere y por qué es o no la misma regla de negocio (obligatorio si no es IGUAL)")
     x.add_argument("--medido", help="lo que se midió para sostenerlo, con cifras (filas S|F, SHA-256, filas de un solo lado…)")
-    x.add_argument("--no-medido", help="lo que falta medir o no se sabe")
+    x.add_argument("--no-medido", help="lo que falta medir (bloquea aceptar: primero se mide)")
+    x.add_argument("--evidencia-fuente", help="codigo/<flujo>/fuentes/<x>.json de pc fuente medir (obligatoria si la diferencia es de fuente)")
     x.add_argument("--id"); x.add_argument("--veredicto", choices=["IGUAL", "CON_DIFERENCIAS"]); x.add_argument("--resumen")
     x.add_argument("--decision", choices=["ACEPTADA", "DEVOLVER", "PENDIENTE"]); x.add_argument("--comentario")
     x.add_argument("--verificado-qa", help="qué verificó QA y con qué evidencia"); x.add_argument("--por")

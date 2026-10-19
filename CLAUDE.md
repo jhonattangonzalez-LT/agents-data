@@ -25,6 +25,8 @@ en cada decisión**. Los agentes no se llaman entre sí. Intérprete `~/Projects
 - Al lanzar un agente, su prompt lleva `python -m pc grafo contexto --trabajo T --flujo F --para <agente>`: recibe lo que
   necesita explícito, sin suponer que leyó algo antes. `pc trabajo siguiente` dice qué flujos van **en paralelo** por
   agente: lánzalos en un mismo mensaje.
+- **Nada llega a una persona con algo sin medir.** Si una tarjeta tendría «no medido», el agente lo mide primero
+  (contenido, linaje de la fuente, frescura); `pc decision` lo lista como «para los agentes».
 - **Toda pregunta a la persona** usa la tarjeta de `pc decision --trabajo T [--nodo ID]` (qué pasó · cifras S|F · cómo
   se leyó · código · causa medida o no · un ejemplo · opciones con su comando). Máximo ~12 líneas; si piden más, se
   responde desde `pc grafo contexto --nodo ID`.
@@ -49,7 +51,7 @@ en cada decisión**. Los agentes no se llaman entre sí. Intérprete `~/Projects
 | **Arranque** | flujos; nombre en Fabric y nombre del workflow en Stratio; **versión de Stratio (Rocket) que se trae** (nunca suponer la última); FL si se conoce (nunca inventarlo); grupo (ingesta · analítica · orquestador); rutas de cada tabla a cada lado; ventana de fechas en tablas históricas | `pc trabajo crear` · `pc trabajo flujo --json` (`version_stratio`) · `pc codigo bajar` sin `--version` lista las versiones |
 | **Código** | lanzar el `revisor-codigo` apenas está el trabajo (en paralelo a los niveles 0/1 y 2). Las diferencias de **plataforma o arquitectura** ya medidas sin efecto (lectura/escritura, CSV de HDFS frente a su copia en bronze, Parquet frente a Delta) quedan EQUIVALENTE: se informan en una línea, **sin preguntar**. Solo se pregunta, con detalle (qué hace cada lado · medido · no medido · qué pasa con cada opción), lo que tras validar el código sigue distinto: **FUENTE** (aceptar como equivalente · pedir lo que falta · reportar a desarrollo · Comfandi) o **LÓGICA** (¿reportar a desarrollo? · analizar más · aceptar con medición) | `pc codigo bajar/regla/cerrar/estado` · `pc decision --nodo R:<flujo>/<Rn>` |
 | **Rutas desconocidas** | proponer las salidas reales que da el código del flujo y pedir confirmación | `pc roles --flujo F` |
-| **Productor faltante** | si una entrada de analítica está vacía o sin commit reciente: ¿ejecuto el flujo que la produce? | `pc etl …` |
+| **Productor faltante** | si una entrada de analítica está vacía o sin commit reciente: ¿ejecuto el flujo que la produce? El productor no se supone: `pc fuente medir` dice quién escribe cada entrada (INGESTA con su pipeline · CODIGO · MANUAL) | `pc fuente medir` · `pc etl …` |
 | **Antes de Stratio** | estado de cada cookie (duran 2–3 h, se admiten 1 a 3) y VPN. Si quedan < 15 min o no hay VPN, **pide** antes de seguir | `pc stratio cookie` · `pc stratio vpn` |
 | **Histórico incompleto en QA** | si una entrada de Fabric en QA no tiene el histórico completo (la diferencia cae en fechas que QA no tiene), **preguntar**: cotejar solo la ventana que QA sí tiene (cotejo por corte) y dejar la salvedad «el histórico se completa en producción», o pasar a analítica con esa salvedad, o devolver. La salvedad va escrita en la diferencia y en el cierre; nunca se recorta la ventana en silencio | `pc decision` · `pc comparar --sql` |
 | **Antes de descargar** | **siempre** avisar: tablas, MB, vía y tiempo estimado. Las grandes (> 100 M filas o 5 GB) solo con confirmación | `pc estimar` → `pc descargar [--confirmar-grandes]` |

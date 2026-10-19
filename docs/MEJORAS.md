@@ -2,6 +2,14 @@
 
 Cada mejora se comparte con el equipo (commit + push al repositorio). `SIN_COMPARTIR` = falta hacerlo.
 
+## M-032 · 2026-10-19 · SIN_COMPARTIR
+
+**Qué:** pc fuente medir: linaje medido de cada fuente de Fabric (busca en pipelines, notebooks, Spark y Variable Library de los tres workspaces, sigue la variable hasta quien la usa: INGESTA con su copia, origen, corridas y programacion · CODIGO · VARIABLE · MANUAL), frescura (OneLake y, opcional, una consulta a Rocket) y contenido. Nada llega a una persona con algo sin medir (POR_MEDIR para los agentes; no se acepta con no_medido). El ETL mide el linaje de cada entrada y sus dependencias
+
+**Por qué:** Que nunca quede 'no se sabe quien hace la copia': o la hace una ingesta medida o se concluye copia manual
+
+**Archivos:** `pc/fuente.py`, `pc/codigo.py`, `pc/coordinacion.py`, `pc/__main__.py`, `.claude/agents/etl-validador.md`, `.claude/agents/revisor-codigo.md`, `CLAUDE.md` · por Jhonattan-LT
+
 ## M-031 · 2026-10-19 · COMPARTIDA
 
 **Qué:** Reglas de codigo con lo medido y lo no medido (--medido, --no-medido); la tarjeta de decision dice que hace cada lado, que se midio, que falta y que pasa con cada opcion; arquitectura de fuentes (analitica lee bronze, que viene de SFTP/Postgres/Stratio/HDFS): CSV de HDFS frente a su copia en bronze con contenido medido igual y diferencias de lectura/escritura medidas sin efecto son EQUIVALENTE y no se preguntan; solo se pregunta 'reportar a desarrollo' cuando queda una diferencia real

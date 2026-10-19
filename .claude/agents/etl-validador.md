@@ -50,6 +50,15 @@ validador ya no sirve: vuelve a validar sobre la corrida nueva. Un veredicto gen
 deja el flujo EN_REVISION (comprobación «El validador ETL probó la corrida validada»).
 
 ## Dependencias reales
+**Linaje de cada entrada, siempre medido** (con el revisor de código, que lee qué fuente usa el flujo):
+`python -m pc fuente medir --trabajo T --flujo F --fabric <Files/… o esquema.tabla de la entrada> [--stratio <ruta HDFS
+del origen>] [--contenido "<filas y SHA-256 medidos>"]`. Busca en todos los pipelines, notebooks y definiciones de Spark
+de los workspaces de QA quién escribe esa entrada y concluye:
+- **INGESTA**: la escribe la copia de un pipeline (queda su origen —HDFS, SFTP, Postgres—, últimas corridas y
+  programación): esa ingesta es una **dependencia** del flujo y se anota en `lote.json` (`dependencias`).
+- **CODIGO**: la nombra un notebook o Spark: confirmar en su código si la escribe.
+- **MANUAL**: nada en Fabric la escribe: la copia fue manual, no la hace una ingesta. Se informa así, con la fecha
+  del archivo; nunca «no se sabe quién la escribe».
 Si una analítica lee una entrada vacía, inexistente o sin commit reciente, identifica el flujo productor
 (el que tiene esa tabla en su `load.py` o como sink de su Copy) y, **solo con autorización del coordinador**,
 ejecútalo: `pc.etl.validador.lanzar_flujo("<pipeline>")`. Registra cada ejecución en la bitácora del lote.

@@ -87,7 +87,11 @@ distinto solo por la plataforma. Cada regla que no es IGUAL se registra con **cl
   directo. Stratio lee el origen crudo (CSV o parquet en HDFS, Postgres). «Stratio lee el CSV de HDFS y Fabric lee su
   copia en bronze» es la misma fuente por arquitectura: si el contenido se midió igual (filas S|F, 0 filas de un solo
   lado; mejor si el SHA-256 es igual), regístrala **EQUIVALENTE · PLATAFORMA** con `--medido`. Quién carga el bronze y
-  cada cuánto es alcance del flujo de **ingesta**: va en `--no-medido` como salvedad, no bloquea la analítica.
+  cada cuánto se mide con `pc fuente medir` (INGESTA, CODIGO o MANUAL); no se deja como «no medido».
+- **Todo medido, nada supuesto:** una fuente se declara equivalente solo con `pc fuente medir` completo: contenido
+  (filas y SHA-256 o 0 diferencias por llave entre la fuente de Stratio y la de Fabric), linaje (INGESTA con su origen,
+  CODIGO o MANUAL) y frescura (fecha de cada fuente y qué la refresca). La regla cita esa evidencia
+  (`--evidencia-fuente codigo/<flujo>/fuentes/<x>.json`). Si algo falta, lo mides tú antes de que llegue a una persona.
 - **Lectura y escritura** (codificación, separador, encabezado, inferencia de esquema, formato Parquet/CSV/Delta, modo
   de escritura, Variable Library): si se midió sin efecto (0 valores con mojibake, huella de esquema igual, SHA-256 o
   0 diferencias por llave), es **EQUIVALENTE**: se registra y el coordinador lo informa en una línea, **sin preguntar**.

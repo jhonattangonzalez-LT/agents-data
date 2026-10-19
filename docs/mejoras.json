@@ -479,5 +479,22 @@
   "autor": "Jhonattan-LT",
   "estado": "COMPARTIDA",
   "commit": "456a7e0"
+ },
+ {
+  "id": "M-032",
+  "fecha": "2026-10-19T13:59:26+00:00",
+  "que": "pc fuente medir: linaje medido de cada fuente de Fabric (busca en pipelines, notebooks, Spark y Variable Library de los tres workspaces, sigue la variable hasta quien la usa: INGESTA con su copia, origen, corridas y programacion · CODIGO · VARIABLE · MANUAL), frescura (OneLake y, opcional, una consulta a Rocket) y contenido. Nada llega a una persona con algo sin medir (POR_MEDIR para los agentes; no se acepta con no_medido). El ETL mide el linaje de cada entrada y sus dependencias",
+  "por_que": "Que nunca quede 'no se sabe quien hace la copia': o la hace una ingesta medida o se concluye copia manual",
+  "archivos": [
+   "pc/fuente.py",
+   "pc/codigo.py",
+   "pc/coordinacion.py",
+   "pc/__main__.py",
+   ".claude/agents/etl-validador.md",
+   ".claude/agents/revisor-codigo.md",
+   "CLAUDE.md"
+  ],
+  "autor": "Jhonattan-LT",
+  "estado": "SIN_COMPARTIR"
  }
 ]
