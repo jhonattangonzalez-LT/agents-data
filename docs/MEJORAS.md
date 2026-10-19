@@ -2,13 +2,13 @@
 
 Cada mejora se comparte con el equipo (commit + push al repositorio). `SIN_COMPARTIR` = falta hacerlo.
 
-## M-030 · 2026-10-19 · SIN_COMPARTIR
+## M-030 · 2026-10-19 · COMPARTIDA
 
 **Qué:** Revision de codigo con causa: resultado EQUIVALENTE (misma regla, distinta plataforma: HDFS vs Delta/Postgres, Spark SQL vs PySpark) que no bloquea; DISTINTA exige clase FUENTE (se pregunta, justificable si se mide la fuente equivalente) o LOGICA (join, filtro, calculo: grave, se propone devolver) y el porque; pc decision pregunta por regla segun su clase; las reglas a DEVOLVER entran al mensaje de desarrollo. Corrige el choque de --resumen con pc codigo cerrar
 
 **Por qué:** Distinguir diferencias de lenguaje o plataforma (justificables) de desalineaciones de logica de negocio (graves) para decidir bien
 
-**Archivos:** `pc/codigo.py`, `pc/coordinacion.py`, `pc/mensajes.py`, `pc/grafo.py`, `pc/cierre.py`, `pc/salida.py`, `pc/__main__.py`, `.claude/agents/revisor-codigo.md`, `.claude/agents/cotejador.md` · por Jhonattan-LT
+**Archivos:** `pc/codigo.py`, `pc/coordinacion.py`, `pc/mensajes.py`, `pc/grafo.py`, `pc/cierre.py`, `pc/salida.py`, `pc/__main__.py`, `.claude/agents/revisor-codigo.md`, `.claude/agents/cotejador.md` · por Jhonattan-LT · compartida en 65a44c4
 
 ## M-029 · 2026-10-19 · COMPARTIDA
 
