@@ -43,8 +43,8 @@ from .acceso import onelake as ol, rocket
 
 RESULTADOS = ("IGUAL", "EQUIVALENTE", "DISTINTA", "SOLO_STRATIO", "SOLO_FABRIC")
 CLASES = ("PLATAFORMA", "FUENTE", "LOGICA")
-PROPUESTA = {"PLATAFORMA": "JUSTIFICABLE: misma regla, distinta forma por plataforma o lenguaje",
-             "FUENTE": "PREGUNTAR: justificable solo si se mide que la fuente de Fabric es la equivalente migrada",
+PROPUESTA = {"PLATAFORMA": "EQUIVALENTE: misma regla, distinta forma de leer, escribir o expresar; con efecto medido nulo sigue sin preguntar",
+             "FUENTE": "PREGUNTAR: aceptable como fuente equivalente si el contenido se midió igual; si no, reportar a desarrollo",
              "LOGICA": "DEVOLVER: reglas de negocio desalineadas (grave); lo confirma una persona"}
 
 
@@ -191,7 +191,8 @@ def revision(trabajo, flujo):
     return L.leer(trabajo, f"codigo/{flujo}/revision.json") or {"flujo": flujo, "reglas": [], "veredicto": None}
 
 
-def regla(trabajo, flujo, texto, stratio, fabric, resultado, impacto=None, rid=None, clase=None, porque=None):
+def regla(trabajo, flujo, texto, stratio, fabric, resultado, impacto=None, rid=None, clase=None, porque=None,
+          medido=None, no_medido=None):
     """Registra (o corrige, con el mismo id) una regla de negocio comparada en los dos lados. Si no es IGUAL exige la
     clase (por que difiere) y el porque: es lo que decide si se justifica, se pregunta o se devuelve."""
     assert resultado in RESULTADOS, resultado
@@ -211,6 +212,7 @@ def regla(trabajo, flujo, texto, stratio, fabric, resultado, impacto=None, rid=N
     r["reglas"] = [x for x in r["reglas"] if x["id"] != rid] + [{
         "id": rid, "regla": texto, "stratio": stratio, "fabric": fabric, "resultado": resultado, "impacto": impacto,
         "clase": clase if resultado != "IGUAL" else None, "porque": porque,
+        "medido": medido, "no_medido": no_medido,
         "propuesta": PROPUESTA.get(clase) if resultado != "IGUAL" else None,
         "registrado_por": L.usuario(), "registrado_utc": _ahora()}]
     r["reglas"].sort(key=lambda x: int(x["id"][1:]) if x["id"][1:].isdigit() else 0)

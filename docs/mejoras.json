@@ -462,5 +462,21 @@
   "autor": "Jhonattan-LT",
   "estado": "COMPARTIDA",
   "commit": "65a44c4"
+ },
+ {
+  "id": "M-031",
+  "fecha": "2026-10-19T13:43:55+00:00",
+  "que": "Reglas de codigo con lo medido y lo no medido (--medido, --no-medido); la tarjeta de decision dice que hace cada lado, que se midio, que falta y que pasa con cada opcion; arquitectura de fuentes (analitica lee bronze, que viene de SFTP/Postgres/Stratio/HDFS): CSV de HDFS frente a su copia en bronze con contenido medido igual y diferencias de lectura/escritura medidas sin efecto son EQUIVALENTE y no se preguntan; solo se pregunta 'reportar a desarrollo' cuando queda una diferencia real",
+  "por_que": "Preguntas con el detalle necesario para aprobar y sin preguntar por diferencias que son de la plataforma",
+  "archivos": [
+   "pc/codigo.py",
+   "pc/coordinacion.py",
+   "pc/__main__.py",
+   "pc/panel/index.html",
+   ".claude/agents/revisor-codigo.md",
+   "CLAUDE.md"
+  ],
+  "autor": "Jhonattan-LT",
+  "estado": "SIN_COMPARTIR"
  }
 ]

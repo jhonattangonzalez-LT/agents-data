@@ -846,7 +846,7 @@ def c_codigo(a):
     elif a.accion == "regla":
         try:
             r = codigo.regla(a.lote, a.flujo, a.regla, a.lado_stratio, a.lado_fabric, a.resultado, a.impacto, a.id,
-                             clase=a.clase, porque=a.porque)
+                             clase=a.clase, porque=a.porque, medido=a.medido, no_medido=a.no_medido)
         except ValueError as e:
             raise SystemExit(f"REGLA RECHAZADA: {e}")
         print(f"{a.flujo}: {len(r['reglas'])} regla(s) registradas")
@@ -979,6 +979,8 @@ def main(argv=None):
     x.add_argument("--resultado", choices=["IGUAL", "EQUIVALENTE", "DISTINTA", "SOLO_STRATIO", "SOLO_FABRIC"]); x.add_argument("--impacto")
     x.add_argument("--clase", choices=["PLATAFORMA", "FUENTE", "LOGICA"], help="por qué difiere (obligatorio si no es IGUAL)")
     x.add_argument("--porque", help="por qué difiere y por qué es o no la misma regla de negocio (obligatorio si no es IGUAL)")
+    x.add_argument("--medido", help="lo que se midió para sostenerlo, con cifras (filas S|F, SHA-256, filas de un solo lado…)")
+    x.add_argument("--no-medido", help="lo que falta medir o no se sabe")
     x.add_argument("--id"); x.add_argument("--veredicto", choices=["IGUAL", "CON_DIFERENCIAS"]); x.add_argument("--resumen")
     x.add_argument("--decision", choices=["ACEPTADA", "DEVOLVER", "PENDIENTE"]); x.add_argument("--comentario")
     x.add_argument("--verificado-qa", help="qué verificó QA y con qué evidencia"); x.add_argument("--por")

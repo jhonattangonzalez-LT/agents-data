@@ -237,17 +237,22 @@ def pendientes(trabajo, clave=None):
                       and g.get("decision") in (None, "PENDIENTE")]:
                 clase = x.get("clase") or "SIN_CLASE"
                 base = f"python -m pc codigo comentar --trabajo {trabajo} --flujo {n} --id {x['id']}"
+                eq = _equipo(f["grupo"])
                 if clase == "LOGICA":
-                    titulo = f"{n} · {x['id']}: lógica de negocio distinta (grave)"
-                    opciones = [(f"DEVOLVER a desarrollo ({_equipo(f['grupo'])}): se genera el mensaje", f"{base} --decision DEVOLVER --comentario \"…\""),
-                                ("analizar más: medir su efecto en el dato del nivel 2", f"python -m pc diferenciar --trabajo {trabajo} --clave …"),
-                                ("ACEPTAR: no cambia el resultado (exige la medición que lo pruebe)", f"{base} --decision ACEPTADA --comentario \"…\" --verificado-qa \"…\"")]
+                    titulo = f"{n} · {x['id']}: lógica de negocio distinta"
+                    opciones = [(f"REPORTAR a desarrollo ({eq}): el flujo queda DEVUELTO y el chat para {eq} se arma con esta regla",
+                                 f"{base} --decision DEVOLVER --comentario \"…\""),
+                                ("ANALIZAR MÁS: el cotejador mide el efecto en el dato (filas y columnas afectadas) y vuelve a preguntar",
+                                 f"python -m pc diferenciar --trabajo {trabajo} --clave …"),
+                                ("ACEPTAR: solo si una medición prueba que no cambia el resultado; queda en el reporte con esa medición",
+                                 f"{base} --decision ACEPTADA --comentario \"…\" --verificado-qa \"…\"")]
                 elif clase == "FUENTE":
-                    titulo = f"{n} · {x['id']}: Fabric lee otra fuente o ventana"
-                    opciones = [("ACEPTAR: la fuente de Fabric es la equivalente migrada (medido)", f"{base} --decision ACEPTADA --comentario \"…\" --verificado-qa \"…\""),
-                                ("PREGUNTAR A COMFANDI qué fuente es la correcta", f"{base} --decision PENDIENTE --comentario \"consulta a Comfandi\""),
-                                (f"DEVOLVER a desarrollo ({_equipo(f['grupo'])})", f"{base} --decision DEVOLVER --comentario \"…\""),
-                                ("analizar más: medir las dos fuentes", f"python -m pc comparar --trabajo {trabajo} --clave … --sql \"…\"")]
+                    titulo = f"{n} · {x['id']}: Fabric lee otra fuente"
+                    opciones = [("ACEPTAR como fuente equivalente: queda aceptada en el reporte, con lo medido y la salvedad de lo no medido "
+                                 "(p. ej. «la carga a bronze se valida en su flujo de ingesta»)", f"{base} --decision ACEPTADA --comentario \"…\" --verificado-qa \"…\""),
+                                ("PEDIR LO QUE FALTA medir antes de decidir: el flujo sigue en revisión", f"{base} --decision PENDIENTE --comentario \"…\""),
+                                (f"REPORTAR a desarrollo ({eq}): el flujo queda DEVUELTO y se arma el chat", f"{base} --decision DEVOLVER --comentario \"…\""),
+                                ("PREGUNTAR A COMFANDI cuál es la fuente correcta: se arma el correo", f"{base} --decision PENDIENTE --comentario \"consulta a Comfandi\"")]
                 else:
                     titulo = f"{n} · {x['id']}: regla distinta sin clasificar (el revisor debe decir por qué difiere)"
                     opciones = [("pedir al revisor de código la clase y el porqué", f"python -m pc codigo regla --trabajo {trabajo} --flujo {n} --id {x['id']} --clase … --porque \"…\" …")]
@@ -344,9 +349,13 @@ def tarjeta(x, trabajo=None, comandos=True):
         out.append(f"Stratio v{d.get('version_stratio')} · zip Fabric {d.get('zip_fabric')}")
         for r in (d.get("reglas") or [])[:4]:
             out.append(f"Regla {r.get('id')} {r.get('resultado')} · {r.get('clase') or 'sin clase'}: {_corto(r.get('regla'), 160)}")
-            out.append(f"   Rocket: {_corto(r.get('stratio'), 160)} · Fabric: {_corto(r.get('fabric'), 160)}")
+            out.append(f"Qué hace Stratio: {_corto(r.get('stratio'), 260)}")
+            out.append(f"Qué hace Fabric: {_corto(r.get('fabric'), 260)}")
             if r.get("porque"):
-                out.append(f"Por qué difiere: {_corto(r.get('porque'), 220)}")
+                out.append(f"Por qué difiere: {_corto(r.get('porque'), 260)}")
+            out.append(f"Medido: {_corto(r.get('medido') or 'nada todavía', 300)}")
+            if r.get("no_medido"):
+                out.append(f"No medido: {_corto(r.get('no_medido'), 260)}")
             if r.get("propuesta"):
                 out.append(f"Propuesta: {r['propuesta']}")
     elif x["tipo"] == "TABLA_GRANDE":

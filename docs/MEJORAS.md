@@ -2,6 +2,14 @@
 
 Cada mejora se comparte con el equipo (commit + push al repositorio). `SIN_COMPARTIR` = falta hacerlo.
 
+## M-031 · 2026-10-19 · SIN_COMPARTIR
+
+**Qué:** Reglas de codigo con lo medido y lo no medido (--medido, --no-medido); la tarjeta de decision dice que hace cada lado, que se midio, que falta y que pasa con cada opcion; arquitectura de fuentes (analitica lee bronze, que viene de SFTP/Postgres/Stratio/HDFS): CSV de HDFS frente a su copia en bronze con contenido medido igual y diferencias de lectura/escritura medidas sin efecto son EQUIVALENTE y no se preguntan; solo se pregunta 'reportar a desarrollo' cuando queda una diferencia real
+
+**Por qué:** Preguntas con el detalle necesario para aprobar y sin preguntar por diferencias que son de la plataforma
+
+**Archivos:** `pc/codigo.py`, `pc/coordinacion.py`, `pc/__main__.py`, `pc/panel/index.html`, `.claude/agents/revisor-codigo.md`, `CLAUDE.md` · por Jhonattan-LT
+
 ## M-030 · 2026-10-19 · COMPARTIDA
 
 **Qué:** Revision de codigo con causa: resultado EQUIVALENTE (misma regla, distinta plataforma: HDFS vs Delta/Postgres, Spark SQL vs PySpark) que no bloquea; DISTINTA exige clase FUENTE (se pregunta, justificable si se mide la fuente equivalente) o LOGICA (join, filtro, calculo: grave, se propone devolver) y el porque; pc decision pregunta por regla segun su clase; las reglas a DEVOLVER entran al mensaje de desarrollo. Corrige el choque de --resumen con pc codigo cerrar

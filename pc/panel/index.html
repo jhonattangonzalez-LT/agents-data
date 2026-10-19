@@ -431,7 +431,7 @@ addEventListener("resize",()=>enfocar());
 function tarjetaHtml(t){
   return String(t).split("\n").map((l,i)=>{const e=esc(l);
     if(i===0)return`<b style="color:var(--gold)">${e}</b>`;
-    const m=e.match(/^(Qué pasó|Cifras|Leído \w+|Código|Causa propuesta \([^)]*\)|Ejemplo[^:]*|Motivo|Ejecución|Regla [^:]*|A verificar|Estimado):(.*)$/);
+    const m=e.match(/^(Qué pasó|Cifras|Leído \w+|Código|Causa propuesta \([^)]*\)|Ejemplo[^:]*|Motivo|Ejecución|Regla [^:]*|A verificar|Estimado|Qué hace Stratio|Qué hace Fabric|Por qué difiere|Medido|No medido|Propuesta):(.*)$/);
     if(m)return`<b>${m[1]}:</b>${m[2]}`;
     if(/^\s+\d\)/.test(l))return`<span style="color:var(--neon)">${e}</span>`;
     return e}).join("\n");

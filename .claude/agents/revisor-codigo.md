@@ -82,6 +82,18 @@ distinto solo por la plataforma. Cada regla que no es IGUAL se registra con **cl
 | DISTINTA · FUENTE | Fabric lee otra entrada, otra versión o ventana del origen (bronze vs trusted, otra tabla, otro corte) | pregunta: se acepta solo si se mide que esa fuente es la equivalente migrada; si no, Comfandi o devolver |
 | DISTINTA · LOGICA | otro join (tipo o llaves), filtro, agregación o group by, cálculo o fórmula, deduplicación o ventana, valor por defecto, mapeo de códigos | grave: propone DEVOLVER; decide una persona |
 
+- **Arquitectura de fuentes (esperada, no es diferencia de negocio):** en analítica, Fabric lee de **bronze** (que se
+  carga desde SFTP, Postgres, Stratio o HDFS) o de silver/gold Delta; algunos flujos de analítica en silver leen HDFS
+  directo. Stratio lee el origen crudo (CSV o parquet en HDFS, Postgres). «Stratio lee el CSV de HDFS y Fabric lee su
+  copia en bronze» es la misma fuente por arquitectura: si el contenido se midió igual (filas S|F, 0 filas de un solo
+  lado; mejor si el SHA-256 es igual), regístrala **EQUIVALENTE · PLATAFORMA** con `--medido`. Quién carga el bronze y
+  cada cuánto es alcance del flujo de **ingesta**: va en `--no-medido` como salvedad, no bloquea la analítica.
+- **Lectura y escritura** (codificación, separador, encabezado, inferencia de esquema, formato Parquet/CSV/Delta, modo
+  de escritura, Variable Library): si se midió sin efecto (0 valores con mojibake, huella de esquema igual, SHA-256 o
+  0 diferencias por llave), es **EQUIVALENTE**: se registra y el coordinador lo informa en una línea, **sin preguntar**.
+- **Solo es FUENTE o LOGICA lo que queda tras validar el código:** otra tabla o ventana con contenido distinto, o una
+  regla que cambia filas o valores. Eso sí se pregunta, con detalle: qué hace cada lado, qué se midió, qué falta.
+- Toda regla que no es IGUAL lleva `--medido` (cifras) y, si aplica, `--no-medido`.
 - La duda entre PLATAFORMA y LOGICA se resuelve con el efecto: si puede cambiar filas o valores, es LOGICA.
 - Un INNER JOIN donde Stratio hace LEFT JOIN, o un filtro de fecha distinto, nunca es PLATAFORMA.
 - SOLO_STRATIO / SOLO_FABRIC también llevan clase (casi siempre LOGICA).
