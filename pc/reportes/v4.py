@@ -80,11 +80,40 @@ _ESTADO_TABLA = ("rapido/{lado}/{k}.json", "rapido/{lado}/{k}.pendiente.json", "
                  "cotejo_rapido/{k}.json", "v4/mediciones/{lado}/{k}.json", "v4/cotejos/{k}.json")
 
 
-def nuevo_ciclo(trabajo, flujo, motivo):
-    """Correccion de desarrollo: archiva el ciclo vN del flujo y abre vN+1 (se vuelve a empezar en el nivel 0)."""
+ALCANCES = ("codigo", "fuente", "lado")
+
+
+def _archivo_cotejo(trabajo, e):
+    """Archivo del cotejo de nivel 2 del indice, SOLO si esta dentro de este trabajo (un trabajo copiado
+    conserva rutas absolutas del original: nunca se toca un archivo de otro trabajo)."""
+    p = (e or {}).get("archivo")
+    if not p:
+        return None
+    base = os.path.realpath(L.dir_lote(trabajo))
+    if os.path.realpath(p).startswith(base + os.sep) and os.path.exists(p):
+        return p
+    propio = os.path.join(base, "cotejos", os.path.basename(p))
+    return propio if os.path.exists(propio) else None
+
+
+def nuevo_ciclo(trabajo, flujo, motivo, alcance="codigo", objetos=None):
+    """Correccion de desarrollo: archiva el ciclo vN del flujo y abre vN+1. Lo decide una persona:
+      codigo  regla de negocio corregida: todo desde el nivel 0, los dos lados (como siempre)
+      fuente  desalineacion de fuente o ruta sin cambio de codigo: `objetos` se rehacen en los dos lados;
+              los demas objetos se conservan (medicion, cotejo y cache) si su tabla Fabric no cambio
+              (se comprueba con `pc ciclo --comprobar`; lo que cambio se rehace)
+      lado    solo se re-ejecuto Fabric: el lado Fabric de todos los objetos se rehace; Stratio se conserva
+    La revision de codigo solo se archiva con `codigo`. Lo conservado queda en el ciclo (reutilizado_de)."""
+    if alcance not in ALCANCES:
+        raise ValueError(alcance)
     f = L.flujo(trabajo, flujo)
     if not f:
         raise KeyError(flujo)
+    todas = [o["clave"] for o in f["objetos"]]
+    if alcance == "fuente":
+        objetos = [k for k in (objetos or []) if k in todas]
+        if not objetos:
+            raise ValueError(f"--alcance fuente exige --objetos (de {todas})")
     v = version(trabajo, flujo)
     base = L.dir_lote(trabajo)
     hist = os.path.join(base, "historial", flujo, f"v{v}")
@@ -94,40 +123,126 @@ def nuevo_ciclo(trabajo, flujo, motivo):
         if os.path.exists(p):
             os.makedirs(os.path.dirname(os.path.join(hist, rel)), exist_ok=True)
             shutil.move(p, os.path.join(hist, rel))
+
+    def copiar(rel):
+        p = os.path.join(base, rel)
+        if os.path.exists(p):
+            os.makedirs(os.path.dirname(os.path.join(hist, rel)), exist_ok=True)
+            shutil.copy2(p, os.path.join(hist, rel))
     for rel in (f"etl/veredictos/{flujo}.json", f"semaforo/{flujo}.json", f"v4/flujos/{flujo}.json",
                 f"expedientes/expediente_{flujo}_v{v}.md"):
         mover(rel)
+    if alcance == "codigo":
+        for rel in (f"codigo/{flujo}/revision.json", f"codigo/{flujo}/fuente.json"):
+            mover(rel)
     idx = L.leer(trabajo, "cotejos/indice.json", {}) or {}
     dif = L.leer(trabajo, "v4/diferencias.json", {}) or {}
     from ..cache import gestor
+    conservado = {}
     for o in f["objetos"]:
         k = o["clave"]
+        if alcance == "codigo" or (alcance == "fuente" and k in objetos):
+            lados = ("FABRIC", "STRATIO")
+        elif alcance == "lado":
+            lados = ("FABRIC",)
+        else:
+            lados = ()
         for plantilla in _ESTADO_TABLA:
             for lado in ("FABRIC", "STRATIO"):
-                mover(plantilla.format(lado=lado, k=k))
-        if k in idx:
-            e = idx.pop(k)
-            if e.get("archivo") and os.path.exists(e["archivo"]):
-                os.makedirs(os.path.join(hist, "cotejos"), exist_ok=True)
-                shutil.move(e["archivo"], os.path.join(hist, "cotejos", os.path.basename(e["archivo"])))
-        if k in dif:
-            os.makedirs(os.path.join(hist, "v4"), exist_ok=True)
-            json.dump(dif.pop(k), open(os.path.join(hist, "v4", f"diferencias_{k}.json"), "w"), indent=1, ensure_ascii=False)
-        for lado in ("FABRIC", "STRATIO"):      # el dato cambio con la correccion: esa cache ya no sirve
+                rel = plantilla.format(lado=lado, k=k)
+                (mover if lado in lados or "{lado}" not in plantilla and lados else copiar)(rel)
+        if lados:          # el cotejo y las diferencias de la tabla se rehacen
+            if k in idx:
+                ac = _archivo_cotejo(trabajo, idx.pop(k))
+                if ac:
+                    os.makedirs(os.path.join(hist, "cotejos"), exist_ok=True)
+                    shutil.move(ac, os.path.join(hist, "cotejos", os.path.basename(ac)))
+            if k in dif:
+                os.makedirs(os.path.join(hist, "v4"), exist_ok=True)
+                json.dump(dif.pop(k), open(os.path.join(hist, "v4", f"diferencias_{k}.json"), "w"), indent=1, ensure_ascii=False)
+        for lado in lados:      # el dato cambio con la correccion: esa cache ya no sirve
             c = gestor.carpeta(trabajo, lado, k)
             if os.path.isdir(c):
                 shutil.rmtree(c)
+        keep = [x for x in ("FABRIC", "STRATIO") if x not in lados and o.get(x.lower())]
+        if keep:
+            n0 = ((L.leer(trabajo, f"rapido/FABRIC/{k}.json") or {}).get("nivel0") or {})
+            conservado[k] = {"lados": keep, "version_delta_fabric": n0.get("version_delta"),
+                             "comprobado": "FABRIC" not in keep}
     L.guardar(trabajo, "cotejos/indice.json", idx)
     L.guardar(trabajo, "v4/diferencias.json", dif)
     ver = L.leer(trabajo, "v4/verificaciones.json", {}) or {}
     ver.pop(flujo, None)
     L.guardar(trabajo, "v4/verificaciones.json", ver)
     vs = L.leer(trabajo, "v4/ciclos.json", {}) or {}
-    vs[flujo] = {"version": v + 1, "abierto_utc": _ahora(), "motivo": motivo, "anterior": v,
+    vs[flujo] = {"version": v + 1, "abierto_utc": _ahora(), "motivo": motivo, "anterior": v, "alcance": alcance,
                  "historial": vs.get(flujo, {}).get("historial", []) + [v]}
+    if conservado:
+        vs[flujo]["reutilizado_de"] = {"version": v, "objetos": conservado}
     L.guardar(trabajo, "v4/ciclos.json", vs)
-    L.bitacora(trabajo, "coordinador", "nuevo_ciclo", {"de": v, "a": v + 1, "motivo": motivo}, estado="DECISION", flujo=flujo)
+    L.bitacora(trabajo, "coordinador", "nuevo_ciclo", {"de": v, "a": v + 1, "motivo": motivo, "alcance": alcance,
+               "conservado": {k: c["lados"] for k, c in conservado.items()}}, estado="DECISION", flujo=flujo)
     return v + 1
+
+
+def comprobar_reutilizados(trabajo, flujo):
+    """Los objetos conservados con su lado Fabric: si la tabla Fabric cambio de version Delta desde vN (o no se
+    puede comprobar), se archivan y se rehacen. Devuelve {clave: 'CONSERVADO'|'REHACER: motivo'}."""
+    vs = L.leer(trabajo, "v4/ciclos.json", {}) or {}
+    c = vs.get(flujo) or {}
+    reu = (c.get("reutilizado_de") or {}).get("objetos") or {}
+    f = L.flujo(trabajo, flujo)
+    out = {}
+    from ..rapido import delta_remoto as dr
+    for o in f["objetos"]:
+        k = o["clave"]
+        x = reu.get(k)
+        if not x or "FABRIC" not in x["lados"] or x.get("comprobado"):
+            continue
+        src = o.get("fabric") or {}
+        motivo = None
+        if src.get("tipo") != "delta" or x.get("version_delta_fabric") is None:
+            motivo = f"fuente Fabric {src.get('tipo')}: sin version Delta para comprobar"
+        else:
+            try:
+                ahora = dr.leer_log(dr.resolver_tabla(src["ruta"]), todos_los_commits=False)["version"]
+                if ahora != x["version_delta_fabric"]:
+                    motivo = f"la tabla Fabric paso de v{x['version_delta_fabric']} a v{ahora}"
+            except Exception as e:
+                motivo = f"no se pudo leer el _delta_log: {type(e).__name__}"
+        if motivo:
+            base = L.dir_lote(trabajo)
+            hist = os.path.join(base, "historial", flujo, f"v{c['anterior']}")
+            for plantilla in _ESTADO_TABLA:
+                for lado in ("FABRIC", "STRATIO"):
+                    rel = plantilla.format(lado=lado, k=k)
+                    if ("{lado}" in plantilla and lado != "FABRIC") or not os.path.exists(os.path.join(base, rel)):
+                        continue
+                    os.makedirs(os.path.dirname(os.path.join(hist, rel)), exist_ok=True)
+                    shutil.move(os.path.join(base, rel), os.path.join(hist, rel))
+            idx = L.leer(trabajo, "cotejos/indice.json", {}) or {}
+            dif = L.leer(trabajo, "v4/diferencias.json", {}) or {}
+            ac = _archivo_cotejo(trabajo, idx.pop(k, None))
+            if ac:
+                os.makedirs(os.path.join(hist, "cotejos"), exist_ok=True)
+                shutil.move(ac, os.path.join(hist, "cotejos", os.path.basename(ac)))
+            if k in dif:
+                os.makedirs(os.path.join(hist, "v4"), exist_ok=True)
+                json.dump(dif.pop(k), open(os.path.join(hist, "v4", f"diferencias_{k}.json"), "w"), indent=1, ensure_ascii=False)
+            L.guardar(trabajo, "cotejos/indice.json", idx)
+            L.guardar(trabajo, "v4/diferencias.json", dif)
+            from ..cache import gestor
+            if os.path.isdir(gestor.carpeta(trabajo, "FABRIC", k)):
+                shutil.rmtree(gestor.carpeta(trabajo, "FABRIC", k))
+            x["lados"] = [l for l in x["lados"] if l != "FABRIC"]
+            out[k] = "REHACER: " + motivo
+        else:
+            out[k] = "CONSERVADO"
+        x["comprobado"] = True
+    L.guardar(trabajo, "v4/ciclos.json", vs)
+    if out:
+        L.bitacora(trabajo, "coordinador", "comprobar_reutilizados", out, estado="OK", flujo=flujo)
+    return out
 
 
 def _anterior(trabajo, flujo, rel):

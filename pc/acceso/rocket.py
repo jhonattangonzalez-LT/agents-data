@@ -7,6 +7,7 @@ muchos hilos dentro del objeto. Una carpeta vacia suele ser Stratio reescribiend
 
 Requiere VPN de Comfandi y ruta hacia datafabric.comfandi.com.co.
 """
+from ..salida import avance as _avance
 import fcntl
 import io
 import json
@@ -172,10 +173,11 @@ class ArchivoRocket(io.RawIOBase):
         return d
 
 
-def bajar(ruta, destino, desde=None, hilos=None, log=print, particion=None):
+def bajar(ruta, destino, desde=None, hilos=None, log=None, particion=None):
     """Baja el arbol de `ruta` a `destino`. Un objeto a la vez entre procesos (candado),
     `hilos` dentro del objeto. Reanudable: salta lo que ya tiene el mismo tamano y baja a .part.
     Devuelve (archivos_locales, metadatos)."""
+    log = log or _avance
     hilos = hilos or PAR["rocket_hilos_por_objeto"]
     os.makedirs(os.path.join(RAIZ, "cache", ".locks"), exist_ok=True)
     with open(os.path.join(RAIZ, "cache", ".locks", "rocket.lock"), "w") as lf:
@@ -187,7 +189,8 @@ def bajar(ruta, destino, desde=None, hilos=None, log=print, particion=None):
         if not arch:
             raise RuntimeError(f"sin archivos en {ruta} (¿Stratio reescribiendo? reintentar)")
         os.makedirs(destino, exist_ok=True)
-        lk, hecho = threading.Lock(), [0]
+        lk, hecho, ult = threading.Lock(), [0], [0.0]
+        total = sum(s for _, s, _m in arch)
 
         def uno(par):
             rem, size, _m = par
@@ -206,6 +209,10 @@ def bajar(ruta, destino, desde=None, hilos=None, log=print, particion=None):
             _reintentar(ir)
             with lk:
                 hecho[0] += size
+                if time.time() - ult[0] > 2:
+                    ult[0] = time.time()
+                    log(f"rocket {ruta}: {hecho[0] / 1e6:.0f} de {total / 1e6:.0f} MB", fase="descarga", via="rocket",
+                        bytes=hecho[0], bytes_total=total, pct=round(100 * hecho[0] / total, 1) if total else None)
             return loc
 
         with ThreadPoolExecutor(hilos) as ex:
@@ -216,8 +223,9 @@ def bajar(ruta, destino, desde=None, hilos=None, log=print, particion=None):
                   "ultima_modificacion_ms": max((m or 0) for _, _, m in arch)}
 
 
-def _limpiar_obsoletos(destino, vigentes, log=print):
+def _limpiar_obsoletos(destino, vigentes, log=None):
     """Stratio reescribe con nombres nuevos (UUID): lo que ya no esta en origen sale de la cache."""
+    log = log or _avance
     v = {os.path.abspath(x) for x in vigentes}
     n = 0
     for raiz, _d, fs in os.walk(destino):

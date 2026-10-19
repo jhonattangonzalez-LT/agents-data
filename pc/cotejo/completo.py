@@ -163,7 +163,9 @@ def cotejar(o, ruta_s, ruta_f, W, fecha, lote=None):
         d = {}
         for k in ("minimo", "maximo", "suma_exacta", "longitud_maxima", "longitud_minima", "cadenas_vacias",
                   "con_caracteres_no_ascii", "con_caracteres_de_control", "valor_minimo_lexicografico",
-                  "valor_maximo_lexicografico"):
+                  "valor_maximo_lexicografico", "con_espacios_en_bordes", "solo_espacios", "centinelas_de_nulo",
+                  "centinelas_de_fecha", "con_ceros_a_la_izquierda", "mayusculas_completas", "numericos_como_texto", "fechas_como_texto",
+                  "dias_distintos", "posteriores_a_fecha_ejecucion", "anteriores_a_1900"):
             if k in ms.get(a, {}) or k in mf.get(b, {}):
                 if ms.get(a, {}).get(k) != mf.get(b, {}).get(k):
                     d[k] = {"stratio": ms.get(a, {}).get(k), "fabric": mf.get(b, {}).get(k)}

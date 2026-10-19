@@ -229,6 +229,21 @@
   "commit": "b82699b"
  },
  {
+  "id": "M-017",
+  "fecha": "2026-10-14T17:12:31+00:00",
+  "que": "Flujo QA de los agentes: evidencia vigente publicada (verificado = HEAD + medición del cierre), medición dirigida con los 18 controles declarados y cierre con salvedad, anexo de enlaces por lote y ficha de devolución de 7 puntos, retiro de flujos a otro lote y chequeo previo a producción (orquestadores de flujos devueltos o retirados)",
+  "por_que": "Lotes 7–10 (13/14-10): se entregaron enlaces con HEAD OK que no eran la evidencia del cierre (L7: 196 enlaces a v2.1; L10 #15 DFKKOP); Comfandi observó 11 de 18 controles sin evaluar en DFKKOP; 2 orquestadores aprobados ejecutan flujos devueltos o retirados",
+  "archivos": [
+   ".claude/agents/publicador-reportes.md",
+   ".claude/agents/medidor-completo.md",
+   ".claude/agents/cotejador.md",
+   ".claude/agents/acta-final.md",
+   "CLAUDE.md"
+  ],
+  "autor": "Jhonattan-LT",
+  "estado": "SIN_COMPARTIR"
+ },
+ {
   "id": "M-018",
   "fecha": "2026-10-14T19:20:18+00:00",
   "que": "Agente acta-entrega: punto 7 compacto en reportes v4. Por diferencia van tres columnas: la cifra en una frase; el ejemplo con la clave y STRATIO/FABRIC en dos líneas de color; y la justificación corta que cierra el control (✔) con la decisión, quién y la fecha. La causa corta se escribe en actas/justif_corta_loteN.py y el detalle completo queda en el cotejo enlazado.",
@@ -255,5 +270,154 @@
   "autor": "Jhonattan-LT",
   "estado": "COMPARTIDA",
   "commit": "9c288c2"
+ },
+ {
+  "id": "M-020",
+  "fecha": "2026-10-19T05:42:46+00:00",
+  "que": "Salidas cortas y cifras del disco: PC_RESUMEN (detalle en trabajos/T/salidas, avance con bytes/% en progreso/), partes de agente con cifras comprobadas contra el JSON (pc parte), pc trabajo resumen, siguiente con grupos en paralelo, ciclo con alcance codigo|fuente|lado y --comprobar; corrige pc decision, que no leia las diferencias del formato 2 (justificaciones) y ahora usa tarjetas de ~12 lineas",
+  "por_que": "Gastar menos tokens en texto de proceso, dar cifras exactas sin reescribirlas a mano, no rehacer todo cuando solo cambia una fuente, y que las diferencias pendientes lleguen a la persona",
+  "archivos": [
+   "pc/salida.py",
+   "pc/parte.py",
+   "pc/__main__.py",
+   "pc/coordinacion.py",
+   "pc/reportes/v4.py",
+   "pc/acceso/rocket.py",
+   "pc/medir/completo.py"
+  ],
+  "autor": "Jhonattan-LT",
+  "estado": "SIN_COMPARTIR"
+ },
+ {
+  "id": "M-021",
+  "fecha": "2026-10-19T05:42:46+00:00",
+  "que": "Grafo por coordinador (pc grafo construir|contexto|mermaid) y cierre en dos markdown cierre-v1 (EXITOSOS con enlaces del portal verificados con HEAD; PENDIENTES con ficha de 7 puntos, archivos locales y bloque de respuesta de desarrollo) + pc trabajo retomar",
+  "por_que": "Que cada coordinador entienda de donde se leyo, que se bajo y que se decidio, y que el agente de actas y un coordinador nuevo partan de un insumo estructurado",
+  "archivos": [
+   "pc/grafo.py",
+   "pc/cierre.py"
+  ],
+  "autor": "Jhonattan-LT",
+  "estado": "SIN_COMPARTIR"
+ },
+ {
+  "id": "M-022",
+  "fecha": "2026-10-19T05:42:46+00:00",
+  "que": "pc diferenciar: diferencias exactas por llave (declarada, una columna, compuesta o casi unica, comprobada), llave repetida aparte, patron por columna (nulos, espacios, mayusculas, acentos, mojibake, ceros, escala, max |S-F|, horario, columna corrida), por mes y ejemplos deterministas; pc cotejar compara 11 campos mas del perfil (informativos)",
+  "por_que": "Pasar de 'hash distinto' a la diferencia concreta y medida de cada columna, con precision",
+  "archivos": [
+   "pc/cotejo/diferenciar.py",
+   "pc/cotejo/completo.py",
+   "pc/reportes/formato2.py",
+   "tests/test_diferenciar.py",
+   ".claude/agents/cotejador.md"
+  ],
+  "autor": "Jhonattan-LT",
+  "estado": "SIN_COMPARTIR"
+ },
+ {
+  "id": "M-023",
+  "fecha": "2026-10-19T05:42:46+00:00",
+  "que": "Hooks de proyecto (.claude/settings.json + pc/hooks/evento.py) y panel en vivo (pc panel, localhost:8765) con coordinadores, agentes y modelo, etapas por flujo, progreso con ETA y vida de cookies; no toca la VPN",
+  "por_que": "Ver en casi tiempo real que hace cada coordinador y cada agente sin agregar demoras",
+  "archivos": [
+   ".claude/settings.json",
+   "pc/hooks/evento.py",
+   "pc/panel/servidor.py",
+   "pc/panel/index.html",
+   "pc/hooks/",
+   "pc/panel/",
+   "pc/panel/__init__.py"
+  ],
+  "autor": "Jhonattan-LT",
+  "estado": "SIN_COMPARTIR"
+ },
+ {
+  "id": "M-024",
+  "fecha": "2026-10-19T05:42:46+00:00",
+  "que": "Modelo por agente (haiku: descargas, mediciones, publicacion, semaforo; sonnet: ETL, Postgres, lote, acta; opus: cotejador, revisor de codigo), seccion comun de reporte en los 12 agentes y reglas nuevas del coordinador en CLAUDE.md",
+  "por_que": "No usar el modelo mas caro para tareas deterministas y que todos los agentes reporten igual",
+  "archivos": [
+   ".claude/agents/acta-final.md",
+   ".claude/agents/consolidador-revision.md",
+   ".claude/agents/cotejador.md",
+   ".claude/agents/etl-validador.md",
+   ".claude/agents/gestor-descargas.md",
+   ".claude/agents/medidor-completo.md",
+   ".claude/agents/medidor-rapido-fabric.md",
+   ".claude/agents/medidor-rapido-stratio.md",
+   ".claude/agents/postgres-fabric.md",
+   ".claude/agents/publicador-reportes.md",
+   ".claude/agents/revisor-codigo.md",
+   ".claude/agents/semaforo.md",
+   "CLAUDE.md"
+  ],
+  "autor": "Jhonattan-LT",
+  "estado": "SIN_COMPARTIR"
+ },
+ {
+  "id": "M-025",
+  "fecha": "2026-10-19T06:09:08+00:00",
+  "que": "Mensajes listos para copiar (pc mensaje, automaticos tras semaforo, diferencia y cierre): a desarrollo en chat indicando ingesta (CDS) o analitica (DIA) con problema, cifras, ejemplo, regla de cada lado, que corregir y aceptacion; a Comfandi en correo cuando es regla de negocio (A_VERIFICAR) con la pregunta concreta y opciones. Panel arcade: ave por coordinador con filtro, equipo coordinador-agente-flujo con cables animados, recorrido por estaciones con fichas, vida de cookies, detalle por flujo (historia, respuestas, decisiones con ejemplo, mensajes) sin comandos, buzon de salida",
+  "por_que": "Que lo que se devuelve o se pregunta quede redactado y completo sin escribirlo en el chat, y que el panel se entienda de un vistazo con varios coordinadores abiertos",
+  "archivos": [
+   "pc/mensajes.py",
+   "pc/panel/index.html",
+   "pc/panel/servidor.py",
+   "pc/hooks/evento.py",
+   "pc/coordinacion.py",
+   "pc/__main__.py",
+   "CLAUDE.md"
+  ],
+  "autor": "Jhonattan-LT",
+  "estado": "SIN_COMPARTIR"
+ },
+ {
+  "id": "M-026",
+  "fecha": "2026-10-19T06:14:58+00:00",
+  "que": "Carriles paralelos por flujo: mientras Fabric ejecuta su ETL o se mide rapido, la revision de codigo y Stratio (descarga --anticipada y medicion) avanzan a la vez; pc trabajo siguiente los marca con ∥ y el panel como fichas punteadas. Pestaña Grafo en el panel: todo el grafo del trabajo por capas, filtrable por flujo, con destello en los nodos nuevos",
+  "por_que": "No esperar la corrida de Fabric para lo que no depende de ella, y ver como se llena el conocimiento del coordinador",
+  "archivos": [
+   "pc/coordinacion.py",
+   "pc/__main__.py",
+   "pc/panel/index.html",
+   "pc/panel/servidor.py",
+   "CLAUDE.md",
+   ".claude/agents/gestor-descargas.md"
+  ],
+  "autor": "Jhonattan-LT",
+  "estado": "SIN_COMPARTIR"
+ },
+ {
+  "id": "M-027",
+  "fecha": "2026-10-19T06:28:32+00:00",
+  "que": "Mensajes: uno por destino (chat analitica DIA, chat ingesta CDS, correo Comfandi) sin nada del proceso QA, causas repetidas una sola vez; panel: clic en ficha la ilumina con sus carriles unidos por linea y abre su detalle debajo (sin comandos), re-pruebas con ↺vN y animacion de reinicio, rama iluminada al hacer clic en el grafo, trabajos de prueba (_*) fuera del panel; pc decision agrupa diferencias de igual causa; protocolo de decisiones en el chat con AskUserQuestion",
+  "por_que": "Mensajes que se copian tal cual al destinatario, menos preguntas repetidas y un panel que se entiende flujo por flujo",
+  "archivos": [
+   "pc/mensajes.py",
+   "pc/panel/index.html",
+   "pc/panel/servidor.py",
+   "pc/coordinacion.py",
+   "pc/grafo.py",
+   "pc/__main__.py",
+   "CLAUDE.md"
+  ],
+  "autor": "Jhonattan-LT",
+  "estado": "SIN_COMPARTIR"
+ },
+ {
+  "id": "M-028",
+  "fecha": "2026-10-19T13:10:51+00:00",
+  "que": "pc panel --asegurar (el coordinador arranca el panel al abrir y da el enlace); prompts de prueba del coordinador v3; firmantes del acta por equipo (CDS / DIA) en config/acta.json",
+  "por_que": "Que el panel siempre este corriendo con cada coordinador y dejar registrado el cambio de firmantes",
+  "archivos": [
+   "pc/__main__.py",
+   "CLAUDE.md",
+   "docs/PROMPT_PRUEBA_COORDINADOR_V3.md",
+   "docs/PROMPT_PRUEBA_HOMOLOGACION_CORREOS.md",
+   "config/acta.json"
+  ],
+  "autor": "Jhonattan-LT",
+  "estado": "SIN_COMPARTIR"
  }
 ]

@@ -24,7 +24,9 @@ import traceback
 from concurrent.futures import ThreadPoolExecutor
 
 from . import lote as L
+from . import salida
 from .config import PAR
+from .salida import avance
 
 
 def _v4(lote):
@@ -67,11 +69,29 @@ def _where(o):
 def c_lote(a):
     if a.accion == "crear":
         _p(L.crear(a.lote, a.responsable, a.descripcion or "", a.fecha, pruebas=a.pruebas))
+    elif a.accion == "retomar":
+        from . import cierre
+        for x in cierre.retomar(a.lote):
+            if not x["respuesta"]:
+                print(f"SIN RESPUESTA  {x['flujo']}")
+                continue
+            print(f"PROPUESTA {x['propuesta']:7s} {x['flujo']}" + (f" · objetos {', '.join(x['objetos'])}" if x.get("objetos") else "")
+                  + f"\n   respuesta: {x['respuesta'][:200]}\n   {x['comando']}")
+        print("Cada propuesta la confirma una persona antes de correr el comando.")
+    elif a.accion == "resumen":
+        from . import coordinacion as K
+        r = K.resumen(a.lote)
+        _p(r) if a.json_salida else K.imprimir_resumen(r)
     elif a.accion == "siguiente":
         from . import coordinacion as K
+        for ag, fl in K.paralelo(a.lote).items():
+            print(f"EN PARALELO [{ag}] {len(fl)} flujo(s): {', '.join(fl)}")
         for x in K.siguiente(a.lote):
             print(f"{x['estado']:28s} {x['flujo']}\n   → {x['paso']}  [{x['agente']}]\n     {x['comando']}")
-            print(f"     código Stratio ↔ Fabric: {x['codigo']}")
+            for c in x.get("paralelos") or []:
+                print(f"   ∥ a la vez, carril {c['pista']}: {c['paso']}  [{c['agente']}]\n     {c['comando']}")
+            if not any(c["pista"] == "código" for c in x.get("paralelos") or []):
+                print(f"     código Stratio ↔ Fabric: {x['codigo']}")
     elif a.accion == "bitacora":
         for e in L.leer_bitacora(a.lote):
             if a.estado and e["estado"] != a.estado:
@@ -123,7 +143,8 @@ def _etl_validar(lote, flujos, ejecutar, V):
     hist.append(lz)
     L.guardar(lote, "etl/lanzamientos.json", hist)
     L.bitacora(lote, "etl-validador", "lanzar_validador", {"run": lz["run"], "flujos": flujos, "ejecutar": ejecutar}, estado="INICIO")
-    r = V.seguir(lz, avisar=lambda e, s: print(f"{datetime.datetime.now():%H:%M:%S} validador {flujos} {e} {s}s", flush=True))
+    r = V.seguir(lz, avisar=lambda e, s: avance(f"{datetime.datetime.now():%H:%M:%S} validador {flujos} {e} {s}s",
+                                                   fase="etl", estado=e, segundos=s))
     lz.update(estado=r.get("status"), fin_utc=r.get("endTimeUtc"), fallo=r.get("failureReason"))
     L.guardar(lote, "etl/lanzamientos.json", hist)
     return r.get("status")
@@ -226,7 +247,7 @@ def c_etl(a):
         L.bitacora(a.lote, "etl-validador", "lanzar_validador", {"run": lz["run"], "flujos": len(lz["flujos"]), "ejecutar": lz["ejecutar"]}, estado="INICIO")
         _p(lz)
         if a.esperar:
-            r = V.seguir(lz, avisar=lambda e, s: print(f"{datetime.datetime.now():%H:%M:%S} {e} {s}s", flush=True))
+            r = V.seguir(lz, avisar=lambda e, s: avance(f"{datetime.datetime.now():%H:%M:%S} {e} {s}s", fase="etl", estado=e, segundos=s))
             lz.update(estado=r.get("status"), fin_utc=r.get("endTimeUtc"), fallo=r.get("failureReason"))
             L.guardar(a.lote, "etl/lanzamientos.json", hist)
             print("notebook:", r.get("status"))
@@ -383,6 +404,7 @@ def c_semaforo(a):
         for m in s["motivos_rojo"]:
             print("         -", m)
     _v4(a.lote)
+    _mensajes(a.lote, a.flujo)
 
 
 # ----------------------------------------------------------------- nivel 2
@@ -429,10 +451,12 @@ def _rapido_desde_descarga(lote, f, o, carpeta, archivos, meta):
 
 def c_descargar(a):
     from .medir import completo as C
+    if a.anticipada:      # Stratio no depende de la corrida de Fabric: se baja sin esperar el semaforo
+        a.lado = "STRATIO"
     hechos = []
     grandes = set() if a.confirmar_grandes else _grandes(a)
     for f, o in _sel(a):
-        if f["grupo"] == "orquestador" or not _puede_nivel2(a.lote, f, a.forzar):
+        if f["grupo"] == "orquestador" or not (_puede_nivel2(a.lote, f, a.forzar) or a.anticipada):
             continue
         k = o["clave"]
         for lado in ("FABRIC", "STRATIO"):
@@ -499,7 +523,7 @@ def c_medir(a):
                                cast_varchar=(o.get(lado.lower()) or {}).get("cast_varchar"))
             return o["clave"], lado, f"{rep['conteos']['row_count']:,} filas · hash {str(rep['hash'].get('hash_dataset'))[:12]}"
         except Exception as ex:
-            traceback.print_exc()
+            traceback.print_exc(file=sys.stderr)
             return o["clave"], lado, f"ERROR {type(ex).__name__}: {str(ex)[:160]}"
     with ThreadPoolExecutor(PAR["medicion_local_objetos"]) as ex:
         for r in ex.map(una, tareas):
@@ -596,9 +620,77 @@ def c_mejora(a):
             print("No hay mejoras pendientes de compartir.")
 
 
+def c_parte(a):
+    from . import parte as P
+    if a.accion == "registrar":
+        if not (a.agente and a.json):
+            raise SystemExit("registrar exige --agente y --json")
+        doc = json.load(open(a.json, encoding="utf8")) if os.path.exists(a.json) else json.loads(a.json)
+        try:
+            print(P.linea(P.registrar(a.lote, a.agente, doc)))
+        except ValueError as e:
+            raise SystemExit(f"PARTE RECHAZADO: {e}")
+    elif a.accion == "ver":
+        ps = [p for p in P.listar(a.lote) if p["id"] == a.id] if a.id else P.listar(a.lote, a.flujo, a.agente, a.ultimos or 1)
+        print("\n".join(P.texto(p) for p in ps) or "sin partes")
+    else:
+        for p in P.listar(a.lote, a.flujo, a.agente, a.ultimos):
+            print(P.linea(p))
+
+
+def c_cierre(a):
+    from . import cierre
+    _mensajes(a.lote)
+    pe, pp, ex, pn = cierre.generar(a.lote, comprobar_head=not a.sin_head)
+    print(f"EXITOSOS   {len(ex)} flujo(s) · {pe}\nPENDIENTES {len(pn)} flujo(s) · {pp}")
+
+
+def c_panel(a):
+    from .panel import servidor
+    if a.asegurar:        # el coordinador lo corre al abrir: si no esta arriba, lo deja corriendo aparte y avisa
+        import socket
+        import subprocess
+        import time as _t
+        def arriba():
+            try:
+                with socket.create_connection(("127.0.0.1", a.puerto), timeout=0.3):
+                    return True
+            except OSError:
+                return False
+        if not arriba():
+            log = os.path.join(os.path.expanduser("~"), ".cache", "pc", "logs")
+            os.makedirs(log, exist_ok=True)
+            subprocess.Popen([sys.executable, "-m", "pc", "panel", "--puerto", str(a.puerto)], cwd=L.RAIZ, start_new_session=True,
+                             stdin=subprocess.DEVNULL, stdout=open(os.path.join(log, "panel.log"), "a"), stderr=subprocess.STDOUT)
+            for _ in range(20):
+                if arriba():
+                    break
+                _t.sleep(0.25)
+        print(f"{'✅ panel corriendo' if arriba() else '❌ el panel no arrancó (ver ~/.cache/pc/logs/panel.log)'} · http://localhost:{a.puerto}")
+        return
+    servidor.servir(a.puerto)
+
+
+def c_grafo(a):
+    from . import grafo as G
+    if a.accion == "construir":
+        g = G.construir(a.lote)
+        print(f"grafo {a.lote}: {len(g['nodos'])} nodos · {len(g['aristas'])} aristas · {g['eventos_bitacora']} eventos · "
+              + ", ".join(f"{k} {v}" for k, v in g["conteo"].items()) + f" · {L.dir_lote(a.lote)}/grafo/grafo.json")
+    elif a.accion == "contexto":
+        if not (a.flujo or a.nodo):
+            raise SystemExit("contexto exige --flujo o --nodo")
+        print(G.contexto(a.lote, a.flujo, a.nodo, a.para))
+    elif a.accion == "mermaid":
+        print(G.mermaid(a.lote, a.flujo))
+
+
 def c_decision(a):
     from . import coordinacion as K
-    K.imprimir_pendientes(K.pendientes(a.lote, a.clave))
+    p = K.pendientes(a.lote, a.clave)
+    if a.nodo:
+        p = [x for x in p if x.get("nodo") == a.nodo or (x.get("flujo") and f"F:{x['flujo']}" == a.nodo)]
+    K.imprimir_pendientes(p, detalle=a.detalle_json, trabajo=a.lote)
 
 
 def c_v4(a):
@@ -624,17 +716,52 @@ def c_v4(a):
         L.bitacora(a.lote, "publicador-reportes", "publicar_v4", None)
 
 
+def _mensajes(lote, flujo=None):
+    """Mensajes a desarrollo (chat) y a Comfandi (correo) al dia con lo decidido; se avisan en una linea."""
+    try:
+        from . import mensajes as MS
+        for k, tipo, p in MS.generar(lote, flujo):
+            print(f"📨 mensaje al día para {'desarrollo · ' + k.split('_')[-1] + ' (chat)' if tipo == 'desarrollo' else 'Comfandi (correo)'}"
+                  f" · {os.path.relpath(p, L.dir_lote(lote))} (también en el buzón del panel)")
+    except Exception as e:
+        L.bitacora(lote, "coordinador", "mensajes", estado="ERROR", error=f"{type(e).__name__}: {str(e)[:200]}")
+
+
+def c_mensaje(a):
+    from . import mensajes as MS
+    hechos = MS.generar(a.lote, a.flujo, a.para)
+    if not hechos:
+        print("No hay nada que devolver a desarrollo ni que preguntar a Comfandi en este trabajo.")
+    for k, tipo, p in hechos:
+        print(f"\n===== {('DESARROLLO · ' + k.split('_')[-1] + ' · chat' if tipo == 'desarrollo' else 'COMFANDI · correo')} =====")
+        print(open(p, encoding="utf8").read())
+
+
 def c_diferencia(a):
     from .reportes import v4
     d = v4.registrar_diferencia(a.lote, a.clave, a.control, a.tipo, a.descripcion, a.filas_afectadas,
                                 json.loads(a.ejemplos) if a.ejemplos else [], a.decision, a.causa, a.medida, a.columna, a.id)
     v4.construir(a.lote)
     _p(d)
+    _mensajes(a.lote, next((f["nombre_fabric"] for f, o in L.objetos(a.lote) if o["clave"] == a.clave), None))
 
 
 def c_ciclo(a):
     from .reportes import v4
-    print(f"{a.flujo}: nuevo ciclo v{v4.nuevo_ciclo(a.lote, a.flujo, a.motivo)} · se vuelve a empezar en el nivel 0")
+    if a.comprobar:
+        for k, r in v4.comprobar_reutilizados(a.lote, a.flujo).items():
+            print(f"{k}: {r}")
+        return
+    if not a.motivo:
+        raise SystemExit("--motivo es obligatorio")
+    n = v4.nuevo_ciclo(a.lote, a.flujo, a.motivo, a.alcance, [x for x in (a.objetos or "").split(",") if x])
+    c = (L.leer(a.lote, "v4/ciclos.json") or {})[a.flujo]
+    reu = (c.get("reutilizado_de") or {}).get("objetos") or {}
+    print(f"{a.flujo}: nuevo ciclo v{n} · alcance {a.alcance}"
+          + (f" · se conserva de v{n - 1}: " + ", ".join(f"{k} ({'+'.join(x['lados'])})" for k, x in reu.items()) if reu else
+             " · se vuelve a empezar en el nivel 0"))
+    if any(not x["comprobado"] for x in reu.values()):
+        print(f"   antes del nivel 0: python -m pc ciclo --trabajo {a.lote} --flujo {a.flujo} --comprobar")
 
 
 def c_verificar(a):
@@ -655,6 +782,33 @@ def c_comparar(a):
         A.imprimir(A.columna(con, a.columna, a.limite))
     else:
         A.imprimir(info)
+
+
+def c_diferenciar(a):
+    from .cotejo import analisis as A
+    from .cotejo import diferenciar as D
+    import time as _t
+    t0 = _t.time()
+    con, info = A.abrir(a.lote, a.clave)
+    o = next(o for _f, o in L.objetos(a.lote) if o["clave"] == a.clave)
+    llave = [x for x in a.llave.split(",") if x] if a.llave else None
+    origen, notas = ("indicada", []) if llave else (None, [])
+    if not llave:
+        avance("buscando la llave", fase="diferenciar")
+        llave, origen, notas = D.resolver_llave(con, o.get("llave"))
+    avance(f"cruzando por {llave}", fase="diferenciar")
+    fecha = a.columna_fecha or (o.get("ventana_fechas") or {}).get("columna")
+    destino = os.path.join(L.dir_lote(a.lote), "diferencias", a.clave)
+    r = D.diferenciar(con, llave, origen, fecha, destino=destino)
+    r["notas_llave"] = notas
+    p = L.guardar(a.lote, f"diferencias/{a.clave}/resumen.json", r)
+    L.bitacora(a.lote, "cotejador", "diferenciar", {"llave": llave, "origen": origen, "filas": r["filas"],
+               "columnas_distintas": len(r.get("por_columna") or {})}, nivel=2, flujo=info["flujo"], clave=a.clave,
+               duracion_s=_t.time() - t0, salidas=[os.path.relpath(p, L.dir_lote(a.lote))])
+    print(D.texto(r, a.clave))
+    for n_ in notas:
+        print(f"  nota llave: {n_}")
+    print(f"  resumen: trabajos/{a.lote}/diferencias/{a.clave}/resumen.json · detalle parquet en la misma carpeta")
 
 
 def c_estimar(a):
@@ -727,10 +881,14 @@ def c_stratio(a):
 def main(argv=None):
     p = argparse.ArgumentParser(prog="pc", description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     s = p.add_subparsers(dest="cmd", required=True)
-    x = s.add_parser("trabajo", help="trabajo de validacion (1 o varios flujos)"); x.add_argument("accion", choices=["crear", "flujo", "tablero", "bitacora", "siguiente"])
+    x = s.add_parser("trabajo", help="trabajo de validacion (1 o varios flujos)"); x.add_argument("accion", choices=["crear", "flujo", "tablero", "bitacora", "siguiente", "resumen", "retomar"])
     x.add_argument("--trabajo", dest="lote", required=True)
     x.add_argument("--pruebas", action="store_true"); x.add_argument("--estado")
-    x.add_argument("--responsable"); x.add_argument("--descripcion"); x.add_argument("--fecha"); x.add_argument("--json"); x.set_defaults(fn=c_lote)
+    x.add_argument("--responsable"); x.add_argument("--descripcion"); x.add_argument("--fecha"); x.add_argument("--json"); x.add_argument("--json-salida", action="store_true"); x.set_defaults(fn=c_lote)
+    x = s.add_parser("parte", help="parte de agente: lo unico que un agente devuelve (cifras comprobadas contra el disco)")
+    x.add_argument("accion", choices=["registrar", "ver", "lista"]); x.add_argument("--trabajo", "--lote", dest="lote", required=True)
+    x.add_argument("--agente"); x.add_argument("--json", help="archivo JSON o JSON en linea"); x.add_argument("--id"); x.add_argument("--flujo")
+    x.add_argument("--ultimos", type=int); x.set_defaults(fn=c_parte)
     x = s.add_parser("lote", help="LOTE FINAL: se arma con los expedientes aprobados")
     x.add_argument("accion", choices=["disponibles", "armar"]); x.add_argument("--lote"); x.add_argument("--responsable")
     x.add_argument("--flujos"); x.set_defaults(fn=c_lote_final)
@@ -743,7 +901,9 @@ def main(argv=None):
                        ("semaforo", c_semaforo)):
         x = s.add_parser(nombre); x.add_argument("--trabajo", "--lote", dest="lote", required=True); x.add_argument("--flujo")
         x.add_argument("--lado", choices=["FABRIC", "STRATIO"]); x.add_argument("--forzar", action="store_true")
-        x.add_argument("--pruebas", action="store_true"); x.add_argument("--confirmar-grandes", action="store_true"); x.set_defaults(fn=fn)
+        x.add_argument("--pruebas", action="store_true"); x.add_argument("--confirmar-grandes", action="store_true")
+        x.add_argument("--anticipada", action="store_true", help="descargar: solo Stratio, sin esperar el semaforo (no depende de la corrida de Fabric)")
+        x.set_defaults(fn=fn)
     x = s.add_parser("cache"); x.add_argument("accion", choices=["espacio", "ver", "limpiar"]); x.add_argument("--trabajo", "--lote", dest="lote")
     x.add_argument("--ejecutar", action="store_true"); x.add_argument("--forzar", action="store_true"); x.set_defaults(fn=c_cache)
     x = s.add_parser("pg"); x.add_argument("accion", choices=["asegurar", "sql"]); x.add_argument("consulta", nargs="?")
@@ -762,7 +922,11 @@ def main(argv=None):
     x.add_argument("--causa"); x.add_argument("--medida", action="store_true"); x.add_argument("--columna"); x.add_argument("--id")
     x.set_defaults(fn=c_diferencia)
     x = s.add_parser("ciclo", help="correccion de desarrollo: abre vN+1 del flujo desde el nivel 0")
-    x.add_argument("--trabajo", "--lote", dest="lote", required=True); x.add_argument("--flujo", required=True); x.add_argument("--motivo", required=True)
+    x.add_argument("--trabajo", "--lote", dest="lote", required=True); x.add_argument("--flujo", required=True); x.add_argument("--motivo")
+    x.add_argument("--alcance", choices=["codigo", "fuente", "lado"], default="codigo",
+                   help="codigo: todo desde el nivel 0 · fuente: solo --objetos · lado: solo el lado Fabric (lo decide una persona)")
+    x.add_argument("--objetos", help="claves que cambian (alcance fuente)"); x.add_argument("--comprobar", action="store_true",
+                   help="comprueba que las tablas Fabric conservadas no cambiaron; lo que cambio se rehace")
     x.set_defaults(fn=c_ciclo)
     x = s.add_parser("verificar", help="cierra una APROBACION CON VERIFICACION")
     x.add_argument("--trabajo", "--lote", dest="lote", required=True); x.add_argument("--flujo", required=True)
@@ -772,6 +936,11 @@ def main(argv=None):
     x.add_argument("--trabajo", "--lote", dest="lote", required=True); x.add_argument("--clave", required=True)
     x.add_argument("--sql"); x.add_argument("--solo", choices=["STRATIO", "FABRIC"]); x.add_argument("--columna")
     x.add_argument("--limite", type=int, default=5); x.set_defaults(fn=c_comparar)
+    x = s.add_parser("diferenciar", help="diferencias exactas por llave entre S y F (cache del nivel 2) con su patron")
+    x.add_argument("--trabajo", "--lote", dest="lote", required=True); x.add_argument("--clave", required=True)
+    x.add_argument("--llave", help="columnas de la llave (si no: declarada en lote.json o se busca y se comprueba)")
+    x.add_argument("--columna-fecha", help="para localizar por mes (si no: la de la ventana de fechas o la primera fecha)")
+    x.set_defaults(fn=c_diferenciar)
     x = s.add_parser("estimar", help="tiempo estimado del nivel 2 por tabla y lado")
     x.add_argument("--trabajo", "--lote", dest="lote", required=True); x.add_argument("--flujo"); x.set_defaults(fn=c_estimar)
     x = s.add_parser("acta", help="genera el acta del lote (solo con 3/3 compuertas y por el responsable)")
@@ -780,8 +949,22 @@ def main(argv=None):
     x = s.add_parser("mejora", help="registro de mejoras del proceso para compartir con el equipo")
     x.add_argument("accion", choices=["registrar", "pendientes", "compartida"]); x.add_argument("--que"); x.add_argument("--por-que")
     x.add_argument("--archivos"); x.add_argument("--id"); x.add_argument("--commit"); x.set_defaults(fn=c_mejora)
+    x = s.add_parser("mensaje", help="mensaje listo para copiar: a desarrollo (chat) o a Comfandi (correo)")
+    x.add_argument("--trabajo", "--lote", dest="lote", required=True); x.add_argument("--flujo")
+    x.add_argument("--para", choices=["desarrollo", "comfandi"]); x.set_defaults(fn=c_mensaje)
+    x = s.add_parser("cierre", help="markdown de cierre del coordinador: EXITOSOS y PENDIENTES (formato cierre-v1)")
+    x.add_argument("--trabajo", "--lote", dest="lote", required=True)
+    x.add_argument("--sin-head", action="store_true", help="no comprueba HEAD en OneLake (lo no comprobado no se cita)"); x.set_defaults(fn=c_cierre)
+    x = s.add_parser("panel", help="panel en vivo de los coordinadores (localhost, solo lectura)")
+    x.add_argument("--puerto", type=int, default=8765)
+    x.add_argument("--asegurar", action="store_true", help="si no esta arriba, lo arranca aparte y avisa"); x.set_defaults(fn=c_panel)
+    x = s.add_parser("grafo", help="grafo del coordinador: de donde se leyo, que se bajo, que se midio, que se decidio")
+    x.add_argument("accion", choices=["construir", "contexto", "mermaid"]); x.add_argument("--trabajo", "--lote", dest="lote", required=True)
+    x.add_argument("--flujo"); x.add_argument("--nodo"); x.add_argument("--para"); x.set_defaults(fn=c_grafo)
     x = s.add_parser("decision", help="expediente de decision de todo lo que espera a una persona")
-    x.add_argument("--trabajo", "--lote", dest="lote", required=True); x.add_argument("--clave"); x.set_defaults(fn=c_decision)
+    x.add_argument("--trabajo", "--lote", dest="lote", required=True); x.add_argument("--clave")
+    x.add_argument("--nodo", help="solo la decision de ese nodo del grafo (X:clave/Dn o F:flujo)")
+    x.add_argument("--json", dest="detalle_json", action="store_true", help="expediente completo en JSON"); x.set_defaults(fn=c_decision)
     x = s.add_parser("stratio"); x.add_argument("accion", choices=["cookie", "vpn"]); x.set_defaults(fn=c_stratio)
     x = s.add_parser("codigo", help="revisión del código Stratio (Rocket, versión dada por el usuario) contra Fabric")
     x.add_argument("accion", choices=["bajar", "regla", "cerrar", "estado", "comentar", "cotejo"])
@@ -795,8 +978,11 @@ def main(argv=None):
     x.add_argument("--verificado-qa", help="qué verificó QA y con qué evidencia"); x.add_argument("--por")
     x.add_argument("--publicar", action="store_true", help="cotejo: reescribe en sitio el cotejo de flujo en OneLake (HEAD)")
     x.set_defaults(fn=c_codigo)
+    argv, resumen = salida.activo(sys.argv[1:] if argv is None else list(argv))
     a = p.parse_args(argv)
-    a.fn(a)
+    sin_trabajo = a.cmd in ("lote", "acta", "mejora", "stratio", "pg", "roles")
+    with salida.envolver(a.cmd, None if sin_trabajo else getattr(a, "lote", None), resumen):
+        a.fn(a)
 
 
 if __name__ == "__main__":

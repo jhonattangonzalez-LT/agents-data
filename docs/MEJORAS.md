@@ -2,13 +2,85 @@
 
 Cada mejora se comparte con el equipo (commit + push al repositorio). `SIN_COMPARTIR` = falta hacerlo.
 
+## M-028 · 2026-10-19 · SIN_COMPARTIR
+
+**Qué:** pc panel --asegurar (el coordinador arranca el panel al abrir y da el enlace); prompts de prueba del coordinador v3; firmantes del acta por equipo (CDS / DIA) en config/acta.json
+
+**Por qué:** Que el panel siempre este corriendo con cada coordinador y dejar registrado el cambio de firmantes
+
+**Archivos:** `pc/__main__.py`, `CLAUDE.md`, `docs/PROMPT_PRUEBA_COORDINADOR_V3.md`, `docs/PROMPT_PRUEBA_HOMOLOGACION_CORREOS.md`, `config/acta.json` · por Jhonattan-LT
+
+## M-027 · 2026-10-19 · SIN_COMPARTIR
+
+**Qué:** Mensajes: uno por destino (chat analitica DIA, chat ingesta CDS, correo Comfandi) sin nada del proceso QA, causas repetidas una sola vez; panel: clic en ficha la ilumina con sus carriles unidos por linea y abre su detalle debajo (sin comandos), re-pruebas con ↺vN y animacion de reinicio, rama iluminada al hacer clic en el grafo, trabajos de prueba (_*) fuera del panel; pc decision agrupa diferencias de igual causa; protocolo de decisiones en el chat con AskUserQuestion
+
+**Por qué:** Mensajes que se copian tal cual al destinatario, menos preguntas repetidas y un panel que se entiende flujo por flujo
+
+**Archivos:** `pc/mensajes.py`, `pc/panel/index.html`, `pc/panel/servidor.py`, `pc/coordinacion.py`, `pc/grafo.py`, `pc/__main__.py`, `CLAUDE.md` · por Jhonattan-LT
+
+## M-026 · 2026-10-19 · SIN_COMPARTIR
+
+**Qué:** Carriles paralelos por flujo: mientras Fabric ejecuta su ETL o se mide rapido, la revision de codigo y Stratio (descarga --anticipada y medicion) avanzan a la vez; pc trabajo siguiente los marca con ∥ y el panel como fichas punteadas. Pestaña Grafo en el panel: todo el grafo del trabajo por capas, filtrable por flujo, con destello en los nodos nuevos
+
+**Por qué:** No esperar la corrida de Fabric para lo que no depende de ella, y ver como se llena el conocimiento del coordinador
+
+**Archivos:** `pc/coordinacion.py`, `pc/__main__.py`, `pc/panel/index.html`, `pc/panel/servidor.py`, `CLAUDE.md`, `.claude/agents/gestor-descargas.md` · por Jhonattan-LT
+
+## M-025 · 2026-10-19 · SIN_COMPARTIR
+
+**Qué:** Mensajes listos para copiar (pc mensaje, automaticos tras semaforo, diferencia y cierre): a desarrollo en chat indicando ingesta (CDS) o analitica (DIA) con problema, cifras, ejemplo, regla de cada lado, que corregir y aceptacion; a Comfandi en correo cuando es regla de negocio (A_VERIFICAR) con la pregunta concreta y opciones. Panel arcade: ave por coordinador con filtro, equipo coordinador-agente-flujo con cables animados, recorrido por estaciones con fichas, vida de cookies, detalle por flujo (historia, respuestas, decisiones con ejemplo, mensajes) sin comandos, buzon de salida
+
+**Por qué:** Que lo que se devuelve o se pregunta quede redactado y completo sin escribirlo en el chat, y que el panel se entienda de un vistazo con varios coordinadores abiertos
+
+**Archivos:** `pc/mensajes.py`, `pc/panel/index.html`, `pc/panel/servidor.py`, `pc/hooks/evento.py`, `pc/coordinacion.py`, `pc/__main__.py`, `CLAUDE.md` · por Jhonattan-LT
+
+## M-024 · 2026-10-19 · SIN_COMPARTIR
+
+**Qué:** Modelo por agente (haiku: descargas, mediciones, publicacion, semaforo; sonnet: ETL, Postgres, lote, acta; opus: cotejador, revisor de codigo), seccion comun de reporte en los 12 agentes y reglas nuevas del coordinador en CLAUDE.md
+
+**Por qué:** No usar el modelo mas caro para tareas deterministas y que todos los agentes reporten igual
+
+**Archivos:** `.claude/agents/acta-final.md`, `.claude/agents/consolidador-revision.md`, `.claude/agents/cotejador.md`, `.claude/agents/etl-validador.md`, `.claude/agents/gestor-descargas.md`, `.claude/agents/medidor-completo.md`, `.claude/agents/medidor-rapido-fabric.md`, `.claude/agents/medidor-rapido-stratio.md`, `.claude/agents/postgres-fabric.md`, `.claude/agents/publicador-reportes.md`, `.claude/agents/revisor-codigo.md`, `.claude/agents/semaforo.md`, `CLAUDE.md` · por Jhonattan-LT
+
+## M-023 · 2026-10-19 · SIN_COMPARTIR
+
+**Qué:** Hooks de proyecto (.claude/settings.json + pc/hooks/evento.py) y panel en vivo (pc panel, localhost:8765) con coordinadores, agentes y modelo, etapas por flujo, progreso con ETA y vida de cookies; no toca la VPN
+
+**Por qué:** Ver en casi tiempo real que hace cada coordinador y cada agente sin agregar demoras
+
+**Archivos:** `.claude/settings.json`, `pc/hooks/evento.py`, `pc/panel/servidor.py`, `pc/panel/index.html`, `pc/hooks/`, `pc/panel/`, `pc/panel/__init__.py` · por Jhonattan-LT
+
+## M-022 · 2026-10-19 · SIN_COMPARTIR
+
+**Qué:** pc diferenciar: diferencias exactas por llave (declarada, una columna, compuesta o casi unica, comprobada), llave repetida aparte, patron por columna (nulos, espacios, mayusculas, acentos, mojibake, ceros, escala, max |S-F|, horario, columna corrida), por mes y ejemplos deterministas; pc cotejar compara 11 campos mas del perfil (informativos)
+
+**Por qué:** Pasar de 'hash distinto' a la diferencia concreta y medida de cada columna, con precision
+
+**Archivos:** `pc/cotejo/diferenciar.py`, `pc/cotejo/completo.py`, `pc/reportes/formato2.py`, `tests/test_diferenciar.py`, `.claude/agents/cotejador.md` · por Jhonattan-LT
+
+## M-021 · 2026-10-19 · SIN_COMPARTIR
+
+**Qué:** Grafo por coordinador (pc grafo construir|contexto|mermaid) y cierre en dos markdown cierre-v1 (EXITOSOS con enlaces del portal verificados con HEAD; PENDIENTES con ficha de 7 puntos, archivos locales y bloque de respuesta de desarrollo) + pc trabajo retomar
+
+**Por qué:** Que cada coordinador entienda de donde se leyo, que se bajo y que se decidio, y que el agente de actas y un coordinador nuevo partan de un insumo estructurado
+
+**Archivos:** `pc/grafo.py`, `pc/cierre.py` · por Jhonattan-LT
+
+## M-020 · 2026-10-19 · SIN_COMPARTIR
+
+**Qué:** Salidas cortas y cifras del disco: PC_RESUMEN (detalle en trabajos/T/salidas, avance con bytes/% en progreso/), partes de agente con cifras comprobadas contra el JSON (pc parte), pc trabajo resumen, siguiente con grupos en paralelo, ciclo con alcance codigo|fuente|lado y --comprobar; corrige pc decision, que no leia las diferencias del formato 2 (justificaciones) y ahora usa tarjetas de ~12 lineas
+
+**Por qué:** Gastar menos tokens en texto de proceso, dar cifras exactas sin reescribirlas a mano, no rehacer todo cuando solo cambia una fuente, y que las diferencias pendientes lleguen a la persona
+
+**Archivos:** `pc/salida.py`, `pc/parte.py`, `pc/__main__.py`, `pc/coordinacion.py`, `pc/reportes/v4.py`, `pc/acceso/rocket.py`, `pc/medir/completo.py` · por Jhonattan-LT
+
 ## M-019 · 2026-10-14 · COMPARTIDA
 
 **Qué:** revisor-codigo: llave revision_codigo en el cotejo de flujo. Guarda la versión de Stratio y el zip revisados, las reglas IGUAL y no IGUAL con la cita de los dos lados, el impacto, la decisión (ACEPTADA · DEVOLVER · PENDIENTE) y los comentarios de desarrollo y de QA, además de bloquea, aclaraciones_pendientes e historial. Nuevos comandos pc codigo comentar y pc codigo cotejo --publicar. Las aclaraciones posteriores se registran en la misma vN. El semáforo respeta las decisiones.
 
 **Por qué:** La revisión de código no bloquea las fases siguientes y sus diferencias se aclaran después (Lote 12: R2–R17 aceptadas el 14-10). Hasta ahora esas aclaraciones quedaban solo en archivos .md locales y no en el cotejo de flujo publicado, que es la evidencia que se cita en el acta.
 
-**Archivos:** `pc/codigo.py`, `pc/__main__.py`, `pc/reportes/v4.py`, `.claude/agents/revisor-codigo.md`, `docs/REPORTES_V4.md` · por Jhonattan-LT
+**Archivos:** `pc/codigo.py`, `pc/__main__.py`, `pc/reportes/v4.py`, `.claude/agents/revisor-codigo.md`, `docs/REPORTES_V4.md` · por Jhonattan-LT · compartida en 9c288c2
 
 ## M-018 · 2026-10-14 · COMPARTIDA
 
@@ -16,7 +88,15 @@ Cada mejora se comparte con el equipo (commit + push al repositorio). `SIN_COMPA
 
 **Por qué:** El acta del Lote 12 (Ola 3) ocupaba unas 110 páginas porque copiaba la justificación completa de cada cotejo (rutas, commits, horas). Con el modo compacto, el punto 7 pasa de 196.000 a 82.000 caracteres y el acta queda en unas 60 páginas.
 
-**Archivos:** `muestras/agente_acta-entrega_v1.md` · por Jhonattan-LT
+**Archivos:** `muestras/agente_acta-entrega_v1.md` · por Jhonattan-LT · compartida en 6a4a9f1
+
+## M-017 · 2026-10-14 · SIN_COMPARTIR
+
+**Qué:** Flujo QA de los agentes: evidencia vigente publicada (verificado = HEAD + medición del cierre), medición dirigida con los 18 controles declarados y cierre con salvedad, anexo de enlaces por lote y ficha de devolución de 7 puntos, retiro de flujos a otro lote y chequeo previo a producción (orquestadores de flujos devueltos o retirados)
+
+**Por qué:** Lotes 7–10 (13/14-10): se entregaron enlaces con HEAD OK que no eran la evidencia del cierre (L7: 196 enlaces a v2.1; L10 #15 DFKKOP); Comfandi observó 11 de 18 controles sin evaluar en DFKKOP; 2 orquestadores aprobados ejecutan flujos devueltos o retirados
+
+**Archivos:** `.claude/agents/publicador-reportes.md`, `.claude/agents/medidor-completo.md`, `.claude/agents/cotejador.md`, `.claude/agents/acta-final.md`, `CLAUDE.md` · por Jhonattan-LT
 
 ## M-016 · 2026-10-13 · COMPARTIDA
 

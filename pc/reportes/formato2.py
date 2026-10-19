@@ -369,7 +369,9 @@ def cotejo(enc, f, o, ms, mf, cr, cc, difs, vg09, anterior=None, origen_decision
     v = (cc or {}).get("veredictos") or {}
     ps, pf = ((ms or {}).get("nivel_2") or {}).get("perfil") or {}, ((mf or {}).get("nivel_2") or {}).get("perfil") or {}
     CAMPOS = ("nulos", "valores_distintos", "minimo", "maximo", "suma_exacta", "valor_minimo_lexicografico", "valor_maximo_lexicografico",
-              "longitud_minima", "longitud_maxima", "cadenas_vacias")
+              "longitud_minima", "longitud_maxima", "cadenas_vacias", "con_espacios_en_bordes", "solo_espacios", "centinelas_de_nulo",
+              "centinelas_de_fecha", "con_ceros_a_la_izquierda", "mayusculas_completas", "numericos_como_texto", "fechas_como_texto",
+              "dias_distintos", "posteriores_a_fecha_ejecucion", "anteriores_a_1900")
     cols = {}
     lf = {k.lower(): k for k in pf}
     for n, a in ps.items():

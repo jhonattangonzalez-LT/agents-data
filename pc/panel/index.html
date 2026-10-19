@@ -1,0 +1,606 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sala de control QA</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0b0d1a;--bg2:#12152a;--panel:#171b36;--line:#2a3060;--text:#eef0ff;--muted:#9aa3d0;
+  --neon:#4df3ff;--pink:#ff4fd8;--lime:#9dff4f;--gold:#ffd23f;--red:#ff4f5e;--violet:#a98bff;--orange:#ff9f43;
+  --haiku:#3ef0a6;--sonnet:#4f9dff;--opus:#c37bff;--seg:#252a52;
+  --pix:"Press Start 2P",ui-monospace,monospace;
+}
+:root[data-theme="light"]{--bg:#eef1ff;--bg2:#e3e7fb;--panel:#ffffff;--line:#c9cff0;--text:#141733;--muted:#58608f;
+  --neon:#0aa5c2;--pink:#d01fa8;--lime:#3d9a10;--gold:#b98a00;--red:#d6283a;--violet:#6b4de0;--orange:#c86a00;--seg:#dde2f7;
+  --haiku:#0f9e68;--sonnet:#2563eb;--opus:#8b36d6}
+@media (prefers-color-scheme: light){:root:not([data-theme="dark"]){--bg:#eef1ff;--bg2:#e3e7fb;--panel:#ffffff;--line:#c9cff0;--text:#141733;--muted:#58608f;
+  --neon:#0aa5c2;--pink:#d01fa8;--lime:#3d9a10;--gold:#b98a00;--red:#d6283a;--violet:#6b4de0;--orange:#c86a00;--seg:#dde2f7;
+  --haiku:#0f9e68;--sonnet:#2563eb;--opus:#8b36d6}}
+*{box-sizing:border-box}
+body{margin:0;background:radial-gradient(1200px 600px at 20% -10%,color-mix(in srgb,var(--violet) 18%,transparent),transparent),var(--bg);
+  color:var(--text);font:14px/1.5 Inter,system-ui,sans-serif;min-height:100vh}
+.pix{font-family:var(--pix);letter-spacing:.02em}
+header{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between;padding:14px 20px;
+  border-bottom:2px solid var(--line);background:color-mix(in srgb,var(--bg2) 92%,transparent);position:sticky;top:0;z-index:5;backdrop-filter:blur(6px)}
+h1{margin:0;font-family:var(--pix);font-size:15px;color:var(--neon);text-shadow:0 0 12px color-mix(in srgb,var(--neon) 60%,transparent)}
+.sub{font-size:12px;color:var(--muted)}
+button{font:600 13px Inter,sans-serif;background:var(--panel);color:var(--text);border:2px solid var(--line);border-radius:10px;padding:6px 12px;cursor:pointer}
+button:hover{border-color:var(--neon)}
+.wrap{max-width:1500px;margin:0 auto;padding:16px 20px 60px}
+/* selector de coordinadores */
+.chips{display:flex;gap:10px;flex-wrap:wrap;margin:6px 0 16px}
+.chip{display:flex;align-items:center;gap:10px;padding:8px 14px;border-radius:14px;border:2px solid var(--line);background:var(--panel);cursor:pointer;transition:.15s}
+.chip .ave{font-size:26px}
+.chip b{display:block;font-size:14px}.chip small{color:var(--muted);font-size:12px}
+.chip.sel{border-color:var(--pink);box-shadow:0 0 0 3px color-mix(in srgb,var(--pink) 25%,transparent),0 0 18px color-mix(in srgb,var(--pink) 35%,transparent)}
+/* barras de vida */
+.vidas{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(min(100%,330px),1fr));margin-bottom:18px}
+.vida{background:var(--panel);border:2px solid var(--line);border-radius:14px;padding:10px 14px}
+.vida .t{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.vida .nom{font-family:var(--pix);font-size:10px}
+.hp{display:grid;grid-template-columns:repeat(10,1fr);gap:3px;margin:8px 0 6px}
+.hp i{height:14px;border-radius:3px;background:var(--seg)}
+.hp i.on{box-shadow:0 0 8px currentColor}
+.estado-vida{font-family:var(--pix);font-size:9px;padding:3px 6px;border-radius:6px}
+/* coordinador */
+.coord{background:var(--panel);border:2px solid var(--line);border-radius:18px;padding:16px;margin-bottom:22px}
+.chead{display:flex;flex-wrap:wrap;gap:14px;align-items:center;justify-content:space-between}
+.avatar{font-size:44px;filter:drop-shadow(0 0 10px color-mix(in srgb,var(--pink) 50%,transparent));animation:flota 3s ease-in-out infinite}
+@keyframes flota{50%{transform:translateY(-4px)}}
+.banner{font-family:var(--pix);font-size:11px;padding:10px 14px;border-radius:12px;border:2px solid}
+.b-trab{color:var(--lime);border-color:var(--lime)}
+.b-espera{color:var(--gold);border-color:var(--gold);animation:parpadeo 1s steps(2) infinite}
+.b-pausa{color:var(--muted);border-color:var(--line)}
+@keyframes parpadeo{50%{opacity:.45}}
+.marcador{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:14px 0}
+.tile{border-radius:14px;padding:10px;text-align:center;border:2px solid var(--line);background:var(--bg2)}
+.tile .n{font-family:var(--pix);font-size:22px;display:block;margin:6px 0 2px}
+.tile small{color:var(--muted)}
+h2{font-family:var(--pix);font-size:11px;color:var(--muted);margin:20px 0 10px;letter-spacing:.06em}
+/* equipo: coordinador -> agente -> flujo */
+.fila{display:grid;grid-template-columns:auto minmax(40px,1fr) minmax(0,2.3fr) minmax(40px,1fr) auto;align-items:center;gap:6px;margin:8px 0}
+.yo{font-size:30px}
+.cable{height:4px;border-radius:4px;background:repeating-linear-gradient(90deg,var(--neon) 0 10px,transparent 10px 18px);background-size:36px 4px;animation:corre 0.8s linear infinite;opacity:.9}
+.cable.vuelta{background:repeating-linear-gradient(90deg,var(--lime) 0 10px,transparent 10px 18px);background-size:36px 4px;animation:corre 0.8s linear infinite reverse}
+.cable.quieto{animation:none;opacity:.25}
+@keyframes corre{to{background-position:36px 0}}
+.agente{border:2px solid var(--line);border-radius:14px;padding:8px 12px;background:var(--bg2);display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center}
+.agente.vivo{border-color:var(--neon);box-shadow:0 0 14px color-mix(in srgb,var(--neon) 30%,transparent)}
+.agente.fin{opacity:.6}
+.agente .cara{font-size:28px}
+.agente.vivo .cara{animation:salta .9s ease-in-out infinite}
+@keyframes salta{50%{transform:translateY(-3px) rotate(-4deg)}}
+.agente b{font-size:14px}
+.burbuja{font-size:12px;color:var(--muted);margin-top:2px}
+.poder{font-size:11px;font-weight:800;padding:2px 8px;border-radius:999px;color:#071018;white-space:nowrap}
+.p-haiku{background:var(--haiku)}.p-sonnet{background:var(--sonnet);color:#fff}.p-opus{background:var(--opus);color:#fff}.p-x{background:var(--muted)}
+.blanco{font-family:var(--pix);font-size:9px;padding:8px;border-radius:10px;border:2px dashed var(--pink);color:var(--pink);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.vacio{color:var(--muted);font-size:13px;padding:6px 0}
+/* recorrido */
+.pista{position:relative;display:grid;grid-template-columns:repeat(9,minmax(0,1fr));gap:8px;padding-top:6px}
+.pista::before{content:"";position:absolute;left:5%;right:5%;top:36px;height:6px;border-radius:6px;
+  background:repeating-linear-gradient(90deg,var(--line) 0 14px,transparent 14px 22px)}
+.est{position:relative;text-align:center;min-width:0}
+.est .bola{width:58px;height:58px;margin:0 auto;border-radius:50%;display:grid;place-items:center;font-size:26px;background:var(--bg2);border:3px solid var(--line);position:relative;z-index:1}
+.est.con .bola{border-color:var(--neon);box-shadow:0 0 16px color-mix(in srgb,var(--neon) 45%,transparent)}
+.est.meta .bola{border-color:var(--gold)}
+.est .nom{font-size:11px;font-weight:700;margin:6px 0 2px;min-height:28px}
+.est .cnt{font-family:var(--pix);font-size:9px;color:var(--muted)}
+.fichas{display:flex;flex-direction:column;gap:6px;margin-top:8px;align-items:stretch}
+.ficha{font-size:11px;font-weight:700;padding:6px 26px 6px 6px;border-radius:9px;background:var(--bg2);border:2px solid var(--line);cursor:pointer;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;position:relative}
+.ficha.analitica{border-left:6px solid var(--violet)}.ficha.ingesta{border-left:6px solid var(--orange)}.ficha.orquestador{border-left:6px solid var(--neon)}
+.ficha.trabajando{border-color:var(--pink);animation:latido 1.2s ease-in-out infinite}
+.ficha .alerta{position:absolute;right:4px;top:3px;font-size:10px}
+@keyframes latido{50%{box-shadow:0 0 14px color-mix(in srgb,var(--pink) 60%,transparent)}}
+.ficha.sombra{border-style:dashed;opacity:.85;background:transparent;font-weight:600}
+.ficha.sombra.trabajando{opacity:1}
+.taller{margin-top:14px;border:2px dashed var(--red);border-radius:14px;padding:10px;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.taller .ficha{border-color:var(--red)}
+/* tareas en curso */
+.tarea{background:var(--bg2);border:2px solid var(--line);border-radius:12px;padding:10px 12px;margin:8px 0}
+.prog{height:16px;border-radius:8px;background:var(--seg);overflow:hidden;margin-top:6px}
+.prog i{display:block;height:100%;background:linear-gradient(90deg,var(--neon),var(--pink));transition:width 1s ease}
+.prog.indef i{width:35%;animation:vaiven 1.4s ease-in-out infinite alternate}
+@keyframes vaiven{from{margin-left:0}to{margin-left:65%}}
+/* conversacion */
+.chat{display:flex;flex-direction:column;gap:6px;max-height:320px;overflow:auto;padding-right:4px}
+.msg{display:grid;grid-template-columns:auto 1fr;gap:8px;align-items:start;font-size:13px}
+.msg .de{font-size:20px}
+.msg .txt{background:var(--bg2);border:2px solid var(--line);border-radius:12px;padding:6px 10px}
+.msg.sube .txt{border-color:color-mix(in srgb,var(--lime) 55%,var(--line))}
+.msg.baja .txt{border-color:color-mix(in srgb,var(--neon) 55%,var(--line))}
+.msg.tu .txt{border-color:var(--gold)}
+.msg .hora{font-size:11px;color:var(--muted)}
+.dos{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:18px}
+/* seleccion de flujo, enlaces paralelos y re-pruebas */
+.pista.con-foco .ficha:not(.foco){opacity:.22}
+.ficha.foco{border-color:var(--pink)!important;box-shadow:0 0 0 2px color-mix(in srgb,var(--pink) 40%,transparent),0 0 16px color-mix(in srgb,var(--pink) 45%,transparent)}
+.enlaces{position:absolute;inset:0;pointer-events:none;overflow:visible;z-index:2}
+.enlaces path{fill:none;stroke:var(--pink);stroke-width:2;stroke-dasharray:6 6;opacity:.45;animation:hormiga 1s linear infinite}
+.enlaces path.vivo{opacity:1;stroke-width:3.2}
+@keyframes hormiga{to{stroke-dashoffset:-12}}
+.ficha.reprueba{border-color:var(--orange)}
+.ficha .ver{font-family:var(--pix);font-size:8px;color:var(--orange);margin-left:4px}
+.ficha.reinicia{animation:reinicia 1.6s ease-out}
+@keyframes reinicia{0%{transform:scale(1.5) rotate(-10deg);box-shadow:0 0 26px var(--orange)}60%{transform:scale(1.1) rotate(4deg)}100%{transform:none}}
+.det-inline{border:2px solid var(--pink);border-radius:14px;padding:12px 14px;margin-top:14px;background:var(--bg2)}
+.det-inline:empty{display:none}
+/* vistas y grafo */
+.vistas{display:flex;gap:8px}
+.vistas button.sel{border-color:var(--pink);color:var(--pink);box-shadow:0 0 12px color-mix(in srgb,var(--pink) 30%,transparent)}
+.gbar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:12px}
+.gbar select{font:inherit;background:var(--panel);color:var(--text);border:2px solid var(--line);border-radius:10px;padding:6px 10px}
+.gbar label{font-size:13px;display:flex;gap:6px;align-items:center}
+.lienzo{background:var(--panel);border:2px solid var(--line);border-radius:16px;overflow:auto;height:calc(100vh - 230px);min-height:420px;position:relative}
+.lienzo svg{display:block;transform-origin:0 0}
+.nodo rect{rx:10;stroke-width:2}
+.nodo text{font:600 11px Inter,sans-serif;fill:var(--text);pointer-events:none}
+.nodo{cursor:pointer}
+.nodo:hover rect{stroke-width:3.5}
+.nodo.nuevo rect{animation:nace 2.2s ease-out}
+@keyframes nace{0%{stroke:var(--pink);stroke-width:8;filter:drop-shadow(0 0 14px var(--pink))}100%{}}
+.arista{fill:none;stroke:var(--line);stroke-width:1.4}
+.arista.foco{stroke:var(--neon);stroke-width:2.4}
+.nodo.tenue{opacity:.13}.arista.tenue{opacity:.06}
+.arista.rama{stroke:var(--pink);stroke-width:2.8;opacity:1}
+.nodo.sel rect:first-child{stroke:var(--pink)!important;stroke-width:4}
+.nodo.en-rama rect:first-child{filter:drop-shadow(0 0 6px color-mix(in srgb,var(--pink) 60%,transparent))}
+.capa{font-family:var(--pix);font-size:9px;fill:var(--muted)}
+.gley{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;font-size:12px}
+.gley span{display:inline-flex;align-items:center;gap:5px;padding:2px 8px;border-radius:999px;border:2px solid var(--line)}
+/* detalle del flujo */
+.det h4{font-family:var(--pix);font-size:10px;color:var(--neon);margin:16px 0 8px}
+.linea{display:grid;grid-template-columns:52px 30px 1fr auto;gap:8px;align-items:center;padding:5px 0;border-top:1px dashed var(--line);font-size:13px}
+.linea .cara{font-size:20px;text-align:center}
+.ok{color:var(--lime)}.aviso{color:var(--gold)}.error{color:var(--red)}
+.tarj{white-space:pre-wrap;font:12.5px/1.5 ui-monospace,Menlo,monospace;background:var(--bg2);border:2px solid var(--gold);border-radius:12px;padding:10px;margin:8px 0}
+.msjs{display:grid;gap:10px}
+.msj{border:2px solid var(--line);border-radius:12px;background:var(--bg2);padding:10px}
+.msj pre{white-space:pre-wrap;font:12.5px/1.5 Inter,system-ui,sans-serif;margin:8px 0 0;max-height:260px;overflow:auto}
+.msj .cab{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+.tag{font-family:var(--pix);font-size:9px;padding:4px 7px;border-radius:7px;border:2px solid}
+.tabs{display:flex;gap:6px;flex-wrap:wrap;margin:10px 0}
+.tabs button.sel{border-color:var(--pink);color:var(--pink)}
+/* detalle y leyenda */
+dialog{background:var(--panel);color:var(--text);border:2px solid var(--neon);border-radius:16px;max-width:min(900px,94vw);width:900px;padding:18px}
+dialog::backdrop{background:rgba(5,6,20,.6)}
+.ley{display:grid;grid-template-columns:auto 1fr;gap:8px 12px;font-size:13px}
+.mono{font-family:ui-monospace,Menlo,monospace;font-size:12px;word-break:break-all}
+@media (max-width:980px){.pista{grid-template-columns:repeat(3,minmax(0,1fr))}.pista::before{display:none}.dos{grid-template-columns:1fr}
+  .fila{grid-template-columns:auto 30px minmax(0,1fr)}.fila .cable:last-of-type,.fila .blanco{display:none}.marcador{grid-template-columns:repeat(2,1fr)}}
+@media (max-width:600px){.wrap,header{padding-left:16px;padding-right:16px}.pista{grid-template-columns:repeat(2,minmax(0,1fr))}}
+</style>
+</head>
+<body>
+<header>
+  <div><h1>🕹️ SALA DE CONTROL QA</h1><div class="sub" id="hora">conectando…</div></div>
+  <div class="vistas"><button data-vista="sala" class="sel">🕹️ Sala</button><button data-vista="grafo">🕸️ Grafo</button></div>
+  <div style="display:flex;gap:8px"><button id="ayuda">❓ ¿Cómo se lee?</button><button id="tema">🌗 tema</button></div>
+</header>
+<div class="wrap" id="vGrafo" hidden style="max-width:none">
+  <div class="gbar">
+    <select id="gTrabajo"></select><select id="gFlujo"><option value="">todos los flujos</option></select>
+    <label><input type="checkbox" id="gPub"> publicaciones</label><label><input type="checkbox" id="gPar" checked> partes</label>
+    <button id="gMenos">➖</button><button id="gMas">➕</button><span class="sub" id="gInfo"></span>
+  </div>
+  <div class="lienzo" id="lienzo"></div>
+  <div class="det-inline" id="gDet"></div>
+  <div class="gley" id="gLey"></div>
+</div>
+<div class="wrap" id="vSala">
+  <div class="chips" id="chips"></div>
+  <h2>🍪 VIDA DE LAS LLAVES DE ROCKET (COOKIES)</h2>
+  <div class="vidas" id="vidas"></div>
+  <div id="coords"></div>
+</div>
+
+<dialog id="dlgAyuda">
+  <h3 class="pix" style="font-size:12px;color:var(--neon)">CÓMO SE LEE LA SALA</h3>
+  <div class="ley">
+    <span>🦜</span><span><b>Coordinador.</b> Cada chat abierto es un ave. Arriba eliges cuál ver (o todos).</span>
+    <span>🍪</span><span><b>Vida de una cookie.</b> 10 bloques = ~3 h. Cada bloque son ~18 min. Verde: fuerte · amarillo: menos de 1 h · rojo: menos de 15 min (pide una nueva antes de tocar Stratio).</span>
+    <span>➰</span><span><b>Cable azul que corre →</b> el coordinador le está pidiendo algo a ese agente. <b>Cable verde ←</b> el agente le devolvió su parte.</span>
+    <span>⚡</span><span><b>Poder del agente</b> = modelo. ⚡ Haiku (rápido, tareas simples) · ⚡⚡ Sonnet · ⚡⚡⚡ Opus (análisis preciso).</span>
+    <span>🎯</span><span><b>Blanco rosado</b>: el flujo (o tabla) que ese agente tiene entre manos.</span>
+    <span>🛤️</span><span><b>Recorrido</b>: las 9 estaciones de un flujo. Cada ficha es un flujo y está en la estación donde va. Ficha que late = un agente trabajando en ella. Borde morado: analítica · naranja: ingesta · azul: orquestador. ❓ en la ficha: decisiones tuyas pendientes.</span>
+    <span>∥</span><span><b>Ficha punteada «∥ flujo · carril»</b>: trabajo que avanza A LA VEZ que el paso principal porque no depende de la corrida de Fabric (revisión de código, o bajar y medir Stratio por adelantado).</span>
+    <span>🔧</span><span><b>Taller</b>: flujos devueltos a desarrollo.</span>
+    <span>📥</span><span><b>Tareas en curso</b>: descargas y mediciones con su avance real (MB) y el tiempo que falta.</span>
+    <span>📨</span><span><b>Buzón de salida</b>: mensajes listos para copiar. 🔧 a desarrollo (chat, dice si va a ingesta o analítica) y ✉️ a Comfandi (correo) cuando algo es regla de negocio.</span>
+    <span>🖱️</span><span><b>Clic en una ficha</b>: la historia del flujo (qué agente hizo qué y cuánto tardó), lo que respondieron, tus decisiones pendientes con su ejemplo y sus mensajes.</span>
+    <span>🕸️</span><span><b>Pestaña Grafo</b>: todo lo que sabe el coordinador, por capas de izquierda a derecha (flujo → tabla → de dónde se leyó → descarga → medición → cotejo → diferencia → regla / decisión). Se actualiza cada 5 s; lo nuevo aparece con un destello. Clic en un nodo: qué se sabe y con qué se conecta.</span>
+    <span>👆</span><span><b>Clic en una ficha del recorrido</b>: se ilumina ese flujo (y sus carriles ∥ unidos por una línea rosada; también se ve la línea cuando un agente trabaja en ese flujo) y abajo aparece su detalle con los mensajes. Clic otra vez para soltarlo. <b>↺v2</b>: re-prueba (volvió a empezar tras una corrección).</span>
+    <span>💬</span><span><b>Conversación</b>: lo que el coordinador encarga (→) y lo que cada agente responde (←).</span>
+  </div>
+  <form method="dialog" style="text-align:right;margin-top:12px"><button>Entendido</button></form>
+</dialog>
+<dialog id="dlgFicha"><div id="fichaTxt"></div><form method="dialog" style="text-align:right;margin-top:12px"><button>Cerrar</button></form></dialog>
+
+<script>
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const mil=n=>typeof n==="number"?n.toLocaleString("es-CO"):(n??"—");
+const dur=s=>{s=Math.max(0,Math.round(s));const h=Math.floor(s/3600),m=Math.floor(s%3600/60),x=s%60;return h?`${h}h ${m}m`:m?`${m}m ${String(x).padStart(2,"0")}s`:`${x}s`};
+const desde=iso=>iso?(Date.now()-Date.parse(iso))/1000:0;
+const corto=(s,n=90)=>{s=String(s??"");return s.length>n?s.slice(0,n-1)+"…":s};
+const LS={get:k=>{try{return localStorage.getItem(k)}catch(e){return null}},set:(k,v)=>{try{localStorage.setItem(k,v)}catch(e){}}};
+
+const EST=[["📜","Revisión de código"],["⚙️","Ejecución (ETL)"],["🔎","Medición rápida"],["🚦","Semáforo"],["📥","Descarga"],
+           ["🧮","Medición exacta"],["⚖️","Cotejo de tablas"],["🙋","Tu decisión"],["🏁","Listo para acta"]];
+const CARA={"revisor-codigo":"🕵️","etl-validador":"⚙️","medidor-rapido-fabric":"🔷","medidor-rapido-stratio":"🔶","postgres-fabric":"🐘",
+  "semaforo":"🚦","gestor-descargas":"📦","medidor-completo":"🧮","cotejador":"⚖️","publicador-reportes":"📡","consolidador-revision":"🗂️",
+  "acta-final":"✍️","acta-entrega":"✍️","Explore":"🧭","general-purpose":"🤖","Plan":"🗺️"};
+const QUE={rapido:"midiendo rápido (niveles 0 y 1)",descargar:"descargando las tablas",medir:"midiendo exacto (nivel 2)",cotejar:"cotejando Stratio ↔ Fabric",
+  diferenciar:"buscando diferencias fila a fila",comparar:"analizando las dos tablas",semaforo:"evaluando el semáforo",estimar:"estimando tiempos",
+  etl:"ejecutando / validando el ETL",codigo:"revisando el código",v4:"armando / publicando reportes",parte:"entregando su parte",grafo:"consultando el grafo",
+  decision:"preparando tu decisión",cierre:"generando el cierre",stratio:"revisando cookies",trabajo:"revisando el trabajo",pg:"consultando Postgres"};
+const ACC={medir_rapido:"midió rápido (niveles 0 y 1)",medir_rapido_desde_descarga:"midió rápido desde la descarga",cotejo_rapido:"cotejó rápido Stratio ↔ Fabric",
+  evaluar:"evaluó el semáforo",descargar:"descargó la tabla",bajar:"descargó",medir_nivel2:"midió exacto (nivel 2)",medir:"midió",cotejar:"cotejó las dos tablas",
+  diferenciar:"buscó diferencias fila a fila",registrar_diferencia:"registró una diferencia",diferencia:"registró una diferencia",diferencia_causa:"midió la causa de una diferencia",
+  lanzar_validador:"lanzó el validador ETL",recoger_veredicto:"recogió el veredicto del ETL",medir_evidencia:"midió la evidencia de la corrida",ejecutar_productor:"ejecutó un flujo productor",
+  roles_corregidos:"corrigió entradas/salidas",parte:"entregó su parte al coordinador",nuevo_ciclo:"abrió un ciclo nuevo",cierre:"generó el cierre",
+  mensaje_desarrollo:"dejó listo el mensaje para desarrollo",mensaje_comfandi:"dejó listo el correo para Comfandi",publicar_v4:"publicó los reportes",
+  verificacion:"registró una verificación",regla:"registró una regla de código",cerrar:"cerró la revisión de código",comentar:"comentó una regla",
+  comprobar_reutilizados:"comprobó lo reutilizado del ciclo anterior",decidir_comprobacion:"decidió una comprobación del flujo",agregar_flujo:"agregó el flujo al trabajo"};
+const accion=a=>ACC[a]||String(a||"").replace(/_/g," ");
+function poder(m){const k=(m||"").toLowerCase();if(k.includes("haiku"))return`<span class="poder p-haiku">⚡ Haiku</span>`;
+  if(k.includes("sonnet"))return`<span class="poder p-sonnet">⚡⚡ Sonnet</span>`;if(k.includes("opus"))return`<span class="poder p-opus">⚡⚡⚡ Opus</span>`;
+  return`<span class="poder p-x">${esc(m||"hereda")}</span>`}
+
+try{const t=LS.get("tema");if(t)document.documentElement.dataset.theme=t}catch(e){}
+$("#tema").onclick=()=>{const r=document.documentElement;const oscuro=r.dataset.theme?r.dataset.theme==="dark":!matchMedia("(prefers-color-scheme: light)").matches;
+  r.dataset.theme=oscuro?"light":"dark";LS.set("tema",r.dataset.theme)};
+$("#ayuda").onclick=()=>$("#dlgAyuda").showModal();
+let SEL=LS.get("coordinador")||"todos", DATA=null, FIRMA="", ABIERTO=false, SELF={}, PREV_VER={};
+
+function vidas(c){
+  const cs=(c&&c.cookies)||[];
+  if(!cs.length)return`<div class="vida"><div class="t"><span class="nom">SIN COOKIES</span></div><div class="sub">Pega una cookie de Rocket antes de tocar Stratio.</div></div>`;
+  return cs.map((k,i)=>{const m=Math.max(0,k.minutos_restantes_estimados),on=Math.min(10,Math.ceil(m/18));
+    const col=m<=15?"var(--red)":m<=60?"var(--gold)":"var(--lime)",est=m<=0?"KO":m<=15?"CRÍTICA":m<=60?"DÉBIL":"FUERTE";
+    const vence=(k.vence_jwt_utc||"").slice(11,16);
+    return`<div class="vida"><div class="t"><span class="nom">🍪 LLAVE ${i+1}</span><span class="estado-vida" style="color:${col};border:2px solid ${col}">${est}</span></div>
+      <div class="hp" style="color:${col}">${Array.from({length:10},(_,j)=>`<i class="${j<on?"on":""}" style="${j<on?"background:"+col:""}"></i>`).join("")}</div>
+      <div class="sub"><b style="color:var(--text)">${m>0?m+" min de vida":"vencida"}</b>${vence?` · vence ${vence} UTC`:""} · ${esc(k.archivo)}</div></div>`}).join("");
+}
+
+function chips(d){
+  const todos=`<div class="chip ${SEL==="todos"?"sel":""}" data-sel="todos"><span class="ave">👀</span><div><b>Todos</b><small>${d.sesiones.length} coordinador(es)</small></div></div>`;
+  return todos+d.sesiones.map(s=>{const a=s.ave,act=(s.agentes||[]).filter(x=>x.activo).length;
+    const est=s.pregunta?"❓ te espera":act?`⚡ ${act} agente(s)`:s.segundos_sin_actividad<120?"⚡ trabajando":"💤 en pausa";
+    return`<div class="chip ${SEL===s.session_id?"sel":""}" data-sel="${esc(s.session_id)}"><span class="ave">${a.emoji}</span>
+      <div><b>${esc(a.nombre)}</b><small>${est} · ${esc(s.session_id.slice(0,6))}</small></div></div>`}).join("");
+}
+
+function equipo(s){
+  const ag=s.agentes||[];
+  if(!ag.length&&!(s.en_curso||[]).length)return`<div class="vacio">Ningún agente trabajando ahora. El coordinador está ${s.pregunta?"esperando tu respuesta":"conversando contigo"}.</div>`;
+  let h="";
+  for(const a of ag){
+    const cmd=a.pc?(QUE[a.pc.split(" ")[0]]||a.pc):(a.activo?"pensando…":"terminó");
+    const blanco=a.flujo||a.clave;
+    h+=`<div class="fila"><span class="yo" title="${esc(s.ave.nombre)}">${s.ave.emoji}</span>
+      <div class="cable ${a.activo?"":"vuelta"}"></div>
+      <div class="agente ${a.activo?"vivo":"fin"}"><span class="cara">${CARA[a.agente]||"🤖"}</span>
+        <div><b>${esc(a.agente)}</b> ${a.activo?"":"✔"}<div class="burbuja">${a.encargo?`“${esc(corto(a.encargo,70))}” · `:""}${esc(cmd)}
+          · <span data-desde="${esc(a.inicio_utc)}" data-hasta="${esc(a.fin_utc||"")}"></span></div></div>${poder(a.modelo)}</div>
+      <div class="cable ${a.activo&&blanco?"":"quieto"}"></div>
+      ${blanco?`<span class="blanco" title="${esc(blanco)}">🎯 ${esc(blanco)}</span>`:`<span></span>`}</div>`;
+  }
+  for(const e of (s.en_curso||[]).filter(e=>!e.agente&&e.pc)){
+    h+=`<div class="fila"><span class="yo">${s.ave.emoji}</span><div class="cable"></div>
+      <div class="agente vivo"><span class="cara">${s.ave.emoji}</span><div><b>${esc(s.ave.nombre)} (él mismo)</b>
+      <div class="burbuja">${esc(QUE[e.pc.split(" ")[0]]||e.pc)} · <span data-desde="${esc(e.ts)}"></span></div></div><span></span></div>
+      <div class="cable ${e.flujo?"":"quieto"}"></div>${e.flujo||e.clave?`<span class="blanco">🎯 ${esc(e.flujo||e.clave)}</span>`:"<span></span>"}</div>`;
+  }
+  return h;
+}
+
+function recorrido(T,s){
+  const fl=T.flujos||[];
+  const ocup=new Set((s.agentes||[]).filter(a=>a.activo).flatMap(a=>[a.flujo,a.clave]).concat((s.en_curso||[]).map(e=>e.flujo)).filter(Boolean));
+  const ficha=f=>`<div class="ficha ${esc(f.grupo||"")} ${ocup.has(f.flujo)?"trabajando":""} ${(f.version||1)>1?"reprueba":""}" data-id="${esc(f.flujo)}" data-f="${esc(f.flujo)}"
+    title="${esc(f.flujo)} · ${esc(f.paso)}${(f.version||1)>1?` · re-prueba v${f.version}${f.motivo_ciclo?": "+esc(f.motivo_ciclo):""}`:""}">
+    ${esc(f.flujo)}${(f.version||1)>1?`<span class="ver">↺v${f.version}</span>`:""}${f.difs_pendientes?`<span class="alerta">❓${f.difs_pendientes}</span>`:""}</div>`;
+  let h=`<div class="pista">`;
+  const sombra=(f,c)=>`<div class="ficha sombra ${esc(f.grupo||"")} ${ocup.has(f.flujo)&&(s.agentes||[]).some(a=>a.activo&&a.agente===c.agente)?"trabajando":""}"
+    data-f="${esc(f.flujo)}" title="A la vez que el paso principal: ${esc(c.paso)}">∥ ${esc(f.flujo)} · ${esc(c.pista)}</div>`;
+  EST.forEach(([ico,nom],i)=>{const aqui=fl.filter(f=>f.etapa===i);
+    const sombras=fl.flatMap(f=>(f.paralelos||[]).filter(c=>c.etapa===i).map(c=>sombra(f,c)));
+    h+=`<div class="est ${aqui.length||sombras.length?"con":""} ${i===8?"meta":""}"><div class="bola">${ico}</div><div class="nom">${nom}</div>
+      <div class="cnt">${aqui.length||"·"}${sombras.length?` + ${sombras.length} ∥`:""}</div><div class="fichas">${aqui.map(ficha).join("")}${sombras.join("")}</div></div>`});
+  h+=`</div>`;
+  const dev=fl.filter(f=>f.etapa<0);
+  if(dev.length)h+=`<div class="taller"><b>🔧 TALLER · devueltos a desarrollo (${dev.length})</b>${dev.map(ficha).join("")}</div>`;
+  return h;
+}
+
+function tareas(T){
+  const t=T.en_curso||[];
+  if(!t.length)return`<div class="vacio">Nada descargando ni midiendo en este momento.</div>`;
+  return t.map(p=>{const pct=p.pct, eta=(pct&&pct>0)?desde(p.inicio_utc)*(100-pct)/pct:null;
+    const ico=p.fase==="descarga"?"📥":p.fase==="etl"?"⚙️":p.fase==="diferenciar"?"⚖️":"⏳";
+    const que=p.bytes_total?`${mil(Math.round(p.bytes/1e6))} de ${mil(Math.round(p.bytes_total/1e6))} MB (${pct}%)`:esc(corto(p.ultimo,90));
+    return`<div class="tarea"><div style="display:flex;justify-content:space-between;gap:8px"><b>${ico} ${esc(corto(p.comando,70))}</b>
+      <span class="sub">lleva <span data-desde="${esc(p.inicio_utc)}"></span>${eta?` · faltan ~${dur(eta)}`:""}</span></div>
+      <div class="sub">${que}</div><div class="prog ${pct==null?"indef":""}"><i style="${pct!=null?`width:${pct}%`:""}"></i></div></div>`}).join("");
+}
+
+function charla(s,T){
+  const m=[];
+  for(const a of s.agentes||[]) if(a.encargo)m.push({t:a.inicio_utc,cls:"baja",de:s.ave.emoji,txt:`→ ${CARA[a.agente]||"🤖"} <b>${esc(a.agente)}</b>: ${esc(a.encargo)}`});
+  for(const p of (T&&T.partes)||[])m.push({t:p.ts,cls:"sube",de:CARA[p.agente]||"🤖",txt:`← <b>${esc(p.agente)}</b> a ${s.ave.emoji}: ${esc(p.hecho)}${p.estado!=="OK"?` <b>[${esc(p.estado)}]</b>`:""}${p.pregunta?`<br>❓ ${esc(p.pregunta.texto||"")}`:""}`});
+  if(s.pregunta)m.push({t:new Date().toISOString(),cls:"tu",de:"🙋",txt:`<b>${s.ave.emoji} te pregunta:</b> ${esc(s.pregunta)}`});
+  m.sort((a,b)=>String(b.t).localeCompare(String(a.t)));
+  if(!m.length)return`<div class="vacio">Todavía no hay encargos ni partes en este trabajo.</div>`;
+  return`<div class="chat">${m.slice(0,14).map(x=>`<div class="msg ${x.cls}"><span class="de">${x.de}</span><div class="txt">${x.txt}<div class="hora">${esc(String(x.t||"").slice(11,16))} UTC</div></div></div>`).join("")}</div>`;
+}
+
+function coordinador(s,d){
+  const a=s.ave, act=(s.agentes||[]).some(x=>x.activo);
+  const ban=s.pregunta?`<div class="banner b-espera">❓ TE ESTÁ ESPERANDO</div>`:act||s.segundos_sin_actividad<120?`<div class="banner b-trab">⚡ TRABAJANDO</div>`:`<div class="banner b-pausa">💤 EN PAUSA · ${dur(s.segundos_sin_actividad)}</div>`;
+  let h=`<section class="coord"><div class="chead"><div style="display:flex;gap:12px;align-items:center"><span class="avatar">${a.emoji}</span>
+    <div><div class="pix" style="font-size:13px">COORDINADOR ${esc(a.nombre.toUpperCase())}</div>
+    <div class="sub">sesión ${esc(s.session_id.slice(0,8))} · abierto desde ${esc((s.inicio_utc||"").slice(11,16))} UTC · trabajos: ${esc((s.trabajos||[]).join(", ")||"todavía ninguno")}</div></div></div>${ban}</div>`;
+  if(s.pregunta)h+=`<div class="tarea" style="border-color:var(--gold)"><b>🙋 Pregunta para ti:</b> ${esc(s.pregunta)}</div>`;
+  h+=`<h2>🤝 EQUIPO · QUIÉN HACE QUÉ AHORA</h2>${equipo(s)}`;
+  for(const t of s.trabajos||[]){const T=d.trabajos[t]; if(!T)continue; const M=T.marcador||{};
+    h+=`<div data-trabajo="${esc(t)}"><h2>🛤️ RECORRIDO · TRABAJO ${esc(t)}</h2>
+      <div class="marcador"><div class="tile" style="border-color:var(--lime)">🏁<span class="n" style="color:var(--lime)">${M.aprobados??0}</span><small>listos para acta</small></div>
+      <div class="tile" style="border-color:var(--neon)">⏳<span class="n" style="color:var(--neon)">${M.en_curso??0}</span><small>en camino</small></div>
+      <div class="tile" style="border-color:var(--red)">🔧<span class="n" style="color:var(--red)">${M.devueltos??0}</span><small>devueltos</small></div>
+      <div class="tile" style="border-color:var(--gold)">❓<span class="n" style="color:var(--gold)">${M.decisiones??0}</span><small>diferencias por decidir</small></div></div>
+      ${recorrido(T,s)}
+      <div class="det-inline" data-det="${esc(t)}"></div>
+      <div class="dos"><div><h2>📥 TAREAS EN CURSO</h2>${tareas(T)}</div><div><h2>💬 CONVERSACIÓN</h2>${charla(s,T)}</div></div>
+      <h2>📨 BUZÓN DE SALIDA · LISTO PARA COPIAR</h2>${buzon(T)}</div>`;
+  }
+  if(!(s.trabajos||[]).length)h+=`<h2>💬 CONVERSACIÓN</h2>${charla(s,null)}`;
+  return h+`</section>`;
+}
+
+function msj(m){
+  const dev=m.para==="desarrollo";
+  return`<div class="msj"><div class="cab"><div><span class="tag" style="color:${dev?"var(--orange)":"var(--neon)"};border-color:currentColor">${dev?"🔧 DESARROLLO · CHAT":"✉️ COMFANDI · CORREO"}</span>
+    <b style="margin-left:8px">${esc(dev?"para "+(m.destino||""):"para Comfandi")}</b></div><button data-copiar="${esc(m.id)}">📋 Copiar</button></div>
+    <pre data-texto="${esc(m.id)}">${esc(m.texto)}</pre></div>`;
+}
+function buzon(T){
+  const ms=T.mensajes||[];
+  if(!ms.length)return`<div class="vacio">Nada para enviar: ningún flujo devuelto ni preguntas para Comfandi.</div>`;
+  // uno por destino: analítica, ingesta y Comfandi
+  return`<div class="msjs">${ms.map(msj).join("")}</div>`;
+}
+function copiar(root){
+  root.querySelectorAll("[data-copiar]").forEach(b=>b.onclick=async()=>{const pre=root.querySelector(`pre[data-texto="${CSS.escape(b.dataset.copiar)}"]`);
+    try{await navigator.clipboard.writeText(pre.textContent);b.textContent="✅ Copiado"}catch(e){const r=document.createRange();r.selectNodeContents(pre);
+      const sel=getSelection();sel.removeAllRanges();sel.addRange(r);b.textContent="Selecciona y copia (Ctrl+C)"}
+    setTimeout(()=>b.textContent="📋 Copiar",2000)});
+}
+
+function relojes(){document.querySelectorAll("[data-desde]").forEach(e=>{const a=e.dataset.desde,b=e.dataset.hasta;
+  if(!a)return; e.textContent=b?`tardó ${dur((Date.parse(b)-Date.parse(a))/1000)}`:dur(desde(a))})}
+
+function pintar(d){
+  // FLIP: las fichas se deslizan de su estación anterior a la nueva
+  const antes={};document.querySelectorAll(".ficha[data-id]").forEach(e=>antes[e.dataset.id]=e.getBoundingClientRect());
+  $("#chips").innerHTML=chips(d);
+  $("#vidas").innerHTML=vidas(d.cookies);
+  const ver=d.sesiones.filter(s=>SEL==="todos"||s.session_id===SEL);
+  $("#coords").innerHTML=ver.length?ver.map(s=>coordinador(s,d)).join(""):`<div class="coord vacio">No hay coordinadores abiertos en las últimas 12 h. Abre un chat en la carpeta del proyecto y aparecerá aquí con su ave.</div>`;
+  document.querySelectorAll(".ficha[data-id]").forEach(e=>{const r0=antes[e.dataset.id];if(!r0)return;const r1=e.getBoundingClientRect();
+    const dx=r0.left-r1.left,dy=r0.top-r1.top;if(Math.abs(dx)+Math.abs(dy)>4)e.animate([{transform:`translate(${dx}px,${dy}px)`},{transform:"none"}],{duration:900,easing:"cubic-bezier(.2,.8,.2,1)"})});
+  document.querySelectorAll(".chip[data-sel]").forEach(c=>c.onclick=()=>{SEL=c.dataset.sel;LS.set("coordinador",SEL);pintar(DATA)});
+  document.querySelectorAll(".ficha[data-f]").forEach(c=>c.onclick=()=>{const t=c.closest("[data-trabajo]")?.dataset.trabajo;
+    SELF[t]=SELF[t]===c.dataset.f?null:c.dataset.f; enfocar(); if(SELF[t])detalle(SELF[t],t); else (document.querySelector(`[data-det="${CSS.escape(t)}"]`)||{}).innerHTML=""});
+  // re-prueba: la ficha que volvio a empezar en una version nueva se anima al llegar al inicio
+  for(const T of Object.values(d.trabajos||{}))for(const f of (T&&T.flujos)||[]){const v=f.version||1;
+    if(PREV_VER[f.flujo]&&v>PREV_VER[f.flujo])document.querySelectorAll(`.ficha[data-id="${CSS.escape(f.flujo)}"]`).forEach(e=>e.classList.add("reinicia"));
+    PREV_VER[f.flujo]=v}
+  enfocar();
+  for(const [t,f] of Object.entries(SELF))if(f)detalle(f,t);
+  copiar(document);
+  relojes();
+}
+function enfocar(){
+  document.querySelectorAll("[data-trabajo]").forEach(box=>{const t=box.dataset.trabajo,sel=SELF[t],pista=box.querySelector(".pista");if(!pista)return;
+    pista.classList.toggle("con-foco",!!sel);
+    box.querySelectorAll(".ficha[data-f]").forEach(e=>e.classList.toggle("foco",!!sel&&e.dataset.f===sel));
+    enlaces(pista,sel)});
+}
+function enlaces(pista,sel){
+  // linea superpuesta entre la ficha principal de un flujo y sus carriles paralelos (∥)
+  pista.querySelector(".enlaces")?.remove();
+  const base=pista.getBoundingClientRect(), por={};
+  pista.querySelectorAll(".ficha[data-f]").forEach(e=>{(por[e.dataset.f]=por[e.dataset.f]||[]).push(e)});
+  let d="";
+  for(const [f,els] of Object.entries(por)){const main=els.find(e=>!e.classList.contains("sombra")),sombras=els.filter(e=>e.classList.contains("sombra"));
+    if(!main||!sombras.length||!(sel===f||main.classList.contains("trabajando")||sombras.some(x=>x.classList.contains("trabajando"))))continue;
+    const a=main.getBoundingClientRect();
+    for(const sb of sombras){const b=sb.getBoundingClientRect();
+      const x1=a.left+a.width/2-base.left,y1=a.top+a.height/2-base.top,x2=b.left+b.width/2-base.left,y2=b.top+b.height/2-base.top,my=Math.min(y1,y2)-26;
+      d+=`<path class="${sel===f?"vivo":""}" d="M${x1},${y1} C${x1},${my} ${x2},${my} ${x2},${y2}"><title>${esc(f)}: corre a la vez</title></path>`}}
+  if(d)pista.insertAdjacentHTML("beforeend",`<svg class="enlaces">${d}</svg>`);
+}
+addEventListener("resize",()=>enfocar());
+
+function tarjetaHtml(t){
+  return String(t).split("\n").map((l,i)=>{const e=esc(l);
+    if(i===0)return`<b style="color:var(--gold)">${e}</b>`;
+    const m=e.match(/^(Qué pasó|Cifras|Leído \w+|Código|Causa propuesta \([^)]*\)|Ejemplo[^:]*|Motivo|Ejecución|Regla [^:]*|A verificar|Estimado):(.*)$/);
+    if(m)return`<b>${m[1]}:</b>${m[2]}`;
+    if(/^\s+\d\)/.test(l))return`<span style="color:var(--neon)">${e}</span>`;
+    return e}).join("\n");
+}
+/* ---------------- grafo ---------------- */
+const CAPAS=[["trabajo","🗂️","Trabajo"],["flujo","🧩","Flujo"],["objeto","📋","Tabla"],["lectura","🔌","De dónde se leyó"],["descarga","📦","Descarga"],
+  ["medicion","🧮","Medición"],["cotejo","⚖️","Cotejo"],["diferencia","❗","Diferencia"],["regla","📜","Regla de código"],["decision","🙋","Decisión"],
+  ["parte","↩️","Parte de agente"],["publicacion","📡","Publicado"]];
+const COLOR={trabajo:"var(--muted)",flujo:"var(--violet)",objeto:"var(--neon)",lectura:"var(--orange)",descarga:"var(--gold)",medicion:"var(--haiku)",
+  cotejo:"var(--sonnet)",diferencia:"var(--red)",regla:"var(--opus)",decision:"var(--pink)",parte:"var(--lime)",publicacion:"var(--muted)"};
+let GSEL=null, VISTA=LS.get("vista")||"sala", G=null, GZ=+(LS.get("zoom")||1), VISTOS={}, GFIRMA="";
+function estadoNodo(d){const e=d.estado||d.decision||d.resultado||"";return /APROBADO|JUSTIFICADA|IGUAL|^OK$|INFORMATIVA/.test(e)?"var(--lime)":/DEVUELTO|ROJO|DISTINTA|ERROR/.test(e)?"var(--red)":
+  /PENDIENTE|REVISION|AMARILLO|A_VERIFICAR|AVISO/.test(e)?"var(--gold)":"var(--line)"}
+function dibujarGrafo(){
+  if(!G)return; const fF=$("#gFlujo").value, pub=$("#gPub").checked, par=$("#gPar").checked;
+  let ns=G.nodos.filter(n=>(pub||n.tipo!=="publicacion")&&(par||n.tipo!=="parte"));
+  let es=G.aristas;
+  if(fF){ // el flujo y todo lo que cuelga de el (y lo que lo explica o decide)
+    const keep=new Set([`F:${fF}`]);
+    for(let k=0;k<6;k++){for(const e of es){if(keep.has(e.de))keep.add(e.a);if(keep.has(e.a)&&/^(Q|R|A):/.test(e.de))keep.add(e.de)}}
+    ns=ns.filter(n=>keep.has(n.id));
+  }
+  const ids=new Set(ns.map(n=>n.id)); es=es.filter(e=>ids.has(e.de)&&ids.has(e.a));
+  const capa=t=>CAPAS.findIndex(c=>c[0]===t), cols={};
+  ns.forEach(n=>{(cols[capa(n.tipo)]=cols[capa(n.tipo)]||[]).push(n)});
+  const pos={}, W=222, H=30, X0=16, Y0=40;
+  const presentes=Object.keys(cols).map(Number).sort((a,b)=>a-b), colX={}; presentes.forEach((c,i)=>colX[c]=X0+i*W);
+  const padres={}; es.forEach(e=>{(padres[e.a]=padres[e.a]||[]).push(e.de);(padres[e.de]=padres[e.de]||[]).push(e.a)});
+  Object.keys(cols).map(Number).sort((a,b)=>a-b).forEach(c=>{
+    cols[c].sort((a,b)=>{const ya=(padres[a.id]||[]).map(p=>pos[p]?.y).filter(v=>v!=null),yb=(padres[b.id]||[]).map(p=>pos[p]?.y).filter(v=>v!=null);
+      const ma=ya.length?ya.reduce((x,y)=>x+y,0)/ya.length:1e9, mb=yb.length?yb.reduce((x,y)=>x+y,0)/yb.length:1e9; return ma-mb||a.id.localeCompare(b.id)});
+    cols[c].forEach((n,i)=>pos[n.id]={x:colX[c],y:Y0+i*H});
+  });
+  const alto=Math.max(...Object.values(pos).map(p=>p.y),100)+60, ancho=X0+presentes.length*W;
+  const vistos=VISTOS[G.trabajo]||new Set(), primera=!VISTOS[G.trabajo];
+  let svg=`<svg id="gsvg" width="${ancho}" height="${alto}" style="transform:scale(${GZ})">`;
+  CAPAS.forEach(([t,ico,nom],c)=>{if(cols[c])svg+=`<text class="capa" x="${colX[c]}" y="20">${ico} ${nom.toUpperCase()} (${cols[c].length})</text>`});
+  for(const e of es){const a=pos[e.de],b=pos[e.a];if(!a||!b)continue;
+    const x1=a.x+(a.x<b.x?200:0),x2=b.x+(a.x<b.x?0:200),y1=a.y+11,y2=b.y+11,mx=(x1+x2)/2;
+    svg+=`<path class="arista" data-de="${esc(e.de)}" data-a="${esc(e.a)}" d="M${x1},${y1} C${mx},${y1} ${mx},${y2} ${x2},${y2}"><title>${esc(e.rel)}</title></path>`}
+  for(const n of ns){const p=pos[n.id],ico=(CAPAS.find(c=>c[0]===n.tipo)||["","•"])[1];
+    svg+=`<g class="nodo ${!primera&&!vistos.has(n.id)?"nuevo":""}" data-id="${esc(n.id)}" transform="translate(${p.x},${p.y})">
+      <rect width="200" height="22" fill="color-mix(in srgb, ${COLOR[n.tipo]} 16%, var(--bg2))" stroke="${estadoNodo(n.datos)}"></rect>
+      <rect width="5" height="22" fill="${COLOR[n.tipo]}" stroke="none"></rect>
+      <text x="11" y="15">${esc(ico+" "+corto(n.etiqueta,30))}</text></g>`}
+  svg+=`</svg>`;
+  const L=$("#lienzo"), sx=L.scrollLeft, sy=L.scrollTop; L.innerHTML=svg; L.scrollLeft=sx; L.scrollTop=sy;
+  const nuevos=ns.filter(n=>!vistos.has(n.id)).length;
+  VISTOS[G.trabajo]=new Set([...vistos,...ns.map(n=>n.id)]);
+  $("#gInfo").textContent=`${ns.length} nodos · ${es.length} conexiones${!primera&&nuevos?` · ✨ ${nuevos} nuevo(s)`:""} · construido ${G.construido_utc.slice(11,19)} UTC`;
+  if(GSEL&&!ids.has(GSEL))GSEL=null; rama();
+  L.querySelectorAll(".nodo").forEach(g=>{g.onclick=ev=>{ev.stopPropagation();GSEL=GSEL===g.dataset.id?null:g.dataset.id;rama();if(GSEL)nodoDet(GSEL);else $("#gDet").innerHTML=""};
+    g.onmouseenter=()=>L.querySelectorAll(`.arista[data-de="${CSS.escape(g.dataset.id)}"],.arista[data-a="${CSS.escape(g.dataset.id)}"]`).forEach(a=>a.classList.add("foco"));
+    g.onmouseleave=()=>L.querySelectorAll(".arista.foco").forEach(a=>a.classList.remove("foco"))});
+  $("#gLey").innerHTML=CAPAS.map(([t,ico,nom])=>`<span style="border-color:${COLOR[t]}">${ico} ${nom}</span>`).join("")+
+    `<span style="border-color:var(--lime)">borde verde: aprobado / justificado / igual</span><span style="border-color:var(--gold)">amarillo: pendiente / en revisión</span><span style="border-color:var(--red)">rojo: devuelto / distinta / error</span><span>✨ destello rosado: nodo que acaba de aparecer</span>`;
+}
+function rama(){
+  // la rama de un nodo: todo lo que viene antes (de donde sale) y todo lo que viene despues (lo que produce)
+  const L=$("#lienzo"); const todos=L.querySelectorAll(".nodo"), aristas=L.querySelectorAll(".arista");
+  if(!GSEL){todos.forEach(n=>n.classList.remove("tenue","sel","en-rama"));aristas.forEach(a=>a.classList.remove("tenue","rama"));return}
+  const adelante={},atras={};G.aristas.forEach(e=>{(adelante[e.de]=adelante[e.de]||[]).push(e.a);(atras[e.a]=atras[e.a]||[]).push(e.de)});
+  const en=new Set([GSEL]);
+  for(const mapa of [adelante,atras]){const cola=[GSEL];while(cola.length){const x=cola.shift();for(const y of mapa[x]||[])if(!en.has(y)){en.add(y);cola.push(y)}}}
+  todos.forEach(n=>{const k=en.has(n.dataset.id);n.classList.toggle("tenue",!k);n.classList.toggle("en-rama",k);n.classList.toggle("sel",n.dataset.id===GSEL)});
+  aristas.forEach(a=>{const k=en.has(a.dataset.de)&&en.has(a.dataset.a);a.classList.toggle("rama",k);a.classList.toggle("tenue",!k)});
+}
+function nodoDet(id){const n=G.nodos.find(x=>x.id===id);if(!n)return;
+  const vec=G.aristas.filter(e=>e.de===id||e.a===id).map(e=>e.de===id?`→ ${e.rel} ${e.a}`:`← ${e.rel} ${e.de}`);
+  $("#fichaTxt").innerHTML=`<div class="det"><h3 class="pix" style="font-size:11px;color:var(--neon)">${esc((CAPAS.find(c=>c[0]===n.tipo)||["","•"])[1])} ${esc(n.etiqueta)}</h3>
+    <div class="sub">${esc(n.tipo)} · ${esc(n.id)} · ${n.n_eventos} evento(s) en la bitácora</div><h4>QUÉ SE SABE</h4>
+    ${Object.entries(n.datos).map(([k,v])=>`<div class="linea" style="grid-template-columns:170px 1fr"><b>${esc(k.replace(/_/g," "))}</b><span>${k==="url"?`<a href="${esc(v)}" target="_blank" rel="noopener">abrir en Fabric</a>`:esc(typeof v==="number"?mil(v):v)}</span></div>`).join("")||'<div class="vacio">sin datos</div>'}
+    <h4>CON QUÉ SE CONECTA</h4>${vec.map(v=>`<div class="sub mono">${esc(v)}</div>`).join("")}</div>`;
+  $("#gDet").innerHTML=$("#fichaTxt").innerHTML; $("#fichaTxt").innerHTML="";
+  $("#gDet").insertAdjacentHTML("afterbegin",`<div style="text-align:right"><button id="gCerrar">✖ quitar selección</button></div>`);
+  $("#gCerrar").onclick=()=>{GSEL=null;rama();$("#gDet").innerHTML=""}}
+async function cargarGrafo(){
+  const ts=[...new Set((DATA?.sesiones||[]).flatMap(s=>s.trabajos||[]))];
+  const sel=$("#gTrabajo"), act=sel.value||LS.get("gTrabajo")||ts[0];
+  sel.innerHTML=ts.map(t=>`<option ${t===act?"selected":""}>${esc(t)}</option>`).join("")||"<option value=''>sin trabajos</option>";
+  if(!sel.value)return;
+  try{const g=await (await fetch(`/api/grafo?t=${encodeURIComponent(sel.value)}`)).json(); if(g.error)throw new Error(g.error);
+    const firma=JSON.stringify([g.nodos.length,g.aristas.length,g.nodos.map(n=>n.datos.estado||n.datos.decision||"").join("")]);
+    const fl=$("#gFlujo"), fv=fl.value;
+    fl.innerHTML=`<option value="">todos los flujos</option>`+g.nodos.filter(n=>n.tipo==="flujo").map(n=>`<option ${n.etiqueta===fv?"selected":""}>${esc(n.etiqueta)}</option>`).join("");
+    fl.value=fv;
+    if(firma!==GFIRMA||!G||G.trabajo!==g.trabajo){GFIRMA=firma;G=g;dibujarGrafo()}
+  }catch(e){$("#gInfo").textContent="⚠️ "+e.message}
+}
+function verVista(v){VISTA=v;LS.set("vista",v);$("#vSala").hidden=v!=="sala";$("#vGrafo").hidden=v!=="grafo";
+  document.querySelectorAll("[data-vista]").forEach(b=>b.classList.toggle("sel",b.dataset.vista===v));if(v==="grafo")cargarGrafo()}
+document.querySelectorAll("[data-vista]").forEach(b=>b.onclick=()=>verVista(b.dataset.vista));
+$("#gTrabajo").onchange=()=>{LS.set("gTrabajo",$("#gTrabajo").value);G=null;cargarGrafo()};
+["gFlujo","gPub","gPar"].forEach(i=>$("#"+i).onchange=dibujarGrafo);
+$("#gMas").onclick=()=>{GZ=Math.min(2,GZ+.15);LS.set("zoom",GZ);dibujarGrafo()};$("#gMenos").onclick=()=>{GZ=Math.max(.35,GZ-.15);LS.set("zoom",GZ);dibujarGrafo()};
+setInterval(()=>{if(VISTA==="grafo")cargarGrafo()},5000);
+
+let PEST="ahora";
+async function detalle(nombre,trabajo){
+  let f=null,t=trabajo;
+  for(const [tt,T] of Object.entries(DATA.trabajos||{})){const x=(T&&T.flujos||[]).find(x=>x.flujo===nombre);if(x&&(!trabajo||tt===trabajo)){f=x;t=tt;break}}
+  if(!f)return;
+  const box=document.querySelector(`[data-det="${CSS.escape(t)}"]`)||$("#fichaTxt");
+  if(!box.innerHTML)box.innerHTML=`<div class="vacio">cargando ${esc(nombre)}…</div>`;
+  let D; try{D=await (await fetch(`/api/flujo?t=${encodeURIComponent(t)}&f=${encodeURIComponent(nombre)}`)).json()}catch(e){D={error:e.message}}
+  if(D.error){box.innerHTML=`<div class="vacio">⚠️ ${esc(D.error)}</div>`;return}
+  const ses=DATA.sesiones.find(s=>(s.trabajos||[]).includes(t)), ave=ses?ses.ave:{emoji:"🐦",nombre:"coordinador"};
+  const activos=DATA.sesiones.flatMap(s=>(s.agentes||[]).filter(a=>a.activo&&(a.flujo===nombre||D.tablas.some(x=>x.clave===a.clave))).map(a=>({...a,ave:s.ave})));
+  const est=f.etapa<0?"🔧 Taller (devuelto a desarrollo)":EST[f.etapa][0]+" "+EST[f.etapa][1];
+  const tabs=[["ahora","⏳ Ahora"],["historia",`📜 Historia (${D.historia.length})`],["respuestas",`↩️ Respuestas (${D.partes.length})`],
+              ["decisiones",`❓ Tus decisiones (${D.decisiones.length})`],["mensajes",`📨 Mensajes (${D.mensajes.length})`]];
+  const pintarDet=()=>{
+    let b="";
+    if(PEST==="ahora"){
+      b+=activos.length?activos.map(a=>`<div class="fila"><span class="yo">${a.ave.emoji}</span><div class="cable"></div><div class="agente vivo"><span class="cara">${CARA[a.agente]||"🤖"}</span>
+        <div><b>${esc(a.agente)}</b><div class="burbuja">${a.encargo?`“${esc(a.encargo)}” · `:""}${esc(QUE[(a.pc||"").split(" ")[0]]||"pensando…")} · <span data-desde="${esc(a.inicio_utc)}"></span></div></div>${poder(a.modelo)}</div>
+        <div class="cable"></div><span class="blanco">🎯 ${esc(a.clave||a.flujo)}</span></div>`).join(""):`<div class="vacio">Ningún agente está trabajando en este flujo ahora.</div>`;
+      for(const p of D.en_curso){const pct=p.pct;b+=`<div class="tarea"><b>📥 ${esc(p.ultimo)}</b> · lleva <span data-desde="${esc(p.inicio_utc)}"></span>
+        <div class="prog ${pct==null?"indef":""}"><i style="${pct!=null?`width:${pct}%`:""}"></i></div></div>`}
+      if((f.paralelos||[]).length)b+=`<h4>∥ A LA VEZ, EN OTROS CARRILES</h4>`+f.paralelos.map(c=>`<div class="linea" style="grid-template-columns:30px 1fr"><span class="cara">${CARA[c.agente]||"🤖"}</span><span><b>carril ${esc(c.pista)}</b> · ${esc(c.paso)}</span></div>`).join("");
+      b+=`<h4>LAS TABLAS DE ESTE FLUJO</h4>`+D.tablas.map(x=>`<div class="linea" style="grid-template-columns:1fr"><span><b>${esc(x.clave)}</b><br><span class="sub">Stratio: ${esc(x.stratio)} · Fabric: ${esc(x.fabric)}</span></span></div>`).join("");
+    }
+    if(PEST==="historia"){
+      b+=D.historia.length?D.historia.map(e=>`<div class="linea"><span class="sub mono">${esc((e.ts||"").slice(11,16))}</span><span class="cara">${CARA[e.agente]||(e.agente==="coordinador"?ave.emoji:"🤖")}</span>
+        <span><b>${esc(e.agente)}</b> ${esc(accion(e.accion))}${e.clave?` · <span class="sub">${esc(e.clave)}</span>`:""}${e.error?`<br><span class="error">${esc(corto(e.error,160))}</span>`:""}</span>
+        <span class="${e.estado==="OK"?"ok":e.estado==="ERROR"?"error":"aviso"}">${e.duracion_s!=null?dur(e.duracion_s)+" · ":""}${esc(e.estado)}</span></div>`).join(""):`<div class="vacio">Sin eventos todavía.</div>`;
+    }
+    if(PEST==="respuestas"){
+      b+=D.partes.length?D.partes.map(p=>`<div class="msg sube"><span class="de">${CARA[p.agente]||"🤖"}</span><div class="txt">← <b>${esc(p.agente)}</b> a ${ave.emoji}: ${esc(p.hecho)}
+        ${Object.entries(p.cifras||{}).map(([k,c])=>`<div class="sub">${esc(k)}: <b>${esc(mil(c.valor))}</b></div>`).join("")}
+        ${p.pregunta?`<div>❓ ${esc(p.pregunta.texto||"")}</div>`:""}<div class="hora">${esc((p.ts||"").slice(11,16))} UTC · ${esc(p.estado)}</div></div></div>`).join("")
+        :`<div class="vacio">Los agentes de este trabajo todavía no entregaron partes (los trabajos anteriores al coordinador v3 no los tienen).</div>`;
+    }
+    if(PEST==="decisiones"){
+      b+=D.decisiones.length?`<div class="sub">Se responden en el chat de ${ave.emoji} ${esc(ave.nombre)}: te las presentará una por una con estas mismas tarjetas.</div>`
+        +D.decisiones.map(x=>`<div class="tarj">${tarjetaHtml(x.tarjeta)}</div>`).join(""):`<div class="vacio">Nada espera tu decisión en este flujo.</div>`;
+    }
+    if(PEST==="mensajes"){
+      b+=D.mensajes.length?`<div class="sub">Este es el pedazo de este flujo dentro del mensaje único de su destino (el completo está en el buzón).</div><div class="msjs">${D.mensajes.map(msj).join("")}</div>`
+        :`<div class="vacio">Sin mensajes: este flujo no está devuelto ni tiene preguntas para Comfandi.</div>`;
+    }
+    box.innerHTML=`<div class="det"><div style="display:flex;justify-content:space-between;gap:8px"><h3 class="pix" style="font-size:12px;color:var(--pink);margin:0 0 6px">▶ ${esc(f.flujo)}${(f.version||1)>1?` <span style="color:var(--orange)">↺ re-prueba v${f.version}</span>`:""}</h3>
+      <button data-cerrar="1">✖ cerrar</button></div>
+      <div class="sub">Va en <b>${est}</b> · ${esc(f.estado)} · v${esc(f.version||1)} · ${esc(f.grupo||"")} · 🚦 ${esc(f.semaforo||"—")} · 📜 código ${esc(f.codigo||"sin revisión (trabajo anterior al revisor)")}</div>
+      <div class="tabs">${tabs.map(([k,n])=>`<button data-pest="${k}" class="${PEST===k?"sel":""}">${n}</button>`).join("")}</div>${b}</div>`;
+    box.querySelectorAll("[data-pest]").forEach(x=>x.onclick=()=>{PEST=x.dataset.pest;pintarDet()});
+    box.querySelector("[data-cerrar]").onclick=()=>{SELF[t]=null;box.innerHTML="";enfocar()};
+    copiar(box); relojes();
+  };
+  pintarDet();
+}
+
+async function ciclo(){
+  try{const r=await fetch("/api/estado",{cache:"no-store"}); const d=await r.json(); if(d.error)throw new Error(d.error);
+    DATA=d; $("#hora").textContent=`en vivo · ${new Date().toLocaleTimeString("es-CO")} · ${d.sesiones.length} coordinador(es) · ${d.vpn}`;
+    const firma=JSON.stringify([d.sesiones.map(s=>[s.session_id,s.agentes,s.en_curso,s.pregunta,s.trabajos,Math.floor(s.segundos_sin_actividad/60)]),d.trabajos,
+      (d.cookies.cookies||[]).map(c=>c.minutos_restantes_estimados),SEL]);
+    if(firma!==FIRMA){FIRMA=firma;pintar(d)}
+    const qh=new URLSearchParams(location.hash.slice(1));
+    if(!ABIERTO&&qh.has("f")&&!qh.has("gsel")){ABIERTO=true;const q=qh;PEST=q.get("p")||PEST;
+      SELF[q.get("t")]=q.get("f");enfocar();detalle(q.get("f"),q.get("t"));setTimeout(()=>document.querySelector(`[data-det]`)?.scrollIntoView({block:"center"}),900)}
+    if(!ABIERTO&&qh.has("gsel")){ABIERTO=true;const q=qh;setTimeout(()=>{GSEL=q.get("gsel");rama();nodoDet(GSEL)},3000)}
+  }catch(e){$("#hora").textContent="⚠️ sin conexión con el panel: "+e.message}
+  setTimeout(ciclo,2000);
+}
+setInterval(relojes,1000);
+{const q=new URLSearchParams(location.hash.slice(1));if(q.get("vista"))VISTA=q.get("vista");if(q.get("gt"))LS.set("gTrabajo",q.get("gt"));
+ if(q.get("gf"))setTimeout(()=>{const f=$("#gFlujo");f.innerHTML=`<option>${esc(q.get("gf"))}</option>`;f.value=q.get("gf")},0)}
+ciclo(); setTimeout(()=>verVista(VISTA),600);
+</script>
+</body>
+</html>

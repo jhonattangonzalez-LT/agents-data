@@ -7,6 +7,7 @@ motor, asi la medicion es simetrica.
 
 Flujo por objeto y lado:  bajar_*() -> registrar en cache -> vista() -> medir() -> reporte JSON.
 """
+from ..salida import avance as _avance
 import datetime
 import glob
 import json
@@ -24,8 +25,9 @@ from . import motor_v15 as motor
 
 
 # ----------------------------------------------------------------- descargas
-def bajar_delta_fabric(lote, clave, tabla, ws=None, lh=None, log=print):
+def bajar_delta_fabric(lote, clave, tabla, ws=None, lh=None, log=None):
     """_delta_log + SOLO los parquet vigentes (y sus deletion vectors)."""
+    log = log or _avance
     base = dr.resolver_tabla(tabla, ws, lh)
     if not base:
         raise FileNotFoundError(f"no existe {tabla}")
@@ -44,8 +46,19 @@ def bajar_delta_fabric(lote, clave, tabla, ws=None, lh=None, log=print):
         tareas.append((f"{base}/{rel}", os.path.join(dest, rel), int(a.get("size") or 0)))
     dvs = _dv_archivos([a["deletionVector"] for a in vig if (a.get("deletionVector") or {}).get("storageType") == "u"])
     tareas += [(f"{base}/{d}", os.path.join(dest, d), None) for d in dvs]
+    import threading
+    lk, hecho, ult = threading.Lock(), [0], [0.0]
+
+    def una(t):
+        ol.bajar(t[0], t[1], t[2], ws, lh)
+        with lk:
+            hecho[0] += t[2] or 0
+            if time.time() - ult[0] > 2:
+                ult[0] = time.time()
+                log(f"fabric {tabla}: {hecho[0] / 1e6:.0f} de {total / 1e6:.0f} MB", fase="descarga", via="onelake",
+                    bytes=hecho[0], bytes_total=total, pct=round(100 * hecho[0] / total, 1) if total else None)
     with ThreadPoolExecutor(PAR["onelake_hilos"]) as ex:
-        list(ex.map(lambda t: ol.bajar(t[0], t[1], t[2], ws, lh), tareas))
+        list(ex.map(una, tareas))
     archivos = [os.path.join(dest, urllib.parse.unquote(a["path"])) for a in vig]
     # una re-descarga deja en la cache los parquet de versiones anteriores y la medicion los leeria: fuera
     from ..acceso.rocket import _limpiar_obsoletos
@@ -58,7 +71,8 @@ def bajar_delta_fabric(lote, clave, tabla, ws=None, lh=None, log=print):
     return dest, archivos, meta
 
 
-def bajar_files_fabric(lote, clave, directorio, ws=None, lh=None, log=print):
+def bajar_files_fabric(lote, clave, directorio, ws=None, lh=None, log=None):
+    log = log or _avance
     ps = [p for p in ol.listar(directorio, True, ws, lh) if not p["isDirectory"]
           and not p["name"].rsplit("/", 1)[-1].startswith(("_", "."))]
     dest = gestor.carpeta(lote, "FABRIC", clave)
@@ -70,7 +84,8 @@ def bajar_files_fabric(lote, clave, directorio, ws=None, lh=None, log=print):
     return dest, locs, meta
 
 
-def bajar_hdfs_stratio(lote, clave, ruta_hdfs, desde=None, log=print, particion=None):
+def bajar_hdfs_stratio(lote, clave, ruta_hdfs, desde=None, log=None, particion=None):
+    log = log or _avance
     from ..acceso import rocket
     dest = gestor.carpeta(lote, "STRATIO", clave)
     locs, m = rocket.bajar(ruta_hdfs, dest, desde=desde, log=log, particion=particion)
@@ -79,9 +94,10 @@ def bajar_hdfs_stratio(lote, clave, ruta_hdfs, desde=None, log=print, particion=
     return dest, locs, m
 
 
-def bajar_sftp_stratio(lote, clave, directorio, patron=None, log=print, plataforma="STRATIO"):
+def bajar_sftp_stratio(lote, clave, directorio, patron=None, log=None, plataforma="STRATIO"):
     """Baja los archivos de una carpeta del SFTP de Comfandi (VPN). Sirve a los dos lados: Fabric escribe su salida SFTP
     en el mismo servidor (ruta de pruebas). Guarda la fecha de modificacion de cada archivo: es la evidencia de CP-05."""
+    log = log or _avance
     import datetime as _dt
     import re
     from ..acceso import stratio_pg
@@ -118,8 +134,9 @@ def _pg_select(cols):
                      for c in cols)
 
 
-def bajar_pg_stratio(lote, clave, tabla, where=None, log=print):
+def bajar_pg_stratio(lote, clave, tabla, where=None, log=None):
     """Extrae con DuckDB (extension postgres) a parquet. VPN < 1 MB/s: tablas chicas o cortes."""
+    log = log or _avance
     import duckdb
     from ..acceso import stratio_pg
     from ..pgfabric import sql as S
@@ -146,8 +163,9 @@ def bajar_pg_stratio(lote, clave, tabla, where=None, log=print):
     return dest, [loc], m
 
 
-def bajar_pg_fabric(lote, clave, tabla, where=None, log=print):
+def bajar_pg_fabric(lote, clave, tabla, where=None, log=None):
     """Por la pipeline qa_v2_postgres: Copy a parquet en Files/ y descarga."""
+    log = log or _avance
     from ..pgfabric import pipeline, sql as S
     esq, _ = pipeline.consultar(S.esquema(tabla))
     esq = sorted(esq, key=lambda c: int(c["ordinal_position"]))

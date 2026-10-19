@@ -9,8 +9,38 @@ en cada decisión**. Los agentes no se llaman entre sí. Intérprete `~/Projects
 
 1. `python -m pc mejora pendientes` → si hay mejoras sin compartir o cambios sin registrar, **díselo al usuario**.
 2. Pregunta si se **retoma** un trabajo o se empieza uno nuevo. Para retomar: `python -m pc trabajo siguiente --trabajo T`
-   y continúa desde el paso que indique (todo el estado vive en disco: sobrevive a un apagado).
+   y continúa desde el paso que indique (todo el estado vive en disco: sobrevive a un apagado). Si hay un cierre previo,
+   `trabajos/T/cierre/PENDIENTES_T.md` + `python -m pc trabajo retomar --trabajo T` (propone el ciclo; lo confirma una persona).
 3. `fab auth status`: si no hay sesión, pide `! fab auth login`.
+4. `python -m pc panel --asegurar` (arranca el panel en vivo si no está arriba) y dale al usuario el enlace
+   http://localhost:8765 con el resultado. El hook de inicio te da un ave (p. ej. «🦜 Loro»): preséntate con ella, así el
+   usuario distingue cada chat en el panel. La VPN es frágil:
+   no la pruebes ni la uses hasta que el usuario diga que la subió.
+
+## 0 bis. Cómo hablas y cómo diriges (pocas palabras, cifras del disco)
+
+- Los comandos largos ya salen resumidos (`PC_RESUMEN=1`): no pegues logs; el detalle está en `trabajos/T/salidas/`.
+- Cada agente termina con un **parte** (`pc parte ver --trabajo T`): cifras con su puntero al JSON, comprobadas. Las cifras
+  que das al usuario salen de `pc trabajo resumen` o de un parte, nunca escritas de memoria.
+- Al lanzar un agente, su prompt lleva `python -m pc grafo contexto --trabajo T --flujo F --para <agente>`: recibe lo que
+  necesita explícito, sin suponer que leyó algo antes. `pc trabajo siguiente` dice qué flujos van **en paralelo** por
+  agente: lánzalos en un mismo mensaje.
+- **Toda pregunta a la persona** usa la tarjeta de `pc decision --trabajo T [--nodo ID]` (qué pasó · cifras S|F · cómo
+  se leyó · código · causa medida o no · un ejemplo · opciones con su comando). Máximo ~12 líneas; si piden más, se
+  responde desde `pc grafo contexto --nodo ID`.
+- **Cómo decides con la persona en este chat** (las decisiones se toman aquí; el panel solo las muestra):
+  1. Cuando un flujo llega a decisiones, avisa en una línea: «{ave} {flujo}: N decisiones en M preguntas (las de igual
+     causa van juntas)». Sale de `pc decision --trabajo T --nodo F:<flujo>`.
+  2. Pregunta con la herramienta de preguntas (AskUserQuestion), hasta 4 por tanda, una por grupo. Pregunta = la tarjeta
+     resumida en ≤ 6 líneas (qué pasó · cifras S|F · un ejemplo · causa y si está medida · regla de código si hay).
+     Opciones: **Justificar** (solo si la causa está medida) · **Preguntar a Comfandi** · **Devolver a desarrollo
+     (analítica o ingesta)** · **Analizar más**. Nunca elijas por la persona ni recomiendes justificar.
+  3. Aplica cada respuesta a todas las diferencias del grupo (`pc diferencia … --decision …`) y responde en una línea:
+     «3 justificadas · 1 devuelta: el chat para analítica quedó al día en el buzón del panel». No pegues el mensaje salvo
+     que te lo pidan; los mensajes son uno por destino (`pc mensaje`).
+  4. Semáforo ROJO: una pregunta: confirmar la devolución (el chat a desarrollo ya está listo) o forzar el nivel 2.
+- Al terminar (o al pausar) un coordinador: `python -m pc cierre --trabajo T` → `EXITOSOS_T.md` (para el agente de
+  actas, enlaces del portal verificados con HEAD) y `PENDIENTES_T.md` (devoluciones, archivos locales, respuesta de desarrollo).
 
 ## 1. Preguntas por fase (hazlas tú; no supongas)
 
@@ -25,8 +55,12 @@ en cada decisión**. Los agentes no se llaman entre sí. Intérprete `~/Projects
 | **Semáforo ROJO** | presentar los motivos (cifras de cada lado) y confirmar la devolución a desarrollo | `pc decision` |
 | **Veredicto (salida del nivel 2)** | por cada diferencia pendiente, presentar el **expediente de decisión** completo y esperar: justificar · verificar · devolver · analizar más | `pc decision --trabajo T` |
 | **Verificación** | quién cierra (QA o Comfandi) y su decisión: APRUEBA · CORREGIR | `pc verificar` |
-| **Corrección** | cuando desarrollo re-ejecuta: abrir ciclo nuevo con el motivo y volver a bajar el código (zip nuevo; versión de Stratio si cambió) | `pc ciclo --flujo F --motivo …` · `pc codigo bajar` |
+| **Corrección** | cuando desarrollo re-ejecuta: abrir ciclo nuevo con el motivo y **preguntar el alcance**: `codigo` (regla corregida: todo desde el nivel 0 y volver a bajar el código), `fuente --objetos k` (fuente o ruta, sin cambio de código: solo esas tablas; las demás se conservan si su Delta no cambió) o `lado` (solo se re-ejecutó Fabric: Stratio se conserva) | `pc ciclo --flujo F --motivo … --alcance …` · `pc ciclo --comprobar` · `pc codigo bajar` |
 | **Cierre** | qué expedientes entran al lote, quién es el responsable del acta, y las 3 compuertas | `pc lote disponibles` · `pc lote armar` · `pc revision …` · `pc acta generar` |
+| **Devolución** | por cada flujo con reglas de negocio desalineadas, la ficha de 7 puntos del cotejador (regla Rocket vs Fabric con archivo:línea, cifras, qué corregir, aceptación) y a qué equipo va | `pc decision` |
+| **Anexo de enlaces** | antes de entregarlo: que cada enlace sea la evidencia vigente del cierre (no solo HEAD 200) y qué falta publicar | `pc v4 publicar` (agente publicador-reportes) |
+| **Retiro a otro lote** | qué flujos salen del acta como «Validado para lote M» (sin enlaces) y con qué motivo del revisor | versión nueva del acta |
+| **Paso a producción** | orquestadores que ejecutan flujos devueltos o retirados; flujos repetidos entre actas | listado de aprobados |
 
 **El expediente de decisión** (`python -m pc decision --trabajo T`) trae: qué pasó, el control y si decide o informa
 en ese grupo, las cifras exactas de cada lado, cómo se leyó cada lado (ruta, fuente, versión Delta, último commit,
@@ -37,10 +71,16 @@ de la persona. No elijas por ella.**
 ## 2. El ciclo de un flujo (una versión vN)
 
 ```
-revisión de código (Stratio vN de Rocket ↔ zip de Fabric) ───────────────────────────────┐ (en paralelo)
-ETL v10 (roles reales + corrida) ─► nivel 0 ─► nivel 1 ─► semáforo ─► estimar ─► descargar ─► nivel 2 ─► veredicto
+carril código   revisión de código (Stratio vN de Rocket ↔ zip de Fabric) ─────────────────────────┐
+carril Stratio  estimar ─► descargar Stratio (--anticipada) ─► nivel 0/1 y 2 de Stratio ─────────────┤ (a la vez)
+carril Fabric   ETL v10 (roles + corrida) ─► nivel 0/1 Fabric ─► semáforo ─► descargar Fabric ─► nivel 2 ─► cotejo ─► veredicto
             los niveles 0, 1 y 2 escriben el MISMO medicion/cotejo vN, en disco, a medida que avanzan
 ```
+Stratio es la referencia y no depende de la corrida de Fabric: mientras Fabric ejecuta, se revisa el código y se baja y
+mide Stratio. `pc trabajo siguiente` marca esos carriles con «∥» y el panel los muestra como fichas punteadas. Bajar
+Stratio por adelantado exige VPN y cookie, y se avisa antes como cualquier descarga. Si el semáforo sale ROJO, esa
+caché se conserva para el ciclo siguiente (`pc ciclo --alcance lado`).
+
 | Paso | Agente | Comando |
 |---|---|---|
 | código de los dos lados: reglas de negocio IGUAL / DISTINTA | revisor-codigo | `pc codigo bajar --version N` · `pc codigo regla` · `pc codigo cerrar` |
@@ -49,7 +89,7 @@ ETL v10 (roles reales + corrida) ─► nivel 0 ─► nivel 1 ─► semáforo 
 | semáforo | semaforo | `pc semaforo --trabajo T` |
 | estimar y descargar (siempre se avisa) | gestor-descargas | `pc estimar` · `pc descargar` |
 | nivel 2 exacto | medidor-completo | `pc medir --trabajo T` |
-| cotejo y análisis de las dos tablas | cotejador | `pc cotejar` · `pc comparar` · `pc diferencia` |
+| cotejo y análisis de las dos tablas | cotejador | `pc cotejar` · `pc diferenciar` (por llave, con patrón) · `pc comparar` · `pc diferencia` |
 | publicar | publicador-reportes | `pc v4 publicar --trabajo T` |
 
 En Stratio, Rocket **no acepta lectura por rango**: el nivel 0/1 de HDFS y de CSV sale de la descarga (se calcula
@@ -64,6 +104,9 @@ solo al terminar de bajar). Postgres de Stratio se mide dentro de la base.
 | DEVUELTO | no justificable, o Comfandi pide corregir | no: corrección → vN+1 desde el nivel 0 |
 
 Justificar **no** cambia la versión. Corregir (re-ejecutar) **sí**.
+
+Modelos por agente (front-matter de `.claude/agents/`): **haiku** para descargar, medir y publicar (comandos
+deterministas); **sonnet** para ETL, Postgres, lote y acta; **opus** para el cotejador y el revisor de código.
 
 ## 3. Cierre
 
@@ -88,6 +131,10 @@ Firmantes: solo ingesta → Erick (CDS) · solo analítica u orquestadores → D
 - Se publica solo: mediciones, cotejos y cotejo de flujo (OneLake `reportes_v4/`) y las dos mediciones al bucket.
   Log, expediente y acta quedan locales.
 - Sin abusar de las plataformas: 8 hilos en Rocket (repartidos entre las cookies) y 8 en OneLake.
+- «Verificado» = HEAD 200 **y** el enlace es la medición con la que se cerró el hallazgo. La evidencia de cierre
+  (cotejos por corte, mediciones dirigidas, controles) se publica antes de citarla; lo que solo está en local no se cita.
+- Una medición dirigida declara los 18 controles (los no medidos, `NO_EVALUADO` con motivo) y el cierre es «con salvedad».
+- Se dice «reglas de negocio desalineadas», no «error de código», en lo que va a Comfandi.
 - Credenciales nunca se imprimen ni se suben. Nada se borra sin respaldo y sin orden explícita.
 
 ## 6. Mejoras (notificar para compartir)
