@@ -5,9 +5,10 @@
 No bloquea el acta. Por cada enlace revisa:
   · que exista (HEAD 200) y que sea el correcto: el archivo dice el flujo/tabla y la versión de su nombre, y no hay una
     versión mayor publicada en la misma carpeta (el EXITOSOS citaría una evidencia vieja);
-  · que no tenga nada pendiente: estado EN_CURSO / EN_REVISION / DEVUELTO o distinto del EXITOSOS, faltantes, controles
-    sin analizar, diferencias PENDIENTE o DEVUELTO, A_VERIFICAR sin la verificación APRUEBA, comprobaciones que no
-    cumplen, dependencias no medidas, diferencias sin ejemplo real, o una copia local del QA más nueva que lo publicado.
+  · que no tenga nada pendiente que el QA dejó abierto: estado EN_CURSO / EN_REVISION / DEVUELTO o distinto del EXITOSOS,
+    faltantes, controles sin analizar, diferencias PENDIENTE o DEVUELTO, A_VERIFICAR sin la verificación APRUEBA,
+    comprobaciones que no cumplen, diferencias sin ejemplo real. No se advierte lo que el pipeline agregó después de
+    publicar (p. ej. dependencias medidas, CP-05.aplicacion): eso no es un pendiente del QA.
 Cada hallazgo queda como advertencia (lotes/<N>/acta/advertencias.json) y en un MENSAJE por QA y trabajo
 (lotes/<N>/acta/mensajes/<trabajo>.md) para que corrija y vuelva a publicar SOBRE ESE MISMO ENLACE (misma ruta y versión,
 sin abrir ciclo nuevo). Al regenerar el acta, el enlace ya no sale en la lista.
@@ -104,15 +105,8 @@ def flujo(md, fd, cf, ruta, local=None):
         H("comprobaciones que no cumplen: " + "; ".join(map(str, e["comprobaciones_que_no_cumplen"][:4])))
     if e.get("estado") == "APROBADO_CON_VERIFICACION" and (cf.get("verificacion") or {}).get("decision") != "APRUEBA":
         H("aprobado con verificación, pero la verificación APRUEBA no está registrada (`pc verificar`)")
-    sec = cf.get("analitica") or cf.get("ingesta") or {}
-    fdp = sec.get("flujos_dependientes") or {}
-    if e.get("grupo") != "orquestador" and fdp.get("estado") != "MEDIDO":
-        H("dependencias no medidas", f"`python -m pc dependencias --trabajo {md.get('trabajo')} --flujo {n}` y volver a publicar sobre "
-                                     f"este mismo enlace (`pc v4 publicar`, misma versión v{ver})")
-    misma = local and str((local.get("encabezado") or {}).get("version")) == str(e.get("version"))
-    cambios = distinto(local, cf) if misma else []
-    if cambios:
-        H(_cambio(cambios))
+    # No son pendientes del QA (no se advierten): campos que el pipeline agregó después de publicar (dependencias medidas,
+    # CP-05.aplicacion) ni diferencias con una copia local de este equipo. Solo lo que el QA dejó abierto en su reporte.
     return out
 
 
@@ -130,16 +124,20 @@ def cotejo(md, n, k, vk, co, ruta, flujos_ok, verificado, detalle):
         H("faltantes: " + "; ".join(map(str, e["faltantes"][:6])))
     if e.get("sin_analizar"):
         H("controles sin analizar: " + ", ".join(map(str, e["sin_analizar"])))
-    for j in co.get("justificaciones") or []:
-        if j.get("decision") in ("PENDIENTE", "DEVUELTO"):
-            H(f"{j.get('id')} {j.get('control')}: diferencia {j['decision']}")
-        elif j.get("decision") == "A_VERIFICAR" and not verificado:
-            H(f"{j.get('id')} {j.get('control')}: A_VERIFICAR sin la verificación APRUEBA del flujo")
-    for x in detalle or []:
-        if x.get("ejemplo_real") is False:
-            H(f"{x['id']} {x['control']}: sin ejemplo real Stratio | Fabric",
-              f"registrar el ejemplo (`pc comparar --clave {k}` → `pc diferencia …`) y volver a publicar sobre este mismo enlace "
-              f"(misma versión v{vk})")
+    js = co.get("justificaciones") or []
+    ids = lambda xs: ", ".join(f"{j.get('id')} {j.get('control')}" for j in xs)
+    for dec in ("PENDIENTE", "DEVUELTO"):
+        xs = [j for j in js if j.get("decision") == dec]
+        if xs:
+            H(f"{len(xs)} diferencia(s) {dec}: {ids(xs)}")
+    xs = [j for j in js if j.get("decision") == "A_VERIFICAR"]
+    if xs and not verificado:
+        H(f"{len(xs)} diferencia(s) A_VERIFICAR sin la verificación APRUEBA del flujo: {ids(xs)}")
+    xs = [x for x in detalle or [] if x.get("ejemplo_real") is False]
+    if xs:
+        H(f"{len(xs)} diferencia(s) sin ejemplo real Stratio | Fabric: {ids(xs)}",
+          f"registrar el ejemplo (`pc comparar --clave {k}` → `pc diferencia …`) y volver a publicar sobre este mismo enlace "
+          f"(misma versión v{vk})")
     return out
 
 

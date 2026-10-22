@@ -791,5 +791,19 @@
   "autor": "Jhonattan-LT",
   "estado": "COMPARTIDA",
   "commit": "61681bb"
+ },
+ {
+  "id": "M-053",
+  "fecha": "2026-10-22T15:19:17+00:00",
+  "que": "Revisor del acta: solo advierte lo que el QA dejó abierto (no campos que el pipeline agregó después ni copias locales) y agrupa por enlace; R1019 pasa de 29 advertencias a 0",
+  "por_que": "Las 29 advertencias de la prueba venían de cambios del pipeline de hoy (dependencias, CP-05), no de pendientes de los QA",
+  "archivos": [
+   "pc/revisor_acta.py",
+   "pc/acta.py",
+   ".claude/agents/revisor-actas.md",
+   "CLAUDE.md"
+  ],
+  "autor": "Jhonattan-LT",
+  "estado": "SIN_COMPARTIR"
  }
 ]

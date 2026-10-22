@@ -19,9 +19,11 @@ Qué revisa en cada enlace (cotejo del flujo, cotejo de cada tabla, métrica Str
 - **HEAD 200** en OneLake.
 - **Enlace correcto y vigente:** el archivo es del flujo o la tabla que dice el EXITOSOS, su versión es la del nombre del
   archivo y no hay una versión mayor publicada en la misma carpeta.
-- **Nada pendiente:** estado EN_CURSO, EN_REVISION o DEVUELTO, o distinto del EXITOSOS; faltantes; controles sin analizar;
-  diferencias PENDIENTE o DEVUELTO; A_VERIFICAR sin la verificación APRUEBA; comprobaciones que no cumplen; dependencias
-  no medidas; diferencias sin ejemplo real; y si este equipo tiene el trabajo, una copia local más nueva que lo publicado.
+- **Nada pendiente que el QA dejó abierto:** estado EN_CURSO, EN_REVISION o DEVUELTO, o distinto del EXITOSOS; faltantes;
+  controles sin analizar; diferencias PENDIENTE o DEVUELTO; A_VERIFICAR sin la verificación APRUEBA; comprobaciones que
+  no cumplen; diferencias sin ejemplo real.
+- **No advierte** lo que el pipeline agregó después de que el QA publicó (p. ej. dependencias medidas, CP-05.aplicacion)
+  ni diferencias con copias locales de este equipo: no son pendientes del QA. Un EXITOSOS bien cerrado da 0 advertencias.
 
 Qué entregas:
 - `lotes/<N>/acta/advertencias.json`: todas las advertencias, con QA, trabajo, flujo, tabla, enlace y qué hacer.

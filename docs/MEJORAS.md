@@ -2,6 +2,14 @@
 
 Cada mejora se comparte con el equipo (commit + push al repositorio). `SIN_COMPARTIR` = falta hacerlo.
 
+## M-053 · 2026-10-22 · SIN_COMPARTIR
+
+**Qué:** Revisor del acta: solo advierte lo que el QA dejó abierto (no campos que el pipeline agregó después ni copias locales) y agrupa por enlace; R1019 pasa de 29 advertencias a 0
+
+**Por qué:** Las 29 advertencias de la prueba venían de cambios del pipeline de hoy (dependencias, CP-05), no de pendientes de los QA
+
+**Archivos:** `pc/revisor_acta.py`, `pc/acta.py`, `.claude/agents/revisor-actas.md`, `CLAUDE.md` · por Jhonattan-LT
+
 ## M-052 · 2026-10-22 · COMPARTIDA
 
 **Qué:** Revisor de la evidencia del acta (agente revisor-actas, pc acta revisar, también dentro de generar): HEAD 200, enlace correcto y vigente (sin versión mayor publicada) y nada pendiente en cada JSON citado; advertencias.json y un mensaje por QA para corregir sobre el mismo enlace; el acta ya no se detiene (capa ambigua sale por confirmar)

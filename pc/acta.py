@@ -155,8 +155,6 @@ def _flujo(F2, md, fd, evid):
                                           "el flujo no entra al acta hasta que esté publicado", None, vk))
         if o2 == "local":
             hall.append(RV.hallazgo(md, n, k, "Cotejo Stratio ↔ Fabric", rc, "no existe en OneLake: el acta usó la copia local", None, vk))
-        elif co_loc and str((co_loc.get("encabezado") or {}).get("version")) == str(vk) and RV.distinto(co_loc, co):
-            hall.append(RV.hallazgo(md, n, k, "Cotejo Stratio ↔ Fabric", rc, RV._cambio(RV.distinto(co_loc, co)), None, vk))
         cotejos[k] = (co, rc, vk)
         solo_fabric = (co["encabezado"].get("objeto") or {}).get("stratio") is None
         med = lambda lado: cita(rf"/mediciones/{lado}/{re.escape(k)}/medicion_{lado}_{re.escape(k)}_v\d+\.json$") or \
@@ -236,7 +234,10 @@ def datos(lote, trabajos=None, version="1.0", fecha=None, exitosos=None):
         except (ValueError, OSError, KeyError, AssertionError) as x:
             hall.append(RV.hallazgo(md, fd["flujo"], None, "Cotejo del flujo", None,
                                     f"no se pudo leer su evidencia ({type(x).__name__}: {str(x)[:160]})", None, fd.get("version")))
-    avisos += [x for f in flujos for x in f.pop("avisos")]
+    dep = [f["fabric"] for f in flujos if f.pop("avisos")]
+    if dep:
+        avisos.append(f"{len(dep)} flujo(s) con las dependencias medidas en este equipo (etl/dependencias) porque su cotejo de flujo "
+                      "publicado es anterior a esa medición")
     # un flujo sin tablas propias (tablas_en, M-037) muestra las del flujo donde se cotejan: en el acta cada tabla va una
     # sola vez, con el flujo dueño; el otro queda con su motivo
     duenos = {o["clave"] for f in flujos if not f.get("tablas_en") for o in f["objetos"]}

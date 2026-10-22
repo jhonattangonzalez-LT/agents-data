@@ -137,7 +137,7 @@ El acta de entrega (formato normalizado de 9 puntos) la hace el agente **acta-en
 EXITOSOS que los QA ya generaron y le pasan (entran todos; no se les exige nada):
 `python -m pc acta generar --lote N --exitosos <carpeta o archivos>` (o `--trabajos T1,T2`; sin ninguno, desde el lote
 armado y con las 3 compuertas). Nada detiene el acta: el agente **revisor-actas** (`pc acta revisar`, también dentro de
-`generar`) revisa cada JSON citado (HEAD 200, enlace correcto y vigente, nada pendiente) y deja advertencias y un
+`generar`) revisa cada JSON citado (HEAD 200, enlace correcto y vigente, nada que el QA dejó pendiente) y deja advertencias y un
 mensaje por QA en `lotes/N/acta/mensajes/` para que corrija sobre ese mismo enlace; solo la capa ambigua se pregunta
 (sale «por confirmar» → `pc acta capa`).
 Firmantes: solo ingesta → Erick (CDS) · solo analítica u orquestadores → Diego (DIA) · ambos → los dos (`config/acta.json`).
