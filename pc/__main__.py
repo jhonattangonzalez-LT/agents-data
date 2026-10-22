@@ -676,19 +676,24 @@ def c_acta(a):
         print(f"capa de {a.clave}: {a.capa} · {len(dec)} capa(s) decidida(s) en el lote {a.lote}")
         return
     trabajos = [x for x in (a.trabajos or "").split(",") if x]
-    ruta, A = acta.generar(a.lote, a.version, trabajos or None, a.fecha, a.exitosos or None)
-    if ruta is None:
-        print(f"ACTA NO EMITIDA · {len(A)} punto(s) para preguntar o medir antes (no se suponen) · "
-              f"lotes/{a.lote}/acta/preguntas.json")
-        for x in A:
-            print(f"  [{x['tipo']}] {x['texto']}")
-        sys.exit(2)
+    ruta, A = acta.generar(a.lote, a.version, trabajos or None, a.fecha, a.exitosos or None, solo_revisar=a.accion == "revisar")
     ce = A.get("cotejo_exitosos") or {}
     if ce.get("exitosos"):
         print(f"{len(ce['exitosos'])} EXITOSOS · {sum(x['flujos'] for x in ce['exitosos'])} flujo(s) en ellos")
     for x in A.get("avisos") or []:
         print("⚠", x)
-    print(f"acta: {ruta}\n{len(A['flujos'])} flujo(s) · {A['anexo_enlaces']} enlaces verificados con HEAD · {A['graficas']} gráficas")
+    hs = A.get("hallazgos") or []
+    if hs:
+        enl = {h["ruta"] for h in hs}
+        print(f"⚠ REVISOR: {len(hs)} advertencia(s) en {len(enl)} enlace(s) · no detienen el acta · lotes/{a.lote}/acta/advertencias.json")
+        for m in A.get("mensajes") or []:
+            print(f"  mensaje para el QA: {os.path.relpath(m)}")
+    else:
+        print("revisor: todos los enlaces con HEAD 200, en su versión vigente y sin nada pendiente")
+    for q in A.get("preguntas") or []:
+        print(f"? [{q['tipo']}] {q['texto']}  (en el acta: «por confirmar»; responder con `pc acta capa`)")
+    if ruta:
+        print(f"acta: {ruta}\n{len(A['flujos'])} flujo(s) · {A['anexo_enlaces']} enlaces · {A['graficas']} gráficas")
 
 
 def c_mejora(a):
@@ -1062,7 +1067,7 @@ def main(argv=None):
     x = s.add_parser("estimar", help="tiempo estimado del nivel 2 por tabla y lado")
     x.add_argument("--trabajo", "--lote", dest="lote", required=True); x.add_argument("--flujo"); x.set_defaults(fn=c_estimar)
     x = s.add_parser("acta", help="acta de entrega en formato normalizado: del lote armado (3/3 compuertas) o de los EXITOSOS de --trabajos")
-    x.add_argument("accion", choices=["generar", "capa"]); x.add_argument("--lote", required=True); x.add_argument("--version", default="1.0")
+    x.add_argument("accion", choices=["generar", "revisar", "capa"]); x.add_argument("--lote", required=True); x.add_argument("--version", default="1.0")
     x.add_argument("--trabajos", help="T1,T2: toma los flujos de sus EXITOSOS (cierre-v1) en vez de lotes/N/lote.json")
     x.add_argument("--fecha", help="fecha del acta (por defecto hoy)")
     x.add_argument("--exitosos", nargs="+", help="los EXITOSOS_*.md (archivos o carpetas) que se cotejan para el acta; los reportes se bajan de OneLake si el trabajo no está en este equipo")

@@ -1,6 +1,6 @@
 ---
 name: acta-entrega
-description: Recibe los markdowns EXITOSOS que los QA ya generaron (de cualquier equipo), los junta y produce el acta de entrega del lote X del proyecto Comfandi/Quind (Stratio → Microsoft Fabric) en el FORMATO NORMALIZADO (9 puntos, Word, gráficas completas, anexo de enlaces verificados). También desde un lote armado. Úsalo cuando pidan "el acta del lote N", "el acta de hoy" o "el acta de los trabajos T1, T2". Funciona en el equipo de cualquier miembro: todo está en este repositorio (pc/acta.py + pc/docx/). Devuelve el .docx o la lista de lo que hay que preguntar antes.
+description: Recibe los markdowns EXITOSOS que los QA ya generaron (de cualquier equipo), los junta y produce el acta de entrega del lote X del proyecto Comfandi/Quind (Stratio → Microsoft Fabric) en el FORMATO NORMALIZADO (9 puntos, Word, gráficas completas, anexo de enlaces verificados). También desde un lote armado. Úsalo cuando pidan "el acta del lote N", "el acta de hoy" o "el acta de los trabajos T1, T2". Funciona en el equipo de cualquier miembro: todo está en este repositorio (pc/acta.py + pc/docx/). Devuelve el .docx, las advertencias y un mensaje por QA para corregir sobre el mismo enlace (nada detiene el acta).
 tools: Bash, Read, Write, Edit, Glob, Grep
 model: sonnet
 ---
@@ -19,12 +19,14 @@ python -m pc acta generar --lote N --exitosos ~/Descargas/lote13/ [--version 1.0
 python -m pc acta generar --lote N --trabajos T1,T2[,…]
 # desde un lote armado con `pc lote armar` (exige las 3 compuertas aprobadas y que lo genere el responsable)
 python -m pc acta generar --lote N [--version 1.0]
+# solo la revisión de los JSON (sin dibujar el acta)
+python -m pc acta revisar --lote N --exitosos <carpeta>
 # respuesta de la persona a una capa ambigua
 python -m pc acta capa --lote N --clave <tabla o flujo> --capa "Silver"        # Bronze · Silver · Gold [· Postgres|SFTP]
 ```
 
 Sale en `lotes/<N>/acta/`: `Acta_Entrega_Flujos_Lote<N>_<fecha>_v<ver>.docx`, `datos_acta_lote<N>.json` (el dato del
-acta) y `graficas/`. El acta **nunca se publica** (queda local); sí enlaza los reportes publicados.
+acta), `graficas/`, `advertencias.json` y `mensajes/`. El acta **nunca se publica** (queda local); sí enlaza los reportes publicados.
 
 - **Insumo: los `EXITOSOS_<T>.md` que los QA ya generaron** (formato `cierre-v1`) y te pasan para el acta del lote,
   vengan del equipo que vengan. Son flujos exitosos: **entran todos, no se les exige nada**. Pásale todos los archivos (o
@@ -34,16 +36,18 @@ acta) y `graficas/`. El acta **nunca se publica** (queda local); sí enlaza los 
   a `lotes/<N>/acta/evidencia/`. No vuelvas a medir lo que ya está en esos JSON.
 - Los PENDIENTES no se pasan al acta (van al reporte técnico).
 
-## Código 2 = hay que preguntar o medir (nunca se rellena)
+## Nada detiene el acta: advertencias y mensajes para los QA
 
-Si sale «ACTA NO EMITIDA», la lista está en `lotes/<N>/acta/preguntas.json`:
+El comando revisa los JSON publicados que citan los EXITOSOS (lo mismo que el agente **revisor-actas**: HEAD 200, enlace
+correcto y vigente, nada pendiente) y genera el acta igual. Lo que hay que corregir queda en
+`lotes/<N>/acta/advertencias.json` y en **un mensaje por QA** (`lotes/<N>/acta/mensajes/<trabajo>.md`) para que corrija y
+vuelva a publicar **sobre ese mismo enlace**; cuando avise, regeneras el acta con los mismos enlaces. Dile al usuario
+cuántas advertencias hay, de qué QA y dónde están los mensajes.
 
-| Tipo | Qué haces |
-|---|---|
-| `capa` | La capa es SOLO medallón: Bronze · Silver · Gold, con «· Postgres» o «· SFTP» si es una copia (orquestadores: «Orquestación»). Un esquema de Postgres, un workspace, un lakehouse o nombres como `qa_v2_rc` NO son capas. Si es ambigua, **pregunta** al usuario (AskUserQuestion) y guarda la respuesta con `pc acta capa`. |
-| `dependencias` | El cotejo de flujo publicado no trae dependencias medidas: lo resuelve el coordinador del trabajo con `python -m pc dependencias --trabajo T --flujo F` y republicando; luego regeneras. Si el cotejo de flujo publicado aún no las trae, el acta usa la medición local y lo avisa: pide al coordinador republicar (`pc v4 publicar`, agente publicador-reportes). |
-| `ejemplo` | La diferencia no tiene un ejemplo real Stratio \| Fabric: lo registra el cotejador (`pc comparar --clave …` → `pc diferencia …`); no lo inventes. |
-| `enlace` | Un documento del anexo no existe en OneLake (HEAD): falta publicarlo (publicador-reportes). Nunca se emite con un enlace roto. |
+Lo único que se pregunta es la **capa** que no se puede fijar: en el acta sale «por confirmar» y la decides con el
+usuario (AskUserQuestion). Es SOLO medallón: Bronze · Silver · Gold, con «· Postgres» o «· SFTP» si es copia
+(orquestadores: «Orquestación»); un esquema de Postgres, un workspace o nombres como `qa_v2_rc` NO son capas. Guarda la
+respuesta con `pc acta capa` y regenera.
 
 ## El formato normalizado (lo dibuja `pc/docx/acta_normalizada.py`)
 

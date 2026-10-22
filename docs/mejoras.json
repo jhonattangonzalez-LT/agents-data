@@ -772,5 +772,23 @@
   "autor": "Jhonattan-LT",
   "estado": "COMPARTIDA",
   "commit": "84931d6"
+ },
+ {
+  "id": "M-052",
+  "fecha": "2026-10-22T15:06:33+00:00",
+  "que": "Revisor de la evidencia del acta (agente revisor-actas, pc acta revisar, también dentro de generar): HEAD 200, enlace correcto y vigente (sin versión mayor publicada) y nada pendiente en cada JSON citado; advertencias.json y un mensaje por QA para corregir sobre el mismo enlace; el acta ya no se detiene (capa ambigua sale por confirmar)",
+  "por_que": "Verificar los JSON de los EXITOSOS sin bloquear el acta: el QA dueño corrige y republica en el mismo enlace",
+  "archivos": [
+   "pc/revisor_acta.py",
+   "pc/acta.py",
+   "pc/__main__.py",
+   ".claude/agents/revisor-actas.md",
+   ".claude/agents/acta-entrega.md",
+   ".claude/agents/acta-final.md",
+   "CLAUDE.md",
+   "README.md"
+  ],
+  "autor": "Jhonattan-LT",
+  "estado": "SIN_COMPARTIR"
  }
 ]

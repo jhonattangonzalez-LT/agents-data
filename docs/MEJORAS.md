@@ -2,6 +2,14 @@
 
 Cada mejora se comparte con el equipo (commit + push al repositorio). `SIN_COMPARTIR` = falta hacerlo.
 
+## M-052 · 2026-10-22 · SIN_COMPARTIR
+
+**Qué:** Revisor de la evidencia del acta (agente revisor-actas, pc acta revisar, también dentro de generar): HEAD 200, enlace correcto y vigente (sin versión mayor publicada) y nada pendiente en cada JSON citado; advertencias.json y un mensaje por QA para corregir sobre el mismo enlace; el acta ya no se detiene (capa ambigua sale por confirmar)
+
+**Por qué:** Verificar los JSON de los EXITOSOS sin bloquear el acta: el QA dueño corrige y republica en el mismo enlace
+
+**Archivos:** `pc/revisor_acta.py`, `pc/acta.py`, `pc/__main__.py`, `.claude/agents/revisor-actas.md`, `.claude/agents/acta-entrega.md`, `.claude/agents/acta-final.md`, `CLAUDE.md`, `README.md` · por Jhonattan-LT
+
 ## M-051 · 2026-10-22 · COMPARTIDA
 
 **Qué:** El acta toma todos los EXITOSOS que le pasan los QA sin exigirles nada (sin huella, completo, PENDIENTES ni cotejo de versión); solo no repite un flujo que venga en dos

@@ -14,7 +14,7 @@ python -m pc acta generar --lote N [--version 1.0]
 ```
 
 - Falla si faltan compuertas o si no lo genera el responsable del acta (`pc revision estado --lote N`).
-- Formato, reglas y qué hacer con «ACTA NO EMITIDA» (código 2: capas, dependencias, ejemplos, enlaces): exactamente los
+- Formato, reglas, advertencias y mensajes para los QA (nada detiene el acta; solo la capa ambigua se pregunta): exactamente los
   de `.claude/agents/acta-entrega.md`. Léelo antes de empezar. Nunca rellenes lo que hay que preguntar.
 - Punto 7: solo diferencias JUSTIFICADAS o verificadas, resumidas por tabla con ejemplo real. Nada de flujos devueltos
   ni hallazgos: van a un reporte técnico. Punto 8: texto de aprobación de Comfandi por correo, sin firmas.

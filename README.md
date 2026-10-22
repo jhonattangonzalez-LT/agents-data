@@ -1,6 +1,6 @@
 # pipeline-comfandi · QA v2 de la migración Stratio → Microsoft Fabric
 
-Validación de flujos migrados con **un coordinador en el chat y 13 agentes locales** (Claude Code). Por cada flujo:
+Validación de flujos migrados con **un coordinador en el chat y 14 agentes locales** (Claude Code). Por cada flujo:
 revisa el código de los dos lados (la versión de Stratio que indicas contra el zip de Fabric), ejecuta el ETL Validator v10, mide Stratio y Fabric (niveles 0, 1 y 2), coteja con Stratio como verdad, te pregunta lo
 que necesita decidir una persona y, al final, arma el lote y el acta.
 
@@ -106,7 +106,7 @@ Cuando en una sesión se cambia un agente, una herramienta o una regla, el coord
 
 ```
 CLAUDE.md                 el coordinador: preguntas por fase, ciclo, estados, imparcialidad, mejoras
-.claude/agents/           13 agentes: acta-entrega, revisor-codigo, etl-validador (v10), medidor-rapido-fabric, medidor-rapido-stratio,
+.claude/agents/           14 agentes: acta-entrega, revisor-actas, revisor-codigo, etl-validador (v10), medidor-rapido-fabric, medidor-rapido-stratio,
                           postgres-fabric, semaforo, gestor-descargas, medidor-completo, cotejador,
                           publicador-reportes, consolidador-revision, acta-final
 config/                   pipeline.json (ids, hilos, tasas) · controles.json (catálogo) · acta.json (firmantes)
