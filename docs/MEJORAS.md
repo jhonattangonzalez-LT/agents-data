@@ -2,13 +2,13 @@
 
 Cada mejora se comparte con el equipo (commit + push al repositorio). `SIN_COMPARTIR` = falta hacerlo.
 
-## M-050 · 2026-10-22 · SIN_COMPARTIR
+## M-050 · 2026-10-22 · COMPARTIDA
 
 **Qué:** Cotejo de los EXITOSOS en el acta: la huella del markdown solo informa (no excluye) y se normalizan los fines de línea de Windows
 
 **Por qué:** Los coordinadores anotan los EXITOSOS a mano o llegan por correo/chat; las cifras del acta salen de los reportes publicados, que se cotejan por versión y estado, no del cuerpo del markdown
 
-**Archivos:** `pc/acta.py`, `.claude/agents/acta-entrega.md`, `CLAUDE.md` · por Jhonattan-LT
+**Archivos:** `pc/acta.py`, `.claude/agents/acta-entrega.md`, `CLAUDE.md` · por Jhonattan-LT · compartida en 58b80a0
 
 ## M-049 · 2026-10-22 · COMPARTIDA
 
