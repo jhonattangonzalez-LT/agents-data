@@ -29,7 +29,8 @@ acta) y `graficas/`. El acta **nunca se publica** (queda local); sí enlaza los 
 - **Insumo: los `EXITOSOS_<T>.md` de los coordinadores** (formato `cierre-v1`), vengan de donde vengan. Pásale todos
   (o la carpeta): el comando los **coteja entre sí** antes de armar nada y deja el informe en
   `lotes/<N>/acta/datos_acta_lote<N>.json` → `cotejo_exitosos`:
-  · formato `cierre-v1` y **huella SHA-256** del cuerpo: si no cuadra (editado a mano, llegó cortado) ese EXITOSOS no entra;
+  · formato `cierre-v1` (con front-matter). La huella del markdown solo **informa**: si el cuerpo se anotó a mano el
+    EXITOSOS entra igual, porque las cifras no salen del markdown sino de los reportes publicados (ver abajo);
   · `completo: false` no entra: dile al usuario qué falta para resolverlo con QA y que el coordinador regenere el cierre;
   · un flujo que también está en un `PENDIENTES_<T>.md` más reciente (el hermano de cada EXITOSOS se lee solo) no entra;
   · un flujo en dos EXITOSOS: se toma la versión mayor (a igual versión, el cierre más reciente) y se avisa;

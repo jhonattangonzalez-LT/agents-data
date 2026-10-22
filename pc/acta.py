@@ -8,7 +8,8 @@ De dónde salen los flujos:
   · con lotes/<N>/lote.json (lote armado con `pc lote armar`): sus expedientes, y solo con las 3 compuertas aprobadas
     y por el responsable del acta (como siempre);
   · con --exitosos (o --trabajos): los EXITOSOS_<T>.md de los coordinadores, de cualquier equipo, COTEJADOS entre sí
-    (cotejar_exitosos: huella, completo, PENDIENTES, repetidos) y contra el cotejo de flujo publicado (versión y estado).
+    (cotejar_exitosos: completo, PENDIENTES, repetidos) y contra el cotejo de flujo publicado (versión y estado). La huella
+    del markdown solo informa: el cuerpo se puede anotar a mano y las cifras no salen de él sino de los reportes publicados.
 El dato se lee de los reportes v4 que cita cada EXITOSOS (copia local del trabajo si es la misma versión; si no, de
 OneLake a lotes/<N>/acta/evidencia/) con pc/docx/lector_formato2.py;
 el .docx lo dibuja pc/docx/acta_normalizada.py (copia del generador de qa-etl-validador-agent-v2/actas, con capas
@@ -49,7 +50,7 @@ def _mods():
 
 def leer_md(p):
     """Un EXITOSOS/PENDIENTES (cierre-v1): front-matter, huella comprobada y las rutas de OneLake que cita."""
-    s = open(p, encoding="utf8").read()
+    s = open(p, encoding="utf8").read().replace("\r\n", "\n")      # llegado por correo o chat desde Windows
     if not s.startswith("---\n") or "\n---\n" not in s[4:]:
         raise ValueError(f"{p}: no es un cierre-v1 (sin front-matter)")
     fm, cuerpo = s[4:].split("\n---\n", 1)
@@ -86,7 +87,7 @@ def _nom(p):
 
 
 def cotejar_exitosos(rutas):
-    """Coteja los markdowns entre sí antes de armar el acta: formato y huella, completo, flujos que están también en un
+    """Coteja los markdowns entre sí antes de armar el acta: formato, completo, flujos que están también en un
     PENDIENTES y flujos repetidos entre EXITOSOS (se toma la versión mayor; a igual versión, el cierre más reciente).
     Devuelve ([(md, flujo)], avisos, informe)."""
     mds, avisos, inf, elegidos = [], [], {"exitosos": [], "excluidos": [], "ignorados": []}, {}
@@ -100,10 +101,15 @@ def cotejar_exitosos(rutas):
     pend = {f["flujo"]: m for m in mds if m["tipo"] == "PENDIENTES" for f in m["flujos"]}
     for m in ex:
         motivo = ("no es cierre-v1" if m["formato"] != "cierre-v1" else
-                  "la huella SHA-256 no cuadra con el cuerpo (el archivo se editó a mano o llegó incompleto)" if not m["huella_ok"] else
                   "completo: false (faltantes en salidas/cierre_faltantes.json del trabajo)" if not m["completo"] else None)
         inf["exitosos"].append({"ruta": m["ruta"], "trabajo": m["trabajo"], "generado_utc": m["generado_utc"],
                                 "generado_por": m["generado_por"], "flujos": len(m["flujos"]), "entra": not motivo, "motivo": motivo})
+        if not motivo and not m["huella_ok"]:
+            # el cuerpo cambió despues del cierre (notas a mano, otro editor): no excluye, porque el acta no toma cifras del
+            # markdown sino de los reportes publicados, que se cotejan flujo por flujo (version y estado)
+            avisos.append(f"{_nom(m['ruta'])}: el cuerpo cambió después del cierre (huella distinta); se usa su lista de flujos "
+                          "y las cifras de los reportes publicados")
+        inf["exitosos"][-1]["huella_igual"] = m["huella_ok"]
         if motivo:
             avisos.append(f"{_nom(m['ruta'])}: no entra · {motivo}")
             continue

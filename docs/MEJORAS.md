@@ -2,6 +2,14 @@
 
 Cada mejora se comparte con el equipo (commit + push al repositorio). `SIN_COMPARTIR` = falta hacerlo.
 
+## M-050 · 2026-10-22 · SIN_COMPARTIR
+
+**Qué:** Cotejo de los EXITOSOS en el acta: la huella del markdown solo informa (no excluye) y se normalizan los fines de línea de Windows
+
+**Por qué:** Los coordinadores anotan los EXITOSOS a mano o llegan por correo/chat; las cifras del acta salen de los reportes publicados, que se cotejan por versión y estado, no del cuerpo del markdown
+
+**Archivos:** `pc/acta.py`, `.claude/agents/acta-entrega.md`, `CLAUDE.md` · por Jhonattan-LT
+
 ## M-049 · 2026-10-22 · COMPARTIDA
 
 **Qué:** El agente acta-entrega recibe los EXITOSOS de los coordinadores (pc acta generar --exitosos carpeta|archivos), los coteja entre sí (huella SHA-256, completo, PENDIENTES más recientes, flujos repetidos, versión y estado del cotejo publicado) y baja de OneLake los reportes que citan si el trabajo no está en el equipo; muestras/agente_acta-entrega_v1.md retirado

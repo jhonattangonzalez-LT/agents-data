@@ -743,5 +743,18 @@
   "autor": "Jhonattan-LT",
   "estado": "COMPARTIDA",
   "commit": "af281c6"
+ },
+ {
+  "id": "M-050",
+  "fecha": "2026-10-22T14:44:27+00:00",
+  "que": "Cotejo de los EXITOSOS en el acta: la huella del markdown solo informa (no excluye) y se normalizan los fines de línea de Windows",
+  "por_que": "Los coordinadores anotan los EXITOSOS a mano o llegan por correo/chat; las cifras del acta salen de los reportes publicados, que se cotejan por versión y estado, no del cuerpo del markdown",
+  "archivos": [
+   "pc/acta.py",
+   ".claude/agents/acta-entrega.md",
+   "CLAUDE.md"
+  ],
+  "autor": "Jhonattan-LT",
+  "estado": "SIN_COMPARTIR"
  }
 ]
