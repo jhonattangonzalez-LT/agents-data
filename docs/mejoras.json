@@ -507,7 +507,8 @@
    "pc/cierre.py"
   ],
   "autor": "Jhonattan-LT",
-  "estado": "SIN_COMPARTIR"
+  "estado": "COMPARTIDA",
+  "commit": "f0cb96b"
  },
  {
   "id": "M-034",
@@ -519,7 +520,8 @@
    "pc/__main__.py"
   ],
   "autor": "Jhonattan-LT",
-  "estado": "SIN_COMPARTIR"
+  "estado": "COMPARTIDA",
+  "commit": "f0cb96b"
  },
  {
   "id": "M-035",
@@ -530,7 +532,8 @@
    "pc/reportes/v4.py"
   ],
   "autor": "Jhonattan-LT",
-  "estado": "SIN_COMPARTIR"
+  "estado": "COMPARTIDA",
+  "commit": "f0cb96b"
  },
  {
   "id": "M-036",
@@ -544,7 +547,8 @@
    "pc/__main__.py"
   ],
   "autor": "Jhonattan-LT",
-  "estado": "SIN_COMPARTIR"
+  "estado": "COMPARTIDA",
+  "commit": "f0cb96b"
  },
  {
   "id": "M-037",
@@ -558,7 +562,8 @@
    "pc/coordinacion.py"
   ],
   "autor": "Jhonattan-LT",
-  "estado": "SIN_COMPARTIR"
+  "estado": "COMPARTIDA",
+  "commit": "f0cb96b"
  },
  {
   "id": "M-038",
@@ -569,7 +574,8 @@
    "pc/cierre.py"
   ],
   "autor": "Jhonattan-LT",
-  "estado": "SIN_COMPARTIR"
+  "estado": "COMPARTIDA",
+  "commit": "f0cb96b"
  },
  {
   "id": "M-039",
@@ -585,7 +591,8 @@
    ".claude/agents/gestor-descargas.md"
   ],
   "autor": "Jhonattan-LT",
-  "estado": "SIN_COMPARTIR"
+  "estado": "COMPARTIDA",
+  "commit": "f0cb96b"
  },
  {
   "id": "M-040",
@@ -598,7 +605,8 @@
    "CLAUDE.md"
   ],
   "autor": "Jhonattan-LT",
-  "estado": "SIN_COMPARTIR"
+  "estado": "COMPARTIDA",
+  "commit": "f0cb96b"
  },
  {
   "id": "M-041",
@@ -614,7 +622,8 @@
    "CLAUDE.md"
   ],
   "autor": "Jhonattan-LT",
-  "estado": "SIN_COMPARTIR"
+  "estado": "COMPARTIDA",
+  "commit": "f0cb96b"
  },
  {
   "id": "M-042",
@@ -625,7 +634,8 @@
    "pc/reportes/formato2.py"
   ],
   "autor": "Jhonattan-LT",
-  "estado": "SIN_COMPARTIR"
+  "estado": "COMPARTIDA",
+  "commit": "f0cb96b"
  },
  {
   "id": "M-043",
@@ -642,7 +652,8 @@
    "CLAUDE.md"
   ],
   "autor": "Jhonattan-LT",
-  "estado": "SIN_COMPARTIR"
+  "estado": "COMPARTIDA",
+  "commit": "f0cb96b"
  },
  {
   "id": "M-044",
@@ -653,7 +664,8 @@
    "CLAUDE.md"
   ],
   "autor": "Jhonattan-LT",
-  "estado": "SIN_COMPARTIR"
+  "estado": "COMPARTIDA",
+  "commit": "f0cb96b"
  },
  {
   "id": "M-045",
@@ -664,7 +676,8 @@
    ".claude/agents/cotejador.md"
   ],
   "autor": "Jhonattan-LT",
-  "estado": "SIN_COMPARTIR"
+  "estado": "COMPARTIDA",
+  "commit": "f0cb96b"
  },
  {
   "id": "M-046",
@@ -677,7 +690,8 @@
    "CLAUDE.md"
   ],
   "autor": "Jhonattan-LT",
-  "estado": "SIN_COMPARTIR"
+  "estado": "COMPARTIDA",
+  "commit": "f0cb96b"
  },
  {
   "id": "M-047",
@@ -688,6 +702,7 @@
    "pc/etl/cadena.py"
   ],
   "autor": "Jhonattan-LT",
-  "estado": "SIN_COMPARTIR"
+  "estado": "COMPARTIDA",
+  "commit": "f0cb96b"
  }
 ]
