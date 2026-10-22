@@ -2,13 +2,13 @@
 
 Cada mejora se comparte con el equipo (commit + push al repositorio). `SIN_COMPARTIR` = falta hacerlo.
 
-## M-049 · 2026-10-22 · SIN_COMPARTIR
+## M-049 · 2026-10-22 · COMPARTIDA
 
 **Qué:** El agente acta-entrega recibe los EXITOSOS de los coordinadores (pc acta generar --exitosos carpeta|archivos), los coteja entre sí (huella SHA-256, completo, PENDIENTES más recientes, flujos repetidos, versión y estado del cotejo publicado) y baja de OneLake los reportes que citan si el trabajo no está en el equipo; muestras/agente_acta-entrega_v1.md retirado
 
 **Por qué:** El acta del lote la arma un miembro con los markdowns que le mandan los demás, sin las carpetas de sus trabajos; la copia vieja del agente en muestras/ generaba el formato anterior
 
-**Archivos:** `pc/acta.py`, `pc/__main__.py`, `.claude/agents/acta-entrega.md`, `CLAUDE.md`, `muestras/agente_acta-entrega_v1.md` · por Jhonattan-LT
+**Archivos:** `pc/acta.py`, `pc/__main__.py`, `.claude/agents/acta-entrega.md`, `CLAUDE.md`, `muestras/agente_acta-entrega_v1.md` · por Jhonattan-LT · compartida en af281c6
 
 ## M-048 · 2026-10-22 · COMPARTIDA
 
