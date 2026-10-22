@@ -2,6 +2,14 @@
 
 Cada mejora se comparte con el equipo (commit + push al repositorio). `SIN_COMPARTIR` = falta hacerlo.
 
+## M-048 · 2026-10-22 · SIN_COMPARTIR
+
+**Qué:** Acta de entrega normalizada en el repo para todo el equipo: agente acta-entrega en .claude/agents, pc acta generar --lote N --trabajos T1,T2 (desde los EXITOSOS y los reportes v4 locales) o desde el lote armado, pc acta capa; generador, lector, capas y graficas copiados a pc/docx; objetos sin lado Stratio y tablas_en sin duplicar; pc dependencias ignora expresiones sin resolver
+
+**Por qué:** El agente y el generador nuevo solo existian en el equipo de un miembro (qa-etl-validador-agent-v2 sin versionar); los compañeros generaban el acta con el formato viejo de acta-final
+
+**Archivos:** `.claude/agents/acta-entrega.md`, `.claude/agents/acta-final.md`, `pc/acta.py`, `pc/__main__.py`, `pc/docx/acta_normalizada.py`, `pc/docx/lector_formato2.py`, `pc/docx/capas.py`, `pc/docx/graficas_acta.py`, `pc/docx/estilo.py`, `pc/etl/dependencias.py`, `CLAUDE.md`, `README.md` · por Jhonattan-LT
+
 ## M-047 · 2026-10-22 · COMPARTIDA
 
 **Qué:** pc.etl.cadena: ejecuta cadenas de flujos de Fabric en orden estricto (cada flujo solo si el anterior terminó Completed), reanudable, con cadenas en paralelo y sin repetir ingestas ya completadas

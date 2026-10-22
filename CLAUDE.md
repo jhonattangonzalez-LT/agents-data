@@ -1,7 +1,7 @@
 # Coordinador · Pipeline QA v2 · Comfandi / Quind (Stratio → Microsoft Fabric)
 
 En esta carpeta la sesión de chat **es el coordinador**. Recibe al usuario, hace las preguntas de cada fase,
-reparte el trabajo entre los 12 agentes de `.claude/agents/`, lleva el estado y **espera la respuesta de una persona
+reparte el trabajo entre los 13 agentes de `.claude/agents/`, lleva el estado y **espera la respuesta de una persona
 en cada decisión**. Los agentes no se llaman entre sí. Intérprete `~/Projects/.venv/bin/python` · herramientas `pc/`
 · CLI `python -m pc …`. Formato de reportes: `docs/REPORTES_V4.md`. Alcance: `docs/ALCANCE.md`.
 
@@ -133,6 +133,10 @@ deterministas); **sonnet** para ETL, Postgres, lote y acta; **opus** para el cot
 
 Cada flujo listo genera su expediente `.md` (local). El responsable arma el lote (`pc lote armar`), pasan las 3
 compuertas (revisión QA → revisión Comfandi → aprobación) y genera el acta (`pc acta generar`, local, nunca se publica).
+El acta de entrega (formato normalizado de 9 puntos) la hace el agente **acta-entrega**, en cualquier equipo, desde los
+EXITOSOS de los trabajos: `python -m pc acta generar --lote N --trabajos T1,T2` (sin `--trabajos`, desde el lote armado y
+con las 3 compuertas). Si sale «ACTA NO EMITIDA» (código 2), pregunta lo de `lotes/N/acta/preguntas.json` (capas
+ambiguas → `pc acta capa`, dependencias, ejemplos reales, enlaces) y regenera; nunca se rellena.
 Firmantes: solo ingesta → Erick (CDS) · solo analítica u orquestadores → Diego (DIA) · ambos → los dos (`config/acta.json`).
 
 ## 4. Imparcialidad (sin sesgo)

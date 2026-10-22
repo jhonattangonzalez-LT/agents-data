@@ -151,7 +151,7 @@ def tabla_enlaces(cab, filas, anchos, rid0=1):
 def imagen(rid, an_px, al_px, alt=""):
     """Inserta una imagen. Word mide en EMU: 914400 por pulgada, a 96 ppp."""
     cx, cy = int(an_px * 914400 / 96), int(al_px * 914400 / 96)
-    n = rid[3:] if rid.startswith("rId") else "1"
+    n = "".join(ch for ch in rid if ch.isdigit()) or "1"      # docPr id: entero unico (Word lo exige numerico)
     return (
         '<w:p><w:pPr><w:spacing w:before="60" w:after="160"/>'
         '<w:jc w:val="center"/></w:pPr><w:r><w:drawing>'

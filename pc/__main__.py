@@ -669,9 +669,23 @@ def c_revision(a):
 
 def c_acta(a):
     from . import acta
-    ruta, A = acta.generar(a.lote, a.version)
-    print(f"acta: {ruta}\n{len(A['flujos'])} flujo(s) · {A['anexo_enlaces']} enlaces verificados con HEAD · firmantes: "
-          + ", ".join(x["nombre"] for x in A["firmantes"]))
+    if a.accion == "capa":
+        if not (a.clave and a.capa):
+            sys.exit("pc acta capa: --clave y --capa")
+        dec = acta.fijar_capa(a.lote, a.clave, a.capa)
+        print(f"capa de {a.clave}: {a.capa} · {len(dec)} capa(s) decidida(s) en el lote {a.lote}")
+        return
+    trabajos = [x for x in (a.trabajos or "").split(",") if x]
+    ruta, A = acta.generar(a.lote, a.version, trabajos or None, a.fecha)
+    if ruta is None:
+        print(f"ACTA NO EMITIDA · {len(A)} punto(s) para preguntar o medir antes (no se suponen) · "
+              f"lotes/{a.lote}/acta/preguntas.json")
+        for x in A:
+            print(f"  [{x['tipo']}] {x['texto']}")
+        sys.exit(2)
+    for x in A.get("avisos") or []:
+        print("⚠", x)
+    print(f"acta: {ruta}\n{len(A['flujos'])} flujo(s) · {A['anexo_enlaces']} enlaces verificados con HEAD · {A['graficas']} gráficas")
 
 
 def c_mejora(a):
@@ -1044,8 +1058,11 @@ def main(argv=None):
     x.add_argument("--red", type=int, help="hilos de red por descarga, tope 8 (0 quita el ajuste)"); x.set_defaults(fn=c_recursos)
     x = s.add_parser("estimar", help="tiempo estimado del nivel 2 por tabla y lado")
     x.add_argument("--trabajo", "--lote", dest="lote", required=True); x.add_argument("--flujo"); x.set_defaults(fn=c_estimar)
-    x = s.add_parser("acta", help="genera el acta del lote (solo con 3/3 compuertas y por el responsable)")
-    x.add_argument("accion", choices=["generar"]); x.add_argument("--lote", required=True); x.add_argument("--version", default="1.0")
+    x = s.add_parser("acta", help="acta de entrega en formato normalizado: del lote armado (3/3 compuertas) o de los EXITOSOS de --trabajos")
+    x.add_argument("accion", choices=["generar", "capa"]); x.add_argument("--lote", required=True); x.add_argument("--version", default="1.0")
+    x.add_argument("--trabajos", help="T1,T2: toma los flujos de sus EXITOSOS (cierre-v1) en vez de lotes/N/lote.json")
+    x.add_argument("--fecha", help="fecha del acta (por defecto hoy)")
+    x.add_argument("--clave", help="capa: tabla (clave) o flujo (nombre en Fabric)"); x.add_argument("--capa", help="Bronze · Silver · Gold [· Postgres|SFTP]")
     x.set_defaults(fn=c_acta)
     x = s.add_parser("mejora", help="registro de mejoras del proceso para compartir con el equipo")
     x.add_argument("accion", choices=["registrar", "pendientes", "compartida"]); x.add_argument("--que"); x.add_argument("--por-que")

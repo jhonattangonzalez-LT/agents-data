@@ -265,6 +265,9 @@ def de_flujo(nombre, entradas, salidas=None, idx=None):
     orq = [o for pid in propios for o in idx["invocado_por"].get(pid, [])]
     cascada = {i: o["orquestador"] for o in orq for i in o["antes"]}
     directas, indirectas, sin_prod, origen = [], [], [], []
+    # una expresion del pipeline sin resolver (@{concat(...)}) no es una ruta: no se cuenta como entrada sin productor
+    no_resueltas = [e for e in ent if "@{" in e or e.startswith("@")]
+    ent = [e for e in ent if e not in no_resueltas]
     propias = [e for e in ent if any(_coincide(e, s_) for s_ in sal)]     # lee su propia salida (incremental): no es dependencia
     ent = [e for e in ent if e not in propias]
     for e in ent:
@@ -307,6 +310,7 @@ def de_flujo(nombre, entradas, salidas=None, idx=None):
     return {"medido_utc": _ahora(), "indice_utc": idx["generado_utc"], "flujo": nombre, "estado": estado, "pipeline_encontrado": bool(propios),
             "orquestadores": [{"orquestador": o["orquestador"], "actividad": o["actividad"]} for o in orq],
             "directas": directas, "indirectas": indirectas, "entradas_sin_productor": sin_prod, "entradas_de_origen_externo": origen,
+            "entradas_no_resueltas": no_resueltas,
             "que_dependen_de_este": abajo, "entradas_evaluadas": ent, "lee_su_propia_salida": propias,
             "sin_rol": [r for pid in propios for r in P[pid]["sin_rol"]],
             "resumen": " · ".join(partes),
