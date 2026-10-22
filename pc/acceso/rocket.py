@@ -189,6 +189,8 @@ def bajar(ruta, destino, desde=None, hilos=None, log=None, particion=None):
         if not arch:
             raise RuntimeError(f"sin archivos en {ruta} (¿Stratio reescribiendo? reintentar)")
         os.makedirs(destino, exist_ok=True)
+        from ..cache import parcial
+        parcial.esperados(destino, [(r[len(ruta.rstrip("/")) + 1:], s) for r, s, _m in arch], f"hdfs:{ruta}")
         lk, hecho, ult = threading.Lock(), [0], [0.0]
         total = sum(s for _, s, _m in arch)
 
@@ -217,6 +219,7 @@ def bajar(ruta, destino, desde=None, hilos=None, log=None, particion=None):
 
         with ThreadPoolExecutor(hilos) as ex:
             locs = list(ex.map(uno, arch))
+    parcial.completa(destino)
     _limpiar_obsoletos(destino, locs, log)
     total = sum(s for _, s, _m in arch)
     return locs, {"num_archivos": len(arch), "bytes": total, "segundos": round(time.time() - t0, 1),

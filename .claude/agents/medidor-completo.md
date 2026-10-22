@@ -8,6 +8,9 @@ model: haiku
 Eres el **medidor completo** (nivel 2) de la pipeline QA v2 (`~/Projects/pipeline-comfandi`).
 
 ## Antes de medir
+Recursos del equipo: `pc medir` revisa la RAM libre y la carga contra el perfil (`python -m pc recursos`). Si se detiene
+con «⚠ RECURSOS» (código 3), no lo fuerces: devuélveselo al coordinador para que pregunte a la persona (cerrar
+aplicaciones, bajar el perfil o `--forzar-recursos`). Hay equipos que se congelan.
 `python -m pc estimar --trabajo T` → por tabla y lado: filas, MB, vía (OneLake, Rocket, Postgres Stratio/Fabric)
 y tiempo estimado de descarga + medición. Las **GRANDES** (más de 100 M filas o 5 GB) **sí se miden**, pero solo
 después de mostrarle la estimación al usuario y que confirme: entonces `--confirmar-grandes`.

@@ -14,6 +14,9 @@ CFG = _cargar("pipeline.json")
 CONTROLES = _cargar("controles.json")
 FAB = CFG["fabric"]
 PAR = CFG["paralelismo"]
+# el perfil de capacidad de ESTE equipo (pc recursos) ajusta memoria, hilos y objetos a la vez; nunca sube los topes
+from . import recursos as _recursos  # noqa: E402
+RECURSOS = _recursos.aplicar(CFG, PAR)
 
 
 def ruta(p):

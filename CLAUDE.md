@@ -12,6 +12,13 @@ en cada decisión**. Los agentes no se llaman entre sí. Intérprete `~/Projects
    y continúa desde el paso que indique (todo el estado vive en disco: sobrevive a un apagado). Si hay un cierre previo,
    `trabajos/T/cierre/PENDIENTES_T.md` + `python -m pc trabajo retomar --trabajo T` (propone el ciclo; lo confirma una persona).
 3. `fab auth status`: si no hay sesión, pide `! fab auth login`.
+3 bis. `python -m pc recursos`: CPU (modelo, MHz, núcleos), RAM, carga y el perfil de capacidad de ESTE equipo. Si dice
+   «SIN GUARDAR», configúralo con la persona: `python -m pc recursos --configurar` da lo observado y 3 preguntas rápidas
+   con opciones sacadas del equipo (perfil **máxima posible · máxima moderada · promedio** · tope de hilos · RAM a usar);
+   hazlas en una sola tanda de AskUserQuestion y fija la respuesta con
+   `python -m pc recursos --perfil P [--hilos N] [--ram-gb X]` (por equipo, en `~/.config/pc/recursos.json`; la persona
+   puede cambiarlo cuando quiera). Hay equipos que se congelan con validaciones pesadas: nunca subas el perfil ni los
+   ajustes sin preguntar.
 4. `python -m pc panel --asegurar` (arranca el panel en vivo si no está arriba) y dale al usuario el enlace
    http://localhost:8765 con el resultado. El hook de inicio te da un ave (p. ej. «🦜 Loro»): preséntate con ella, así el
    usuario distingue cada chat en el panel. La VPN es frágil:
@@ -43,6 +50,17 @@ en cada decisión**. Los agentes no se llaman entre sí. Intérprete `~/Projects
   4. Semáforo ROJO: una pregunta: confirmar la devolución (el chat a desarrollo ya está listo) o forzar el nivel 2.
 - Al terminar (o al pausar) un coordinador: `python -m pc cierre --trabajo T` → `EXITOSOS_T.md` (para el agente de
   actas, enlaces del portal verificados con HEAD) y `PENDIENTES_T.md` (devoluciones, archivos locales, respuesta de desarrollo).
+  El EXITOSOS tiene formato fijo: **1 resumen de ejecuciones · 2 resumen de justificaciones y aprobaciones · 3 por flujo:
+  ejecución, cotejos de tablas y métricas** (solo enlaces de resultados). En `cierre/` quedan solo esos dos archivos: no
+  se escriben resúmenes ni copias a mano. Si `pc cierre` dice «EXITOSOS INCOMPLETO», **pregunta al QA** cada faltante
+  (AskUserQuestion), resuélvelo (medir, publicar, registrar) y regenera; nunca se entrega con `completo: false`.
+- **Recursos del equipo:** `pc descargar`, `pc medir`, `pc cotejar` y `pc diferenciar` miran antes la RAM libre y la carga.
+  Si se detienen (código 3, «⚠ RECURSOS»), pregunta a la persona: cerrar aplicaciones, bajar el perfil o seguir con
+  `--forzar-recursos`. No lances dos agentes pesados (medición o cotejo) a la vez si el perfil es moderada o promedio.
+- **Descargas caídas:** si una descarga se corta (VPN, cookie, OneLake) y `pc descargar` imprime «CAÍDA …», pregunta:
+  reintentar completa · **cotejar la parte que llegó** (`pc descargar --parcial`: solo archivos completos; cotejo por
+  corte sobre las particiones enteras con `pc comparar --sql`, y `salvedad_parcial` en lote.json con la decisión) ·
+  esperar. Nunca se presenta una parte como el dato completo: el cotejo queda con faltante hasta la salvedad.
 
 ## 1. Preguntas por fase (hazlas tú; no supongas)
 
@@ -87,7 +105,7 @@ caché se conserva para el ciclo siguiente (`pc ciclo --alcance lado`).
 | Paso | Agente | Comando |
 |---|---|---|
 | código de los dos lados: reglas de negocio IGUAL / DISTINTA | revisor-codigo | `pc codigo bajar --version N` · `pc codigo regla` · `pc codigo cerrar` |
-| roles reales + ejecutar y validar | etl-validador (v10) | `pc etl lanzar --trabajo T --esperar` · `pc etl recoger` |
+| roles reales + ejecutar y validar + dependencias directas/indirectas | etl-validador (v10) | `pc etl lanzar --trabajo T --esperar` · `pc etl recoger` · `pc etl evidencia` (mide también `pc dependencias`) |
 | niveles 0 y 1 de los dos lados + cotejo rápido | medidor-rapido-fabric / -stratio (Postgres: postgres-fabric) | `pc rapido --trabajo T` |
 | semáforo | semaforo | `pc semaforo --trabajo T` |
 | estimar y descargar (siempre se avisa) | gestor-descargas | `pc estimar` · `pc descargar` |

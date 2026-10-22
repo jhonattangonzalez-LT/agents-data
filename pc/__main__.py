@@ -232,6 +232,7 @@ def c_etl(a):
                 e = E.medir(a.lote, n)
                 v = e.get("corrida_validada") or {}
                 print(f"{n}: corrida {v.get('inicio_utc')} {v.get('estado')} · {len(e['entradas'])} entrada(s) · {len(e['salidas'])} salida(s)", flush=True)
+                _dependencias(a.lote, n)
             except Exception as x:
                 L.bitacora(a.lote, "etl-validador", "medir_evidencia", estado="ERROR", flujo=n, error=f"{type(x).__name__}: {str(x)[:200]}")
                 print(f"{n}: ERROR {type(x).__name__}: {str(x)[:200]}", flush=True)
@@ -395,7 +396,9 @@ def c_semaforo(a):
         cot = {o["clave"]: L.leer(a.lote, f"cotejo_rapido/{o['clave']}.json") for o in f["objetos"]}
         cot = {k: v for k, v in cot.items() if v}
         from . import codigo
+        from .reportes.formato2 import salvedad_stratio
         s = semaforo.evaluar(f["nombre_fabric"], f["grupo"], etl, cot, claves_esperadas=[o["clave"] for o in f["objetos"]],
+                             sin_stratio={o["clave"]: salvedad_stratio(o)["motivo"] for o in f["objetos"] if salvedad_stratio(o)},
                              avisos_codigo=None if f["grupo"] == "orquestador" else codigo.aviso_semaforo(a.lote, f["nombre_fabric"]))
         L.guardar(a.lote, f"semaforo/{f['nombre_fabric']}.json", s)
         L.bitacora(a.lote, "semaforo", "evaluar", {"estado": s["estado"], "motivos_rojo": s["motivos_rojo"], "avisos": s["avisos"]},
@@ -449,8 +452,61 @@ def _rapido_desde_descarga(lote, f, o, carpeta, archivos, meta):
         _ev(lote, "medidor-rapido-stratio", "medir_rapido_desde_descarga", f, o, t0, f"ERROR {type(e).__name__}: {e}", 1)
 
 
+def _recursos(a, tarea, objetos=None):
+    """Antes de un paso pesado: RAM y carga del equipo frente a lo que el perfil va a abrir. Sin margen, se detiene."""
+    from . import recursos
+    ok, avisos, est, lm = recursos.comprobar(tarea, objetos)
+    if not avisos:
+        return
+    print(f"⚠ RECURSOS · {tarea}: " + recursos.texto(est, lm).replace("\n", " · "))
+    for x in avisos:
+        print("  -", x)
+    if not ok and not getattr(a, "forzar_recursos", False):
+        print("  → detenido: preguntar a la persona antes de exigirle más al equipo (o repetir con --forzar-recursos)")
+        sys.exit(3)
+
+
+def c_recursos(a):
+    from . import recursos
+    if a.configurar:
+        import json as _j
+        est = recursos.estado()
+        print(_j.dumps({"observado": est, "guardado": recursos.perfil_guardado(), "preguntas": recursos.propuesta(est)},
+                       ensure_ascii=False, indent=1))
+        return
+    aj = {k: getattr(a, k) for k in recursos.AJUSTES}
+    if a.perfil or any(v is not None for v in aj.values()):
+        d = recursos.fijar(a.perfil, **aj)
+        print(f"perfil de este equipo: {d['perfil']} ({recursos.PERFILES[d['perfil']]['texto']})"
+              f"{' · ajustes ' + str(d['ajustes']) if d['ajustes'] else ''} · {recursos.ARCHIVO}")
+    print(recursos.texto())
+
+
+def _dependencias(lote, n, refrescar=False):
+    """Directas, indirectas y entradas sin productor del flujo (pc/etl/dependencias.py): parte del paso del etl-validador."""
+    from .etl import dependencias as DP
+    try:
+        d = DP.medir(lote, n, refrescar)
+        print(f"   dependencias {d['estado']}: {d['resumen']}", flush=True)
+        return d
+    except Exception as x:
+        L.bitacora(lote, "etl-validador", "medir_dependencias", estado="ERROR", flujo=n, error=f"{type(x).__name__}: {str(x)[:200]}")
+        print(f"   dependencias ERROR {type(x).__name__}: {str(x)[:200]}", flush=True)
+
+
+def c_dependencias(a):
+    d = L.leer(a.lote, "lote.json")
+    for i, f in enumerate(d["flujos"]):
+        if a.flujo and f["nombre_fabric"] != a.flujo:
+            continue
+        print(f["nombre_fabric"], flush=True)
+        _dependencias(a.lote, f["nombre_fabric"], a.refrescar and i == 0)
+    _v4(a.lote)
+
+
 def c_descargar(a):
     from .medir import completo as C
+    _recursos(a, "descargar")
     if a.anticipada:      # Stratio no depende de la corrida de Fabric: se baja sin esperar el semaforo
         a.lado = "STRATIO"
     hechos = []
@@ -469,7 +525,16 @@ def c_descargar(a):
                 hechos.append((k, lado, "OMITIDA: tabla grande; ver `python -m pc estimar` y repetir con --confirmar-grandes"))
                 continue
             import time as _t
+            from .cache import gestor, parcial
             t0 = _t.time()
+            inv = parcial.inventario(gestor.carpeta(a.lote, lado, k))
+            if a.parcial and inv:      # la persona acepto cotejar la parte que llego: sin volver a bajar
+                parcial.registrar(a.lote, lado, k, inv)
+                L.bitacora(a.lote, "gestor-descargas", "registrar_parcial", inv | {"completos": len(inv["completos"])},
+                           estado="AVISO", nivel=2, flujo=f["nombre_fabric"], clave=k)
+                hechos.append((k, lado, f"PARCIAL registrado: {inv['archivos_completos']} de {inv['archivos_total']} archivo(s); "
+                                        "el cotejo queda con faltante hasta registrar salvedad_parcial"))
+                continue
             try:
                 if lado == "FABRIC":
                     fn = {"delta": lambda: C.bajar_delta_fabric(a.lote, k, src["ruta"]),
@@ -488,6 +553,11 @@ def c_descargar(a):
                     _rapido_desde_descarga(a.lote, f, o, d, arch, m)
             except Exception as e:
                 hechos.append((k, lado, f"ERROR {type(e).__name__}: {str(e)[:160]}"))
+                inv = parcial.inventario(gestor.carpeta(a.lote, lado, k))
+                if inv and inv["archivos_completos"]:
+                    # se cayo a medias: lo que llego se cuenta y se pregunta si se coteja esa parte (nunca en silencio)
+                    L.guardar(a.lote, f"descargas/caidas/{lado}_{k}.json", {k_: v for k_, v in inv.items() if k_ != "completos"})
+                    hechos.append((k, lado, parcial.texto(inv, k, lado)))
             _ev(a.lote, "gestor-descargas", "descargar", f, o, t0, hechos[-1][2], 2)
     for h in hechos:
         print(*h)
@@ -496,6 +566,7 @@ def c_descargar(a):
 def c_medir(a):
     from .cache import gestor
     from .medir import completo as C
+    _recursos(a, "medir")
     man = gestor.manifiesto(a.lote)["entradas"]
     tareas = []
     for f, o in _sel(a):
@@ -534,6 +605,7 @@ def c_medir(a):
 def c_cotejar(a):
     from .cache import gestor
     from .cotejo import completo as CC
+    _recursos(a, "cotejar", 1)
     idx = L.leer(a.lote, "cotejos/indice.json", {}) or {}
     for f, o in _sel(a):
         k = o["clave"]
@@ -641,8 +713,13 @@ def c_parte(a):
 def c_cierre(a):
     from . import cierre
     _mensajes(a.lote)
-    pe, pp, ex, pn = cierre.generar(a.lote, comprobar_head=not a.sin_head)
+    pe, pp, ex, pn, falt = cierre.generar(a.lote, comprobar_head=not a.sin_head)
     print(f"EXITOSOS   {len(ex)} flujo(s) · {pe}\nPENDIENTES {len(pn)} flujo(s) · {pp}")
+    if falt:
+        # el markdown de exitosos debe salir completo: lo que falta se resuelve con el QA antes de entregarlo
+        print(f"⚠ EXITOSOS INCOMPLETO · {len(falt)} faltante(s) (front-matter completo: false) · PREGUNTAR AL QA y regenerar:")
+        for x in falt:
+            print(f"  - {x['flujo']}: {x['falta']}")
 
 
 def c_panel(a):
@@ -793,6 +870,7 @@ def c_comparar(a):
 def c_diferenciar(a):
     from .cotejo import analisis as A
     from .cotejo import diferenciar as D
+    _recursos(a, "diferenciar", 1)
     import time as _t
     t0 = _t.time()
     con, info = A.abrir(a.lote, a.clave)
@@ -860,7 +938,7 @@ def c_codigo(a):
     elif a.accion == "comentar":
         if not (a.flujo and a.id and a.decision and a.comentario):
             raise SystemExit("comentar exige --flujo --id --decision --comentario")
-        x = codigo.comentar(a.lote, a.flujo, a.id, a.decision, a.comentario, a.verificado_qa, a.por)
+        x = codigo.comentar(a.lote, a.flujo, a.id, a.decision, a.comentario, a.verificado_qa, a.por, a.salvedad)
         print(f"{a.flujo} {a.id}: {x['decision']} ({len(x['comentarios'])} comentario(s)) · cotejo de flujo actualizado en local")
     elif a.accion == "cotejo":
         flujos = [a.flujo] if a.flujo else [f["nombre_fabric"] for f in L.leer(a.lote, "lote.json")["flujos"] if f["grupo"] != "orquestador"]
@@ -914,6 +992,8 @@ def main(argv=None):
         x.add_argument("--lado", choices=["FABRIC", "STRATIO"]); x.add_argument("--forzar", action="store_true")
         x.add_argument("--pruebas", action="store_true"); x.add_argument("--confirmar-grandes", action="store_true")
         x.add_argument("--anticipada", action="store_true", help="descargar: solo Stratio, sin esperar el semaforo (no depende de la corrida de Fabric)")
+        x.add_argument("--forzar-recursos", action="store_true", help="sigue aunque el equipo no tenga RAM o carga para el paso (lo decide la persona)")
+        x.add_argument("--parcial", action="store_true", help="descargar: tras una caida, registra solo los archivos completos para cotejar esa parte (con salvedad)")
         x.set_defaults(fn=fn)
     x = s.add_parser("cache"); x.add_argument("accion", choices=["espacio", "ver", "limpiar"]); x.add_argument("--trabajo", "--lote", dest="lote")
     x.add_argument("--ejecutar", action="store_true"); x.add_argument("--forzar", action="store_true"); x.set_defaults(fn=c_cache)
@@ -951,7 +1031,17 @@ def main(argv=None):
     x.add_argument("--trabajo", "--lote", dest="lote", required=True); x.add_argument("--clave", required=True)
     x.add_argument("--llave", help="columnas de la llave (si no: declarada en lote.json o se busca y se comprueba)")
     x.add_argument("--columna-fecha", help="para localizar por mes (si no: la de la ventana de fechas o la primera fecha)")
-    x.set_defaults(fn=c_diferenciar)
+    x.add_argument("--forzar-recursos", action="store_true"); x.set_defaults(fn=c_diferenciar)
+    x = s.add_parser("dependencias", help="dependencias directas (cascada) e indirectas (alimentan sus entradas) de cada flujo")
+    x.add_argument("--trabajo", "--lote", dest="lote", required=True); x.add_argument("--flujo")
+    x.add_argument("--refrescar", action="store_true", help="rehace el indice de pipelines (si no, dura un dia)"); x.set_defaults(fn=c_dependencias)
+    x = s.add_parser("recursos", help="RAM, CPU y carga de este equipo y su perfil de capacidad (maxima · moderada · promedio)")
+    x.add_argument("--perfil", choices=["maxima", "moderada", "promedio"], help="fija el perfil de ESTE equipo")
+    x.add_argument("--configurar", action="store_true", help="lo observado y las preguntas rápidas (JSON) para configurar el equipo")
+    x.add_argument("--hilos", type=int, help="tope TOTAL de hilos de cómputo (0 quita el ajuste)")
+    x.add_argument("--ram-gb", dest="ram_gb", type=float, help="RAM que puede usar la medición (0 quita el ajuste)")
+    x.add_argument("--objetos", type=int, help="objetos medidos a la vez (0 quita el ajuste)")
+    x.add_argument("--red", type=int, help="hilos de red por descarga, tope 8 (0 quita el ajuste)"); x.set_defaults(fn=c_recursos)
     x = s.add_parser("estimar", help="tiempo estimado del nivel 2 por tabla y lado")
     x.add_argument("--trabajo", "--lote", dest="lote", required=True); x.add_argument("--flujo"); x.set_defaults(fn=c_estimar)
     x = s.add_parser("acta", help="genera el acta del lote (solo con 3/3 compuertas y por el responsable)")
@@ -997,12 +1087,13 @@ def main(argv=None):
     x.add_argument("--evidencia-fuente", help="codigo/<flujo>/fuentes/<x>.json de pc fuente medir (obligatoria si la diferencia es de fuente)")
     x.add_argument("--id"); x.add_argument("--veredicto", choices=["IGUAL", "CON_DIFERENCIAS"]); x.add_argument("--resumen")
     x.add_argument("--decision", choices=["ACEPTADA", "DEVOLVER", "PENDIENTE"]); x.add_argument("--comentario")
+    x.add_argument("--salvedad", help="aceptar con lo no medido a la vista: por qué no hay dónde medirlo (decisión humana)")
     x.add_argument("--verificado-qa", help="qué verificó QA y con qué evidencia"); x.add_argument("--por")
     x.add_argument("--publicar", action="store_true", help="cotejo: reescribe en sitio el cotejo de flujo en OneLake (HEAD)")
     x.set_defaults(fn=c_codigo)
     argv, resumen = salida.activo(sys.argv[1:] if argv is None else list(argv))
     a = p.parse_args(argv)
-    sin_trabajo = a.cmd in ("lote", "acta", "mejora", "stratio", "pg", "roles")
+    sin_trabajo = a.cmd in ("lote", "acta", "mejora", "stratio", "pg", "roles", "recursos")
     with salida.envolver(a.cmd, None if sin_trabajo else getattr(a, "lote", None), resumen):
         a.fn(a)
 

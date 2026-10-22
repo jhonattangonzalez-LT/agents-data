@@ -54,9 +54,10 @@ def _listo(cf):
     return e in _LISTOS
 
 
-def _front(tipo, trabajo, flujos, cuerpo):
+def _front(tipo, trabajo, flujos, cuerpo, completo=None):
     h = hashlib.sha256(cuerpo.encode()).hexdigest()
     lin = ["---", f"formato: {FORMATO}", f"tipo: {tipo}", f"trabajo: \"{trabajo}\"", f"generado_utc: \"{_ahora()}\"",
+           *([f"completo: {'true' if completo else 'false'}"] if completo is not None else []),
            f"generado_por: \"{L.usuario()}\"", f"grafo: \"trabajos/{trabajo}/grafo/grafo.json\"", f"huella_sha256: \"{h}\"",
            "flujos:"]
     for f in flujos:
@@ -135,6 +136,7 @@ def _quien(d):
 
 def generar(trabajo, comprobar_head=True):
     from .reportes import v4
+    from .reportes.formato2 import salvedad_stratio
     d = L.leer(trabajo, "lote.json")
     g = G.construir(trabajo)
     pub = _publicados(trabajo)
@@ -153,17 +155,76 @@ def generar(trabajo, comprobar_head=True):
     os.makedirs(dirc, exist_ok=True)
 
     # ------------------------------------------------------------- EXITOSOS
+    # formato fijo (pedido por QA): 1 resumen de ejecuciones · 2 resumen de justificaciones y aprobaciones · 3 por flujo:
+    # ejecución, cotejos de tablas y métricas. Solo enlaces de los resultados (cotejo de flujo, cotejo y métricas S|F por
+    # tabla). Lo que falte no se rellena: se lista en salidas/cierre_faltantes.json y se pregunta al QA.
+    falt = []
+
+    def falta(x, que):
+        falt.append({"flujo": x["flujo"], "falta": que})
+
     out = [f"# Flujos exitosos · trabajo {trabajo}", "",
            f"{len(exitosos)} de {len(d['flujos'])} flujo(s) listos para acta · "
            f"{sum(1 for x in exitosos if x['estado'] == 'APROBADO')} APROBADO · "
            f"{sum(1 for x in exitosos if x['estado'] == 'APROBADO_CON_JUSTIFICACION')} con justificación · "
            f"{sum(1 for x in exitosos if x['estado'] == 'APROBADO_CON_VERIFICACION')} con verificación (APRUEBA)", "",
-           "## 1. Resumen de flujos", "",
-           "| # | Flujo Fabric | Flujo Stratio | FL | Grupo | Versión | Estado | Tablas | Nodo |", "|---|---|---|---|---|---|---|---|---|"]
+           "## 1. Resumen de ejecuciones", "",
+           "| # | Flujo Fabric | Flujo Stratio | FL | Grupo | Versión | Corrida | Inicio (UTC) | Duración | Lanzada por | Dependencias | Tablas |",
+           "|---|---|---|---|---|---|---|---|---|---|---|---|"]
     for i, x in enumerate(exitosos, 1):
-        out.append(f"| {i} | `{x['flujo']}` | {x['stratio'] or '—'} | {x['fl'] or 'sin FL'} | {x['grupo']} | v{x['version']} | "
-                   f"{x['estado']} | {len(x['f']['objetos'])} | `F:{x['flujo']}` |")
-    out += ["", "## 2. Resumen de justificaciones", ""]
+        cv = (x["cf"].get("ejecucion") or {}).get("corrida_validada") or {}
+        fd = ((x["cf"].get("analitica") or x["cf"].get("ingesta") or {}).get("flujos_dependientes") or {})
+        dep = fd.get("resumen") if fd.get("estado") == "MEDIDO" else None
+        if not x["stratio"]:
+            falta(x, "nombre del flujo en Stratio")
+        if not x["fl"]:
+            falta(x, "código FL")
+        if not (cv.get("estado") and cv.get("inicio_utc") and cv.get("duracion_s") is not None):
+            falta(x, "corrida validada (estado, inicio y duración) en el cotejo de flujo")
+        if x["grupo"] != "orquestador" and not dep:
+            falta(x, "dependencias medidas (`python -m pc dependencias`)")
+        x["_cv"], x["_dep"] = cv, dep
+        tabs = len(x["f"]["objetos"]) or (f"en `{x['f']['tablas_en']}`" if x["f"].get("tablas_en") else "por ejecución")
+        dur = cv.get("duracion_s")
+        out.append(f"| {i} | `{x['flujo']}` | {x['stratio'] or '**FALTA**'} | {x['fl'] or '**FALTA**'} | {x['grupo']} | v{x['version']} | "
+                   f"{cv.get('estado') or '**FALTA**'} · `{str(cv.get('run_id') or '')[:8]}` | {str(cv.get('inicio_utc') or '')[:16].replace('T', ' ') or '**FALTA**'} | "
+                   f"{(f'{dur // 60} min {dur % 60:02d} s' if dur is not None else '**FALTA**')} | {cv.get('lanzada_por') or '—'} | "
+                   f"{dep or ('por ejecución' if x['grupo'] == 'orquestador' else '**FALTA**')} | {tabs} |")
+    # aclaraciones del alcance escritas en el lote (flujo agregado al plan, un FL que en Fabric son dos flujos, ...)
+    acl = [x for x in exitosos if x["f"].get("nota_cierre")]
+    if acl:
+        out += ["", "### Aclaraciones del alcance", ""]
+        out += [f"- **{x['fl'] or 'sin FL'} · `{x['flujo']}`**: {x['f']['nota_cierre']}" for x in acl]
+
+    out += ["", "## 2. Resumen de justificaciones y aprobaciones", "", "### 2.1 Aprobaciones", "",
+            "| Flujo | Estado | Por qué se aprueba | Decidió |", "|---|---|---|---|"]
+    for x in exitosos:
+        js_ = [j for o in x["f"]["objetos"] for j in (L.leer(trabajo, f"v4/cotejos/{o['clave']}.json") or {}).get("justificaciones") or []
+               if j.get("decision") in ("JUSTIFICADA", "INFORMATIVA")]
+        quien = {_quien(j["decidido_por"]) for j in js_ if j.get("decidido_por")}
+        comp_ = [c for c in x["cf"].get("comprobaciones") or [] if c.get("resultado") == "JUSTIFICADO"]
+        quien |= {_quien((c.get("decision") or {})["decidido_por"]) for c in comp_ if (c.get("decision") or {}).get("decidido_por")}
+        cod_ = [r_ for r_ in (L.leer(trabajo, f"codigo/{x['flujo']}/revision.json") or {}).get("reglas") or []
+                if r_.get("decision") == "ACEPTADA" and r_.get("salvedad")]
+        for r_ in cod_:          # quien acepto la regla: el ultimo comentario ACEPTADA
+            c_ = next((c for c in reversed(r_.get("comentarios") or []) if c.get("decision") == "ACEPTADA"), None)
+            if c_ and c_.get("por"):
+                quien.add(f"QA ({c_['por']}, {str(c_.get('utc') or '')[:10]})")
+        quien = sorted(quien)
+        v_ = x["cf"].get("verificacion") or {}
+        if x["estado"] == "APROBADO":
+            por = "todos los controles que deciden cumplen, sin diferencias"
+        elif x["estado"] == "APROBADO_CON_VERIFICACION":
+            por = f"verificación {v_.get('por') or ''} {v_.get('decision') or ''}: {v_.get('nota') or ''}".strip()
+        else:
+            por = "; ".join(t for t in (f"{len(js_)} diferencia(s) de tablas con causa medida" if js_ else "",
+                                         f"{len(comp_)} comprobación(es) del flujo justificadas" if comp_ else "",
+                                         f"{len(cod_)} regla(s) de código aceptadas con salvedad" if cod_ else "",
+                                         f"tablas cotejadas en `{x['f']['tablas_en']}`" if x["f"].get("tablas_en") else "") if t) + " (ver 2.2)"
+        if x["estado"] == "APROBADO_CON_JUSTIFICACION" and not quien:
+            falta(x, "quién decidió las justificaciones")
+        out.append(f"| `{x['flujo']}` | {x['estado']} | {por} | {', '.join(quien) or (v_.get('persona') or 'QA (sin diferencias)')} |")
+    out += ["", "### 2.2 Justificaciones", ""]
     hay = False
     for x in exitosos:
         for o in x["f"]["objetos"]:
@@ -172,6 +233,10 @@ def generar(trabajo, comprobar_head=True):
             for j in js:
                 hay = True
                 ej = (j.get("ejemplos") or [])[:1]
+                if not (j.get("causa") or j.get("que_se_encontro")):
+                    falta(x, f"{o['clave']} {j['id']}: causa de la justificación")
+                if not ej:
+                    falta(x, f"{o['clave']} {j['id']}: ejemplo Stratio | Fabric de la diferencia")
                 out.append(f"- **{x['flujo']} · {o['clave']} · {j['id']} · {j.get('control')}**"
                            + (f" · `{j['columna']}`" if j.get("columna") else "")
                            + f" · {_f(j.get('filas_afectadas'))} fila(s) · {j['decision']}"
@@ -179,40 +244,67 @@ def generar(trabajo, comprobar_head=True):
                 out.append(f"  - Causa{' medida' if j.get('causa_medida') else ''}: {j.get('causa') or j.get('que_se_encontro')}")
                 if ej:
                     out.append(f"  - Ejemplo: `{json.dumps(ej[0], ensure_ascii=False, default=str)[:220]}`")
-                out.append(f"  - Nodo: `X:{o['clave']}/{j['id']}`")
-        if x["cf"].get("verificacion"):
-            v_ = x["cf"]["verificacion"]
+        # lo que se acepto fuera de las tablas: flujo sin tablas propias, comprobaciones del flujo y reglas de codigo con salvedad
+        if x["f"].get("tablas_en"):
             hay = True
-            out.append(f"- **{x['flujo']}** · verificación {v_.get('por')} ({v_.get('persona')}): {v_.get('decision')} · {v_.get('nota')}")
+            out.append(f"- **{x['flujo']} · sin tablas propias** · se cotejan en `{x['f']['tablas_en']}` · APROBADO_CON_JUSTIFICACION")
+            out.append(f"  - Motivo: {x['f'].get('sin_tablas_motivo') or '—'}")
+        for c in x["cf"].get("comprobaciones") or []:
+            if c.get("resultado") == "JUSTIFICADO":
+                hay = True
+                d_ = c.get("decision") or {}
+                out.append(f"- **{x['flujo']} · comprobación del flujo** · {c['comprobacion']} · JUSTIFICADA"
+                           + (f" · decidió {_quien(d_['decidido_por'])}" if d_.get("decidido_por") else ""))
+                out.append(f"  - Causa{' medida' if d_.get('causa_medida') else ''}: {d_.get('causa')}")
+        for r_ in (L.leer(trabajo, f"codigo/{x['flujo']}/revision.json") or {}).get("reglas") or []:
+            s_ = r_.get("salvedad")
+            if r_.get("decision") == "ACEPTADA" and s_:
+                hay = True
+                out.append(f"- **{x['flujo']} · código {r_['id']}** · {r_.get('regla')} · {r_.get('resultado')} · ACEPTADA con salvedad")
+                out.append(f"  - Salvedad: {s_.get('motivo') if isinstance(s_, dict) else s_}")
     if not hay:
         out.append("Sin justificaciones: todos los flujos exitosos cumplen sin diferencias.")
-    out += ["", "## 3. Archivos publicados", "",
-            "Enlaces al portal de Fabric (lakehouse transversal de QA). Solo lo publicado con HEAD OK en la versión del cierre.", ""]
+
+    out += ["", "## 3. Flujos: ejecución, cotejos de tablas y métricas", "",
+            "Enlaces al portal de Fabric (lakehouse transversal de QA), solo lo publicado con HEAD OK en la versión del cierre.", ""]
+
+    def enl(ruta, etq, x):
+        t = _enlace(pub, ruta, etq)
+        if not t.startswith("["):
+            falta(x, f"enlace {etq} (no publicado o sin HEAD 200)")
+        return t
     for x in exitosos:
-        v_ = x["version"]
-        nf = x["flujo"]
-        out += [f"### {nf} · v{v_}", "",
-                f"- cotejo_flujo: {_enlace(pub, v4.ruta_ol('cotejo_flujo', nf, v_, pruebas=pr), f'cotejo_flujo_{nf}_v{v_}')}"]
-        for i, o in enumerate(x["f"]["objetos"], 1):
-            k = o["clave"]
-            out.append(f"- cotejo tabla {i} · `{k}`: {_enlace(pub, v4.ruta_ol('cotejo', k, v_, pruebas=pr), f'cotejo_{k}_v{v_}')}")
-        for i, o in enumerate(x["f"]["objetos"], 1):
-            k = o["clave"]
-            if o.get("stratio"):
-                out.append(f"- métricas Stratio tabla {i} · `{k}`: "
-                           f"{_enlace(pub, v4.ruta_ol('medicion', k, v_, 'STRATIO', pr), f'medicion_stratio_{k}_v{v_}')}")
-        for i, o in enumerate(x["f"]["objetos"], 1):
-            k = o["clave"]
-            if o.get("fabric"):
-                out.append(f"- métricas Fabric tabla {i} · `{k}`: "
-                           f"{_enlace(pub, v4.ruta_ol('medicion', k, v_, 'FABRIC', pr), f'medicion_fabric_{k}_v{v_}')}")
-        out.append("")
-    out += ["## 4. Grafo de cada flujo", ""]
-    for x in exitosos:
-        out += [f"<details><summary>{x['flujo']}</summary>", "", G.mermaid(trabajo, x["flujo"], g), "", "</details>", ""]
+        v_, nf, cv = x["version"], x["flujo"], x["_cv"]
+        dur = cv.get("duracion_s")
+        out += [f"### {nf} · v{x['version']} · {x['estado']}", "", "**Ejecución**", "",
+                f"- Corrida `{cv.get('run_id') or '—'}` · {cv.get('estado') or '—'} · inicio {str(cv.get('inicio_utc') or '—')[:19].replace('T', ' ')} UTC · "
+                f"{(f'{dur // 60} min {dur % 60:02d} s' if dur is not None else 'duración no registrada')} · lanzada por {cv.get('lanzada_por') or '—'}",
+                f"- Dependencias: {x['_dep'] or ('por ejecución' if x['grupo'] == 'orquestador' else 'no medidas')}",
+                f"- Cotejo del flujo: {enl(v4.ruta_ol('cotejo_flujo', nf, v_, pruebas=pr), f'cotejo_flujo_{nf}_v{v_}', x)}", ""]
+        objs = x["f"]["objetos"]
+        if objs:
+            out += ["**Cotejos de tablas**", "", "| # | Tabla | Filas Stratio | Filas Fabric | Resultado | Cotejo |", "|---|---|---|---|---|---|"]
+            for i, o in enumerate(objs, 1):
+                k = o["clave"]
+                co = L.leer(trabajo, f"v4/cotejos/{k}.json") or {}
+                m = (co.get("metricas") or {}).get("filas") or {}
+                csl = (co.get("encabezado") or {}).get("como_se_leyo") or {}
+                fs_ = m.get("stratio") if m.get("stratio") is not None else (csl.get("stratio") or {}).get("filas")
+                ff_ = m.get("fabric") if m.get("fabric") is not None else (csl.get("fabric") or {}).get("filas")
+                out.append(f"| {i} | `{k}` | {_f(fs_) if fs_ is not None else 'sin lado Stratio'} | {_f(ff_)} | {(co.get('encabezado') or {}).get('estado') or '**FALTA**'} | "
+                           f"{enl(v4.ruta_ol('cotejo', k, v_, pruebas=pr), f'cotejo_{k}_v{v_}', x)} |")
+            out += ["", "**Métricas**", "", "| # | Tabla | Métricas Stratio | Métricas Fabric |", "|---|---|---|---|"]
+            for i, o in enumerate(objs, 1):
+                k = o["clave"]
+                ms_ = (enl(v4.ruta_ol("medicion", k, v_, "STRATIO", pr), f"medicion_stratio_{k}_v{v_}", x) if o.get("stratio")
+                       else "sin lado Stratio" + (f" (salvedad: {salvedad_stratio(o)['motivo']})" if salvedad_stratio(o) else ""))
+                mf_ = enl(v4.ruta_ol("medicion", k, v_, "FABRIC", pr), f"medicion_fabric_{k}_v{v_}", x) if o.get("fabric") else "**FALTA**"
+                out.append(f"| {i} | `{k}` | {ms_} | {mf_} |")
+            out.append("")
     cuerpo = "\n".join(out) + "\n"
     p_ex = os.path.join(dirc, f"EXITOSOS_{trabajo}.md")
-    open(p_ex, "w", encoding="utf8").write(_front("EXITOSOS", trabajo, exitosos, cuerpo))
+    open(p_ex, "w", encoding="utf8").write(_front("EXITOSOS", trabajo, exitosos, cuerpo, completo=not falt))
+    L.guardar(trabajo, "salidas/cierre_faltantes.json", {"generado_utc": _ahora(), "completo": not falt, "faltantes": falt})
 
     # ------------------------------------------------------------- PENDIENTES
     out = [f"# Flujos pendientes · trabajo {trabajo}", "",
@@ -291,7 +383,7 @@ def generar(trabajo, comprobar_head=True):
     open(p_pe, "w", encoding="utf8").write(_front("PENDIENTES", trabajo, pendientes, cuerpo))
     L.bitacora(trabajo, "coordinador", "cierre", {"exitosos": [x["flujo"] for x in exitosos], "pendientes": sorted(pend)},
                salidas=[os.path.relpath(p_ex, base), os.path.relpath(p_pe, base)])
-    return p_ex, p_pe, exitosos, pendientes
+    return p_ex, p_pe, exitosos, pendientes, falt
 
 
 _RESP = re.compile(r"<!-- respuesta:(?P<f>[^ ]+) -->\n(?P<t>.*?)<!-- /respuesta:(?P=f) -->", re.S)

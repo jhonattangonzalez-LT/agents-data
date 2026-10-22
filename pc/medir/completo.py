@@ -47,6 +47,8 @@ def bajar_delta_fabric(lote, clave, tabla, ws=None, lh=None, log=None):
     dvs = _dv_archivos([a["deletionVector"] for a in vig if (a.get("deletionVector") or {}).get("storageType") == "u"])
     tareas += [(f"{base}/{d}", os.path.join(dest, d), None) for d in dvs]
     import threading
+    from ..cache import parcial
+    parcial.esperados(dest, [(os.path.relpath(t[1], dest), t[2]) for t in tareas], f"onelake:{base}")
     lk, hecho, ult = threading.Lock(), [0], [0.0]
 
     def una(t):
@@ -59,6 +61,7 @@ def bajar_delta_fabric(lote, clave, tabla, ws=None, lh=None, log=None):
                     bytes=hecho[0], bytes_total=total, pct=round(100 * hecho[0] / total, 1) if total else None)
     with ThreadPoolExecutor(PAR["onelake_hilos"]) as ex:
         list(ex.map(una, tareas))
+    parcial.completa(dest)
     archivos = [os.path.join(dest, urllib.parse.unquote(a["path"])) for a in vig]
     # una re-descarga deja en la cache los parquet de versiones anteriores y la medicion los leeria: fuera
     from ..acceso.rocket import _limpiar_obsoletos
@@ -77,8 +80,11 @@ def bajar_files_fabric(lote, clave, directorio, ws=None, lh=None, log=None):
           and not p["name"].rsplit("/", 1)[-1].startswith(("_", "."))]
     dest = gestor.carpeta(lote, "FABRIC", clave)
     pref = directorio.rstrip("/") + "/"
+    from ..cache import parcial
+    parcial.esperados(dest, [(p["name"][len(pref):], p["contentLength"]) for p in ps], f"onelake:{directorio}")
     with ThreadPoolExecutor(PAR["onelake_hilos"]) as ex:
         locs = list(ex.map(lambda p: ol.bajar(p["name"], os.path.join(dest, p["name"][len(pref):]), p["contentLength"], ws, lh), ps))
+    parcial.completa(dest)
     meta = {"directorio": directorio, "lector": _lector(locs), "ultima_modificacion": max((p.get("lastModified") or "") for p in ps) if ps else None}
     gestor.registrar(lote, "FABRIC", clave, f"onelake:{directorio}", locs, meta)
     return dest, locs, meta

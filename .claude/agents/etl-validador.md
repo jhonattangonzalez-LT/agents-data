@@ -50,6 +50,18 @@ validador ya no sirve: vuelve a validar sobre la corrida nueva. Un veredicto gen
 deja el flujo EN_REVISION (comprobación «El validador ETL probó la corrida validada»).
 
 ## Dependencias reales
+**Directas e indirectas, siempre medidas** (desde 2026-10-22; antes 229 de 241 cotejos de analítica decían «sin
+dependencias» sin haberlas buscado): `python -m pc etl evidencia --trabajo T` ya corre `python -m pc dependencias` al
+terminar cada flujo (también suelto: `python -m pc dependencias --trabajo T [--flujo F] [--refrescar]`). Escribe
+`etl/dependencias/<F>.json` y entra en `flujos_dependientes` del cotejo de flujo, de donde lo toma el acta:
+- **DIRECTA**: el flujo que escribe una entrada va en la MISMA cascada (un orquestador invoca a los dos y el productor
+  corre antes por `dependsOn`): se ejecutan sí o sí juntos y en ese orden.
+- **INDIRECTA**: el flujo que escribe la entrada la alimenta, pero corre por su cuenta (otra programación u orquestador).
+- **Sin productor**: ningún pipeline de QA la escribe (copia manual u origen externo): se dice así.
+- «Sin dependencias» solo si se midió; si el pipeline no se encontró queda `NO_MEDIDO` (pasar `item_fabric` en el lote).
+Quién escribe sale del código (banderas de salida del zip según load.py, con su valor en la Variable Library) o del
+destino de cada Copy; nunca del nombre de la bandera.
+
 **Linaje de cada entrada, siempre medido** (con el revisor de código, que lee qué fuente usa el flujo):
 `python -m pc fuente medir --trabajo T --flujo F --fabric <Files/… o esquema.tabla de la entrada> [--stratio <ruta HDFS
 del origen>] [--contenido "<filas y SHA-256 medidos>"]`. Busca en todos los pipelines, notebooks y definiciones de Spark

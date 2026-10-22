@@ -296,18 +296,23 @@ def aviso_semaforo(trabajo, flujo):
 DECISIONES_REGLA = ("ACEPTADA", "DEVOLVER", "PENDIENTE")
 
 
-def comentar(trabajo, flujo, rid, decision, comentario, verificado_qa=None, por=None):
+def comentar(trabajo, flujo, rid, decision, comentario, verificado_qa=None, por=None, salvedad=None):
     """Comentario y decision sobre una regla que no es IGUAL (respuesta de desarrollo, verificacion de QA, aceptacion).
-    No reabre la revision: deja el historial en la regla y actualiza el cotejo de flujo de la MISMA version."""
+    No reabre la revision: deja el historial en la regla y actualiza el cotejo de flujo de la MISMA version.
+    `salvedad`: por que lo `no_medido` no se puede medir (la plataforma no lo expone o no existe); permite aceptar y la
+    regla queda «aceptada con salvedad», con lo no medido a la vista (no se convierte en medido)."""
     assert decision in DECISIONES_REGLA, decision
     r = revision(trabajo, flujo)
     x = next((g for g in r["reglas"] if g["id"] == rid), None)
     if not x:
         raise ValueError(f"{flujo}: no existe la regla {rid}")
-    if decision == "ACEPTADA" and x.get("no_medido"):
-        raise ValueError(f"no se acepta con algo sin medir: {x['no_medido']}")
+    if decision == "ACEPTADA" and x.get("no_medido") and not salvedad:
+        raise ValueError(f"no se acepta con algo sin medir: {x['no_medido']} "
+                         "(si no hay donde medirlo, --salvedad con el motivo)")
     c = {"decision": decision, "comentario": comentario, "verificado_qa": verificado_qa,
          "por": por or L.usuario(), "utc": _ahora()}
+    if decision == "ACEPTADA" and x.get("no_medido") and salvedad:
+        c["salvedad"] = x["salvedad"] = {"motivo": salvedad, "no_medido": x["no_medido"]}
     x.setdefault("comentarios", []).append(c)
     x["decision"] = decision
     L.guardar(trabajo, f"codigo/{flujo}/revision.json", r)
@@ -348,7 +353,8 @@ def para_cotejo(trabajo, flujo):
         "reglas_no_iguales": [{"id": g["id"], "regla": g["regla"], "resultado": g["resultado"], "clase": g.get("clase"),
                                "porque": g.get("porque"), "propuesta": g.get("propuesta"), "impacto": g.get("impacto"),
                                "stratio": g["stratio"], "fabric": g["fabric"], "decision": g.get("decision") or "PENDIENTE",
-                               "comentarios": g.get("comentarios") or []} for g in no_ig],
+                               "comentarios": g.get("comentarios") or [],
+                               "salvedad": g.get("salvedad")} for g in no_ig],
         "resumen": r.get("resumen"), "cerrado_por": r.get("cerrado_por"), "cerrado_utc": r.get("cerrado_utc"),
         "actualizado_utc": _ahora(),
     }

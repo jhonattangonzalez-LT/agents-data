@@ -13,10 +13,13 @@ Un hallazgo NO detiene el lote: el flujo en ROJO sale del lote y se confirma en 
 import datetime
 
 
-def evaluar(flujo, grupo, etl=None, cotejos=None, orquestador_hijos=None, claves_esperadas=None, avisos_codigo=None):
+def evaluar(flujo, grupo, etl=None, cotejos=None, orquestador_hijos=None, claves_esperadas=None, avisos_codigo=None,
+            sin_stratio=None):
     """etl = validador.resumen(...); cotejos = {clave: cotejo_rapido}; orquestador_hijos = [{flujo, estado}];
     avisos_codigo = pc.codigo.aviso_semaforo(...): revision Stratio <-> Fabric sin cerrar o con reglas distintas (AMARILLO:
-    una regla distinta la confirma una persona antes de devolver)."""
+    una regla distinta la confirma una persona antes de devolver).
+    sin_stratio = {clave: motivo}: objetos sin lado Stratio aceptados con salvedad (no hay cotejo rapido posible: AMARILLO
+    con el motivo, en lugar de «falta medir un lado»)."""
     rojo, amarillo, verde = [], [], list()
     amarillo += [f"código · {x}" for x in avisos_codigo or []]
     if grupo == "orquestador":
@@ -40,6 +43,9 @@ def evaluar(flujo, grupo, etl=None, cotejos=None, orquestador_hijos=None, claves
             if etl.get("salidas_sin_commit"):
                 rojo.append(f"salidas sin commit en la corrida: {etl['salidas_sin_commit']}")
         for clave in sorted(set(claves_esperadas or []) - set(cotejos or {})):
+            if clave in (sin_stratio or {}):
+                amarillo.append(f"{clave} · sin lado Stratio (salvedad): solo se mide Fabric; los controles que comparan quedan NO_EVALUADO")
+                continue
             amarillo.append(f"{clave} · sin cotejo rapido (falta medir un lado): el nivel 2 decidira")
         for clave, c in (cotejos or {}).items():
             for cod in c.get("no_cumple", []):

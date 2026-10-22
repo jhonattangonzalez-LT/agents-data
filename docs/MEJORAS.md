@@ -2,6 +2,126 @@
 
 Cada mejora se comparte con el equipo (commit + push al repositorio). `SIN_COMPARTIR` = falta hacerlo.
 
+## M-047 · 2026-10-22 · SIN_COMPARTIR
+
+**Qué:** pc.etl.cadena: ejecuta cadenas de flujos de Fabric en orden estricto (cada flujo solo si el anterior terminó Completed), reanudable, con cadenas en paralelo y sin repetir ingestas ya completadas
+
+**Por qué:** Las analíticas dependen de ingestas previas: correrlas fuera de orden deja datos incompletos
+
+**Archivos:** `pc/etl/cadena.py` · por Jhonattan-LT
+
+## M-046 · 2026-10-22 · SIN_COMPARTIR
+
+**Qué:** Configuración de recursos por miembro: pc recursos --configurar (CPU, MHz, núcleos, RAM observados y 3 preguntas rápidas) y ajustes --hilos/--ram-gb/--objetos/--red sobre el perfil
+
+**Por qué:** Cada equipo es distinto (20 GB sin conocer MHz, 16 núcleos); el perfil solo no permitía fijar un tope de hilos o de RAM
+
+**Archivos:** `pc/recursos.py`, `pc/__main__.py`, `CLAUDE.md` · por Jhonattan-LT
+
+## M-045 · 2026-10-22 · SIN_COMPARTIR
+
+**Qué:** Cotejador: cada diferencia con al menos un ejemplo real Stratio | Fabric (no un conteo) y causa cuya primera frase baste sola, porque el acta resume la justificación final a 1-2 frases y se niega sin ejemplo real
+
+**Por qué:** pedido de QA 2026-10-22 (puntos 8 y 9.2): ejemplo real de la diferencia en el punto 7 y justificaciones resumidas
+
+**Archivos:** `.claude/agents/cotejador.md` · por Jhonattan-LT
+
+## M-044 · 2026-10-22 · SIN_COMPARTIR
+
+**Qué:** Acta (repo qa-etl-validador-agent-v2/actas y agente acta-entrega): capas solo medallón medidas o preguntadas (capas.py); dependencias directas/indirectas en el punto 4; gráficas completas sin cortes, paginadas, log y diferencia en %, línea de tiempo, controles y dependencias (graficas_acta.py); CP-05 con motivo en el punto 6; punto 7 resumido por tabla con ejemplo real obligatorio y justificación final; punto 8 con el texto de aprobación por correo y sin firmas; el generador se niega y lista lo que hay que preguntar
+
+**Por qué:** pedido de QA 2026-10-22 (puntos 4 a 10): capas con nombres ajenos a la arquitectura medallón, gráficas cortadas o poco informativas, sección 7 demasiado extensa
+
+**Archivos:** `CLAUDE.md` · por Jhonattan-LT
+
+## M-043 · 2026-10-22 · SIN_COMPARTIR
+
+**Qué:** Descargas caídas: cada descarga deja .esperados.json; si se corta, pc descargar dice cuántos archivos y particiones llegaron completos (descargas/caidas/) y pide preguntar; --parcial registra solo lo completo y el cotejo queda con faltante hasta salvedad_parcial (cotejo por corte)
+
+**Por qué:** pedido de QA 2026-10-22: ante caídas de descarga preguntar si se coteja la parte que llegó, sin presentarla como el dato completo
+
+**Archivos:** `pc/cache/parcial.py`, `pc/acceso/rocket.py`, `pc/medir/completo.py`, `pc/__main__.py`, `pc/reportes/v4.py`, `.claude/agents/gestor-descargas.md`, `CLAUDE.md` · por Jhonattan-LT
+
+## M-042 · 2026-10-22 · SIN_COMPARTIR
+
+**Qué:** CP-05 se exige siempre: una salida no Delta se prueba con la evidencia de la corrida (archivos escritos, copia a Postgres, fecha en el SFTP) en vez de quedar no_aplica; sin evidencia queda NO_EVALUADO; detalle.CP-05.aplicacion dice si aplica, cómo se prueba y si bloquea (lo lee el acta)
+
+**Por qué:** 101 cotejos tenian CP-05 no_aplica solo por no ser Delta aunque habia evidencia medida; QA pidio justificar cuando aplica y cuando no, sin bloquear, pero exigirlo en general
+
+**Archivos:** `pc/reportes/formato2.py` · por Jhonattan-LT
+
+## M-041 · 2026-10-22 · SIN_COMPARTIR
+
+**Qué:** pc dependencias (y al final de pc etl evidencia): dependencias directas (misma cascada de orquestador, dependsOn) e indirectas (el productor alimenta la entrada por su cuenta) medidas sobre las definiciones de Fabric; productor por el código del zip (load.py + Variable Library) o el sink de la Copy; entradas sin productor y NO_MEDIDO explícitos; entra en flujos_dependientes del cotejo de flujo
+
+**Por qué:** 229 de 241 cotejos de analítica decían sin dependencias porque solo se miraba la cadena de la corrida; medido ahora: 212 de 241 con dependencias
+
+**Archivos:** `pc/etl/dependencias.py`, `pc/__main__.py`, `pc/reportes/formato2.py`, `pc/reportes/v4.py`, `.claude/agents/etl-validador.md`, `CLAUDE.md` · por Jhonattan-LT
+
+## M-040 · 2026-10-22 · SIN_COMPARTIR
+
+**Qué:** EXITOSOS del cierre con formato fijo: 1 resumen de ejecuciones (corrida, inicio, duración, lanzada por, dependencias), 2 justificaciones y aprobaciones (quién y por qué, incluye reglas de código y comprobaciones), 3 por flujo: ejecución, cotejos de tablas y métricas; comprobación de completitud: completo true/false en el front-matter y salidas/cierre_faltantes.json para resolver con QA
+
+**Por qué:** pedido de QA 2026-10-22: el markdown de exitosos debe venir completo, en ese formato y sin archivos extraños
+
+**Archivos:** `pc/cierre.py`, `pc/__main__.py`, `CLAUDE.md` · por Jhonattan-LT
+
+## M-039 · 2026-10-22 · SIN_COMPARTIR
+
+**Qué:** pc recursos: perfil de capacidad por equipo (maxima · moderada · promedio) que reparte RAM e hilos de DuckDB entre los objetos a la vez; descargar/medir/cotejar/diferenciar revisan RAM libre y carga antes y se detienen (código 3) para preguntar; --forzar-recursos
+
+**Por qué:** equipos de QA se congelaban: nivel 2 abria 2 DuckDB de 8 GB y 6 hilos fijos aunque el equipo tuviera 8 GB
+
+**Archivos:** `pc/recursos.py`, `pc/config.py`, `pc/__main__.py`, `CLAUDE.md`, `.claude/agents/medidor-completo.md`, `.claude/agents/gestor-descargas.md` · por Jhonattan-LT
+
+## M-038 · 2026-10-22 · SIN_COMPARTIR
+
+**Qué:** EXITOSOS del cierre: el resumen de justificaciones incluye tambien lo aceptado fuera de las tablas (flujo sin tablas propias con su motivo, comprobaciones del flujo JUSTIFICADAS con su causa y reglas de codigo ACEPTADAS con salvedad); la columna Tablas dice 'en <flujo>' para los flujos con tablas_en
+
+**Por qué:** R1019-A: la salvedad de produccion de FL-0473/FL-0474 (cambio no desplegado en prod) estaba solo en la revision de codigo y no salia en el reporte de exitosos
+
+**Archivos:** `pc/cierre.py` · por Jhonattan-LT
+
+## M-037 · 2026-10-22 · SIN_COMPARTIR
+
+**Qué:** Flujos validados por la corrida o las tablas de otro flujo: 'item_fabric' en el lote (el flujo sin item propio toma la corrida y el veredicto ETL de ese item: evidencia, CP-05 y comprobaciones) y 'tablas_en' + 'sin_tablas_motivo' (un flujo sin tablas propias toma las tablas, el semaforo y la revision de codigo del flujo donde se cotejan; su corrida y comprobaciones son las suyas y el motivo queda en el encabezado del cotejo de flujo)
+
+**Por qué:** FL-0472: model_excecution no tiene item en Fabric (lo ejecuta score_agrupadoras_ml) y CP-05 quedaba NO_EVALUADO; score_agrupadoras_ml no tiene tabla propia (su salida se coteja en model_excecution; en Stratio solo hay append a Postgres, sin HDFS) y quedaba EN_CURSO para siempre, bloqueando la publicacion del trabajo
+
+**Archivos:** `pc/lote.py`, `pc/etl/evidencia.py`, `pc/reportes/v4.py`, `pc/coordinacion.py` · por Jhonattan-LT
+
+## M-036 · 2026-10-21 · SIN_COMPARTIR
+
+**Qué:** Objetos con un solo lado: un objeto con stratio nulo y salvedad_stratio (decision humana registrada) se mide solo en Fabric; los controles que comparan con Stratio quedan NO_EVALUADO con la salvedad (resultado con_salvedad, nunca cumple), los que se juzgan solo en Fabric (sin_fallas, CP-05) se evaluan; no cuenta como faltante y el cotejo cierra APROBADO_CON_JUSTIFICACION con la salvedad visible en el encabezado, la tabla del flujo, el semaforo (AMARILLO con el motivo) y el expediente. Objetos con dos lados sin cambio (verificado en R1019-C).
+
+**Por qué:** ventas (FL-0590) de R1019-C no tiene salida productiva en Stratio: se registro como orquestador sin tablas para poder aprobarlo y su cotejo de flujo quedaba INCOMPLETO, bloqueando la publicacion del trabajo. El usuario decidio (2026-10-21) aceptarlo por codigo y medicion de Fabric.
+
+**Archivos:** `pc/reportes/formato2.py`, `pc/reportes/v4.py`, `pc/compuerta/semaforo.py`, `pc/__main__.py` · por Jhonattan-LT
+
+## M-035 · 2026-10-21 · SIN_COMPARTIR
+
+**Qué:** El cotejo de tabla incorpora la evidencia medida por el cotejador: si existe trabajos/T/v4/evidencia/<clave>.json, va como evidencia_cotejador dentro de v4/cotejos/<clave>.json (igualdad por llave y por columna, mediciones dirigidas)
+
+**Por qué:** La evidencia de cierre (porcentajes de igualdad, desempates fila a fila) debe publicarse dentro del cotejo; antes no había dónde guardarla
+
+**Archivos:** `pc/reportes/v4.py` · por Jhonattan-LT
+
+## M-034 · 2026-10-20 · SIN_COMPARTIR
+
+**Qué:** pc codigo comentar --salvedad: aceptar una regla con lo no medido a la vista cuando no hay dónde medirlo (la plataforma no lo expone o no existe); queda 'salvedad' en la regla y en el cotejo de flujo
+
+**Por qué:** R1019-C FL-0590 R8/R9: Stratio sin salida de producción ni ejecuciones en HDFS; el usuario decidió aprobar por código y Fabric medido y la compuerta impedía aceptar
+
+**Archivos:** `pc/codigo.py`, `pc/__main__.py` · por Jhonattan-LT
+
+## M-033 · 2026-10-20 · SIN_COMPARTIR
+
+**Qué:** EXITOSOS del cierre sin grafos ni ids de nodo: solo resumen de flujos, justificaciones y enlaces de navegador; flujo por ejecucion dice 'por ejecucion (sin tabla en Stratio)'
+
+**Por qué:** el usuario pide en el markdown de exitosos solo enlaces de OneLake y resumenes (2026-10-20, R1019-C)
+
+**Archivos:** `pc/cierre.py` · por Jhonattan-LT
+
 ## M-032 · 2026-10-19 · COMPARTIDA
 
 **Qué:** pc fuente medir: linaje medido de cada fuente de Fabric (busca en pipelines, notebooks, Spark y Variable Library de los tres workspaces, sigue la variable hasta quien la usa: INGESTA con su copia, origen, corridas y programacion · CODIGO · VARIABLE · MANUAL), frescura (OneLake y, opcional, una consulta a Rocket) y contenido. Nada llega a una persona con algo sin medir (POR_MEDIR para los agentes; no se acepta con no_medido). El ETL mide el linaje de cada entrada y sus dependencias

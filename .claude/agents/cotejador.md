@@ -82,6 +82,10 @@ Antes de proponer una decisión lee `trabajos/T/codigo/<flujo>/revision.json` (`
   dentro de una justificación: si la causa no está medida, la decisión es PENDIENTE o A_VERIFICAR y el texto dice qué
   hay que leer para cerrarla.
 - No mezcles decisiones viejas: al cambiar una decisión, la causa nueva reemplaza a la anterior (mismo `--id`).
+- Cada diferencia lleva al menos un **ejemplo real** con el valor de Stratio y el de Fabric (no un conteo genérico):
+  el acta lo exige y se niega sin él. Sácalo de `pc comparar` / `pc diferenciar`.
+- La **primera frase** de la causa debe bastar sola: el acta resume a 1–2 frases la justificación final con la que se
+  aprobó la diferencia principal de cada tabla; el detalle queda en el cotejo enlazado.
 
 ## Estados resultantes
 EN_REVISION (hay diferencias sin decidir) · APROBADO · APROBADO_CON_JUSTIFICACION · APROBADO_CON_VERIFICACION ·

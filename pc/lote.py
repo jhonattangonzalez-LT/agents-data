@@ -141,6 +141,17 @@ def flujo(lote, nombre):
     return next((f for f in leer(lote, "lote.json")["flujos"] if f["nombre_fabric"] == nombre), None)
 
 
+def item_fabric(f):
+    """Item de Fabric cuya corrida valida el flujo: `item_fabric` del lote si el flujo no tiene item propio
+    (p. ej. model_excecution se ejecuta como score_agrupadoras_ml); si no, su nombre_fabric."""
+    return f.get("item_fabric") or f["nombre_fabric"]
+
+
+def veredicto_etl(lote, f):
+    """Veredicto del ETL v10 del flujo; si no tiene, el del item que lo ejecuta (item_fabric)."""
+    return leer(lote, f"etl/veredictos/{f['nombre_fabric']}.json") or leer(lote, f"etl/veredictos/{item_fabric(f)}.json")
+
+
 def objetos(lote):
     for f in leer(lote, "lote.json")["flujos"]:
         for o in f["objetos"]:
@@ -153,7 +164,7 @@ def tablero(lote):
     filas = []
     for f in d["flujos"]:
         n = f["nombre_fabric"]
-        etl = leer(lote, f"etl/veredictos/{n}.json")
+        etl = veredicto_etl(lote, f)
         sem = leer(lote, f"semaforo/{n}.json")
         for o in f["objetos"] or [{"clave": "(orquestador)"}]:
             k = o["clave"]

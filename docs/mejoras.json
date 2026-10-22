@@ -497,5 +497,197 @@
   "autor": "Jhonattan-LT",
   "estado": "COMPARTIDA",
   "commit": "50c9482"
+ },
+ {
+  "id": "M-033",
+  "fecha": "2026-10-20T11:55:56+00:00",
+  "que": "EXITOSOS del cierre sin grafos ni ids de nodo: solo resumen de flujos, justificaciones y enlaces de navegador; flujo por ejecucion dice 'por ejecucion (sin tabla en Stratio)'",
+  "por_que": "el usuario pide en el markdown de exitosos solo enlaces de OneLake y resumenes (2026-10-20, R1019-C)",
+  "archivos": [
+   "pc/cierre.py"
+  ],
+  "autor": "Jhonattan-LT",
+  "estado": "SIN_COMPARTIR"
+ },
+ {
+  "id": "M-034",
+  "fecha": "2026-10-20T22:24:00+00:00",
+  "que": "pc codigo comentar --salvedad: aceptar una regla con lo no medido a la vista cuando no hay dónde medirlo (la plataforma no lo expone o no existe); queda 'salvedad' en la regla y en el cotejo de flujo",
+  "por_que": "R1019-C FL-0590 R8/R9: Stratio sin salida de producción ni ejecuciones en HDFS; el usuario decidió aprobar por código y Fabric medido y la compuerta impedía aceptar",
+  "archivos": [
+   "pc/codigo.py",
+   "pc/__main__.py"
+  ],
+  "autor": "Jhonattan-LT",
+  "estado": "SIN_COMPARTIR"
+ },
+ {
+  "id": "M-035",
+  "fecha": "2026-10-21T01:14:43+00:00",
+  "que": "El cotejo de tabla incorpora la evidencia medida por el cotejador: si existe trabajos/T/v4/evidencia/<clave>.json, va como evidencia_cotejador dentro de v4/cotejos/<clave>.json (igualdad por llave y por columna, mediciones dirigidas)",
+  "por_que": "La evidencia de cierre (porcentajes de igualdad, desempates fila a fila) debe publicarse dentro del cotejo; antes no había dónde guardarla",
+  "archivos": [
+   "pc/reportes/v4.py"
+  ],
+  "autor": "Jhonattan-LT",
+  "estado": "SIN_COMPARTIR"
+ },
+ {
+  "id": "M-036",
+  "fecha": "2026-10-21T18:10:15+00:00",
+  "que": "Objetos con un solo lado: un objeto con stratio nulo y salvedad_stratio (decision humana registrada) se mide solo en Fabric; los controles que comparan con Stratio quedan NO_EVALUADO con la salvedad (resultado con_salvedad, nunca cumple), los que se juzgan solo en Fabric (sin_fallas, CP-05) se evaluan; no cuenta como faltante y el cotejo cierra APROBADO_CON_JUSTIFICACION con la salvedad visible en el encabezado, la tabla del flujo, el semaforo (AMARILLO con el motivo) y el expediente. Objetos con dos lados sin cambio (verificado en R1019-C).",
+  "por_que": "ventas (FL-0590) de R1019-C no tiene salida productiva en Stratio: se registro como orquestador sin tablas para poder aprobarlo y su cotejo de flujo quedaba INCOMPLETO, bloqueando la publicacion del trabajo. El usuario decidio (2026-10-21) aceptarlo por codigo y medicion de Fabric.",
+  "archivos": [
+   "pc/reportes/formato2.py",
+   "pc/reportes/v4.py",
+   "pc/compuerta/semaforo.py",
+   "pc/__main__.py"
+  ],
+  "autor": "Jhonattan-LT",
+  "estado": "SIN_COMPARTIR"
+ },
+ {
+  "id": "M-037",
+  "fecha": "2026-10-22T00:03:47+00:00",
+  "que": "Flujos validados por la corrida o las tablas de otro flujo: 'item_fabric' en el lote (el flujo sin item propio toma la corrida y el veredicto ETL de ese item: evidencia, CP-05 y comprobaciones) y 'tablas_en' + 'sin_tablas_motivo' (un flujo sin tablas propias toma las tablas, el semaforo y la revision de codigo del flujo donde se cotejan; su corrida y comprobaciones son las suyas y el motivo queda en el encabezado del cotejo de flujo)",
+  "por_que": "FL-0472: model_excecution no tiene item en Fabric (lo ejecuta score_agrupadoras_ml) y CP-05 quedaba NO_EVALUADO; score_agrupadoras_ml no tiene tabla propia (su salida se coteja en model_excecution; en Stratio solo hay append a Postgres, sin HDFS) y quedaba EN_CURSO para siempre, bloqueando la publicacion del trabajo",
+  "archivos": [
+   "pc/lote.py",
+   "pc/etl/evidencia.py",
+   "pc/reportes/v4.py",
+   "pc/coordinacion.py"
+  ],
+  "autor": "Jhonattan-LT",
+  "estado": "SIN_COMPARTIR"
+ },
+ {
+  "id": "M-038",
+  "fecha": "2026-10-22T00:47:15+00:00",
+  "que": "EXITOSOS del cierre: el resumen de justificaciones incluye tambien lo aceptado fuera de las tablas (flujo sin tablas propias con su motivo, comprobaciones del flujo JUSTIFICADAS con su causa y reglas de codigo ACEPTADAS con salvedad); la columna Tablas dice 'en <flujo>' para los flujos con tablas_en",
+  "por_que": "R1019-A: la salvedad de produccion de FL-0473/FL-0474 (cambio no desplegado en prod) estaba solo en la revision de codigo y no salia en el reporte de exitosos",
+  "archivos": [
+   "pc/cierre.py"
+  ],
+  "autor": "Jhonattan-LT",
+  "estado": "SIN_COMPARTIR"
+ },
+ {
+  "id": "M-039",
+  "fecha": "2026-10-22T13:44:33+00:00",
+  "que": "pc recursos: perfil de capacidad por equipo (maxima · moderada · promedio) que reparte RAM e hilos de DuckDB entre los objetos a la vez; descargar/medir/cotejar/diferenciar revisan RAM libre y carga antes y se detienen (código 3) para preguntar; --forzar-recursos",
+  "por_que": "equipos de QA se congelaban: nivel 2 abria 2 DuckDB de 8 GB y 6 hilos fijos aunque el equipo tuviera 8 GB",
+  "archivos": [
+   "pc/recursos.py",
+   "pc/config.py",
+   "pc/__main__.py",
+   "CLAUDE.md",
+   ".claude/agents/medidor-completo.md",
+   ".claude/agents/gestor-descargas.md"
+  ],
+  "autor": "Jhonattan-LT",
+  "estado": "SIN_COMPARTIR"
+ },
+ {
+  "id": "M-040",
+  "fecha": "2026-10-22T13:44:33+00:00",
+  "que": "EXITOSOS del cierre con formato fijo: 1 resumen de ejecuciones (corrida, inicio, duración, lanzada por, dependencias), 2 justificaciones y aprobaciones (quién y por qué, incluye reglas de código y comprobaciones), 3 por flujo: ejecución, cotejos de tablas y métricas; comprobación de completitud: completo true/false en el front-matter y salidas/cierre_faltantes.json para resolver con QA",
+  "por_que": "pedido de QA 2026-10-22: el markdown de exitosos debe venir completo, en ese formato y sin archivos extraños",
+  "archivos": [
+   "pc/cierre.py",
+   "pc/__main__.py",
+   "CLAUDE.md"
+  ],
+  "autor": "Jhonattan-LT",
+  "estado": "SIN_COMPARTIR"
+ },
+ {
+  "id": "M-041",
+  "fecha": "2026-10-22T13:44:33+00:00",
+  "que": "pc dependencias (y al final de pc etl evidencia): dependencias directas (misma cascada de orquestador, dependsOn) e indirectas (el productor alimenta la entrada por su cuenta) medidas sobre las definiciones de Fabric; productor por el código del zip (load.py + Variable Library) o el sink de la Copy; entradas sin productor y NO_MEDIDO explícitos; entra en flujos_dependientes del cotejo de flujo",
+  "por_que": "229 de 241 cotejos de analítica decían sin dependencias porque solo se miraba la cadena de la corrida; medido ahora: 212 de 241 con dependencias",
+  "archivos": [
+   "pc/etl/dependencias.py",
+   "pc/__main__.py",
+   "pc/reportes/formato2.py",
+   "pc/reportes/v4.py",
+   ".claude/agents/etl-validador.md",
+   "CLAUDE.md"
+  ],
+  "autor": "Jhonattan-LT",
+  "estado": "SIN_COMPARTIR"
+ },
+ {
+  "id": "M-042",
+  "fecha": "2026-10-22T13:44:33+00:00",
+  "que": "CP-05 se exige siempre: una salida no Delta se prueba con la evidencia de la corrida (archivos escritos, copia a Postgres, fecha en el SFTP) en vez de quedar no_aplica; sin evidencia queda NO_EVALUADO; detalle.CP-05.aplicacion dice si aplica, cómo se prueba y si bloquea (lo lee el acta)",
+  "por_que": "101 cotejos tenian CP-05 no_aplica solo por no ser Delta aunque habia evidencia medida; QA pidio justificar cuando aplica y cuando no, sin bloquear, pero exigirlo en general",
+  "archivos": [
+   "pc/reportes/formato2.py"
+  ],
+  "autor": "Jhonattan-LT",
+  "estado": "SIN_COMPARTIR"
+ },
+ {
+  "id": "M-043",
+  "fecha": "2026-10-22T13:44:33+00:00",
+  "que": "Descargas caídas: cada descarga deja .esperados.json; si se corta, pc descargar dice cuántos archivos y particiones llegaron completos (descargas/caidas/) y pide preguntar; --parcial registra solo lo completo y el cotejo queda con faltante hasta salvedad_parcial (cotejo por corte)",
+  "por_que": "pedido de QA 2026-10-22: ante caídas de descarga preguntar si se coteja la parte que llegó, sin presentarla como el dato completo",
+  "archivos": [
+   "pc/cache/parcial.py",
+   "pc/acceso/rocket.py",
+   "pc/medir/completo.py",
+   "pc/__main__.py",
+   "pc/reportes/v4.py",
+   ".claude/agents/gestor-descargas.md",
+   "CLAUDE.md"
+  ],
+  "autor": "Jhonattan-LT",
+  "estado": "SIN_COMPARTIR"
+ },
+ {
+  "id": "M-044",
+  "fecha": "2026-10-22T13:44:33+00:00",
+  "que": "Acta (repo qa-etl-validador-agent-v2/actas y agente acta-entrega): capas solo medallón medidas o preguntadas (capas.py); dependencias directas/indirectas en el punto 4; gráficas completas sin cortes, paginadas, log y diferencia en %, línea de tiempo, controles y dependencias (graficas_acta.py); CP-05 con motivo en el punto 6; punto 7 resumido por tabla con ejemplo real obligatorio y justificación final; punto 8 con el texto de aprobación por correo y sin firmas; el generador se niega y lista lo que hay que preguntar",
+  "por_que": "pedido de QA 2026-10-22 (puntos 4 a 10): capas con nombres ajenos a la arquitectura medallón, gráficas cortadas o poco informativas, sección 7 demasiado extensa",
+  "archivos": [
+   "CLAUDE.md"
+  ],
+  "autor": "Jhonattan-LT",
+  "estado": "SIN_COMPARTIR"
+ },
+ {
+  "id": "M-045",
+  "fecha": "2026-10-22T13:44:39+00:00",
+  "que": "Cotejador: cada diferencia con al menos un ejemplo real Stratio | Fabric (no un conteo) y causa cuya primera frase baste sola, porque el acta resume la justificación final a 1-2 frases y se niega sin ejemplo real",
+  "por_que": "pedido de QA 2026-10-22 (puntos 8 y 9.2): ejemplo real de la diferencia en el punto 7 y justificaciones resumidas",
+  "archivos": [
+   ".claude/agents/cotejador.md"
+  ],
+  "autor": "Jhonattan-LT",
+  "estado": "SIN_COMPARTIR"
+ },
+ {
+  "id": "M-046",
+  "fecha": "2026-10-22T14:07:18+00:00",
+  "que": "Configuración de recursos por miembro: pc recursos --configurar (CPU, MHz, núcleos, RAM observados y 3 preguntas rápidas) y ajustes --hilos/--ram-gb/--objetos/--red sobre el perfil",
+  "por_que": "Cada equipo es distinto (20 GB sin conocer MHz, 16 núcleos); el perfil solo no permitía fijar un tope de hilos o de RAM",
+  "archivos": [
+   "pc/recursos.py",
+   "pc/__main__.py",
+   "CLAUDE.md"
+  ],
+  "autor": "Jhonattan-LT",
+  "estado": "SIN_COMPARTIR"
+ },
+ {
+  "id": "M-047",
+  "fecha": "2026-10-22T14:13:26+00:00",
+  "que": "pc.etl.cadena: ejecuta cadenas de flujos de Fabric en orden estricto (cada flujo solo si el anterior terminó Completed), reanudable, con cadenas en paralelo y sin repetir ingestas ya completadas",
+  "por_que": "Las analíticas dependen de ingestas previas: correrlas fuera de orden deja datos incompletos",
+  "archivos": [
+   "pc/etl/cadena.py"
+  ],
+  "autor": "Jhonattan-LT",
+  "estado": "SIN_COMPARTIR"
  }
 ]

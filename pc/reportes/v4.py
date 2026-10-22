@@ -484,12 +484,30 @@ def construir_cotejo(trabajo, f, o):
     enc = {"id": str(uuid.uuid4()), "version": version(trabajo, f["nombre_fabric"]), "trabajo": str(trabajo), "generado_utc": _ahora(),
            "mediciones": {l.lower(): {"version": m["encabezado"]["version"], "nivel_alcanzado": m["encabezado"]["nivel_alcanzado"],
                                       "sha256": _sha(m)} for l, m in (("STRATIO", ms), ("FABRIC", mf)) if m}}
-    if not ms or not mf:
+    if (not ms and not F2.salvedad_stratio(o)) or not mf:   # sin Stratio con salvedad: no se espera ese lado
         enc["esperando"] = "STRATIO" if not ms else "FABRIC"
     difs = ((L.leer(trabajo, "v4/diferencias.json", {}) or {}).get(k)) or []
     doc = F2.cotejo(enc, f, o, ms, mf, cr, cc, difs, _vg09(ms, mf), _version_anterior(trabajo, f["nombre_fabric"], rel),
                     cp05=_cp05_evidencia(trabajo, f, o))
+    # evidencia medida por el cotejador (igualdad por llave, mediciones dirigidas): va dentro del cotejo para publicarse
+    evd = L.leer(trabajo, f"v4/evidencia/{k}.json")
+    if evd:
+        doc["evidencia_cotejador"] = evd
     doc["encabezado"]["faltantes"] = F2.faltantes_cotejo(doc)
+    # descarga parcial (se cayo y la persona acepto cotejar la parte que llego): faltante hasta que hay salvedad registrada
+    from ..cache import gestor
+    man = gestor.manifiesto(trabajo)["entradas"]
+    par = {l: (man.get(f"{l}/{k}") or {}).get("meta", {}).get("parcial") for l in ("STRATIO", "FABRIC")}
+    par = {l: v for l, v in par.items() if v}
+    if par:
+        doc["encabezado"]["descarga_parcial"] = par
+        if o.get("salvedad_parcial"):
+            doc["encabezado"]["salvedad_parcial"] = o["salvedad_parcial"]
+        else:
+            doc["encabezado"]["faltantes"].append(
+                "descarga parcial (" + "; ".join(f"{l} {v['archivos_completos']} de {v['archivos_total']} archivos" for l, v in par.items())
+                + "): cotejar por corte las particiones completas (`pc comparar --sql`) y registrar `salvedad_parcial` en lote.json "
+                  "con la decision de la persona; sin eso no se cierra")
     L.guardar(trabajo, rel, doc)
     return doc
 
@@ -567,9 +585,18 @@ def construir_cotejo_flujo(trabajo, f):
     from . import formato2 as F2
     n = f["nombre_fabric"]
     rel = f"v4/flujos/{n}.json"
-    etl = L.leer(trabajo, f"etl/veredictos/{n}.json")
+    etl = L.veredicto_etl(trabajo, f)
     ev = L.leer(trabajo, f"etl/evidencia/{n}.json")
+    dep = L.leer(trabajo, f"etl/dependencias/{n}.json")
+    if dep:
+        ev = dict(ev or {}, dependencias_medidas=dep)
     sem = L.leer(trabajo, f"semaforo/{n}.json")
+    # flujo sin tablas propias (sus salidas se cotejan en otro flujo del trabajo, `tablas_en`, con el motivo escrito):
+    # toma de ese flujo las tablas, el semaforo y la revision de codigo; la corrida y las comprobaciones son las suyas
+    ref = L.flujo(trabajo, f["tablas_en"]) if f.get("tablas_en") and not f["objetos"] else None
+    if ref:
+        f = dict(f, objetos=ref["objetos"])
+        sem = sem or L.leer(trabajo, f"semaforo/{ref['nombre_fabric']}.json")
     tablas = [L.leer(trabajo, f"v4/cotejos/{o['clave']}.json") for o in f["objetos"]]
     enc = {"id": str(uuid.uuid4()), "version": version(trabajo, n), "trabajo": str(trabajo), "generado_utc": _ahora(),
            "version_anterior": _version_anterior(trabajo, n, rel)}
@@ -581,9 +608,11 @@ def construir_cotejo_flujo(trabajo, f):
     ver = (L.leer(trabajo, "v4/verificaciones.json", {}) or {}).get(n)
     doc = F2.flujo(enc, f, etl, ev, sem, tablas, ver, otros, (L.leer(trabajo, "v4/decisiones_flujo.json", {}) or {}).get(n))
     doc["encabezado"]["faltantes"] = F2.faltantes_flujo(doc)
+    if ref:
+        doc["encabezado"]["tablas_en"] = {"flujo": ref["nombre_fabric"], "motivo": f.get("sin_tablas_motivo")}
     if f.get("grupo") != "orquestador":           # revision de codigo Stratio <-> Fabric (M-019), con su historial
         from .. import codigo as C
-        rc = C.para_cotejo(trabajo, n)
+        rc = C.para_cotejo(trabajo, ref["nombre_fabric"] if ref and not L.leer(trabajo, f"codigo/{n}/revision.json") else n)
         rc["historial"] = ((L.leer(trabajo, rel) or {}).get("revision_codigo") or {}).get("historial") or []
         doc["revision_codigo"] = rc
     L.guardar(trabajo, rel, doc)
@@ -671,7 +700,10 @@ def expediente(trabajo, f):
             out.append("")
     out += ["## Archivos", "", "| Documento | Ruta en el lakehouse |", "|---|---|"]
     for o in f["objetos"]:
-        out += [f"| medición Stratio · `{o['clave']}` | `{ruta_ol('medicion', o['clave'], v, 'STRATIO', pr)}` |",
+        from . import formato2 as F2
+        sv = F2.salvedad_stratio(o)
+        out += [f"| medición Stratio · `{o['clave']}` | sin lado Stratio (salvedad: {sv['motivo']}) |" if sv else
+                f"| medición Stratio · `{o['clave']}` | `{ruta_ol('medicion', o['clave'], v, 'STRATIO', pr)}` |",
                 f"| medición Fabric · `{o['clave']}` | `{ruta_ol('medicion', o['clave'], v, 'FABRIC', pr)}` |",
                 f"| cotejo · `{o['clave']}` | `{ruta_ol('cotejo', o['clave'], v, pruebas=pr)}` |"]
     out += [f"| cotejo de flujo | `{ruta_ol('cotejo_flujo', n, v, pruebas=pr)}` |",

@@ -27,6 +27,20 @@ PALABRAS = {"ok": "cumple, sin diferencias entre lados",
             "no_evaluado": "no se midio en esta version: no cuenta como cumplido",
             "no_aplica": "no se evalua en este grupo"}
 BLOQUEAN = ("pendiente", "advertencia", "falla", "no_evaluado")
+# objeto sin lado Stratio (no hay donde medirlo) aceptado por una persona con su salvedad: lo que exige comparar con
+# Stratio queda NO_EVALUADO con ese motivo (nunca «cumple»); lo que se juzga solo en Fabric se evalua igual
+CON_SALVEDAD = ("con_salvedad", "no se puede comparar con Stratio (el objeto no tiene lado Stratio): queda NO_EVALUADO "
+                                "con la salvedad que acepto una persona; no cuenta como cumplido")
+SOLO_FABRIC = ("sin_fallas", "commit_en_ventana")
+
+
+def salvedad_stratio(o):
+    """Salvedad registrada de un objeto sin lado Stratio (`stratio` nulo + `salvedad_stratio`), o None.
+    Sin la salvedad (decision humana) un objeto sin Stratio sigue el camino normal: falta un lado y no se publica."""
+    sv = (o or {}).get("salvedad_stratio")
+    if (o or {}).get("stratio") or not sv:
+        return None
+    return {"motivo": sv} if isinstance(sv, str) else dict(sv)
 
 
 def _n(x):
@@ -295,7 +309,10 @@ def _palabra(base, dd, avisos):
 
 def cotejo(enc, f, o, ms, mf, cr, cc, difs, vg09, anterior=None, origen_decision=None, cp05=None):
     """Arma el cotejo de tabla (formato 2). `enc` trae lo tecnico (id, trabajo, generado_utc, mediciones)."""
+    sv = salvedad_stratio(o)
     nivel = 2 if cc else (1 if cr else -1)
+    if sv:            # sin Stratio no hay cotejo rapido ni de nivel 2: el nivel es el que alcanzo la medicion de Fabric
+        nivel = ((mf or {}).get("encabezado") or {}).get("nivel_alcanzado", -1)
     grupo = f["grupo"]
     resumen = {fam: {} for fam in FAMILIAS}
     detalle = {fam: {} for fam in FAMILIAS}
@@ -304,13 +321,32 @@ def cotejo(enc, f, o, ms, mf, cr, cc, difs, vg09, anterior=None, origen_decision
         s, fa = _lado(ms, cod), _lado(mf, cod)
         if cod == "CP-05":
             s = {"estado": "NO_APLICA", "detalle": "la corrida citada es la de Fabric; Stratio no se re-ejecuta en QA"}
-            if cp05 and fa.get("estado") in (None, "NO_EVALUADO", "PENDIENTE", "NO_MEDIDO"):
-                fa = cp05          # el rapido corrio sin ventana (flujo de orquestador): vale la evidencia medida de la corrida
+            if cp05 and fa.get("estado") in (None, "NO_EVALUADO", "PENDIENTE", "NO_MEDIDO", "NO_APLICA"):
+                # el rapido corrio sin ventana (flujo de orquestador) o la salida no es Delta: vale la evidencia medida de la
+                # corrida (commit, archivos escritos, copia a Postgres o fecha del archivo en el SFTP)
+                fa = cp05
+            elif fa.get("estado") == "NO_APLICA" and grupo != "orquestador":
+                # CP-05 se exige siempre: una salida no Delta se prueba con la evidencia de la corrida, no se da por no aplicable
+                fa = {"estado": "NO_EVALUADO", "detalle": f"{fa.get('detalle') or 'salida no Delta'}: falta la evidencia de la corrida "
+                      "(`pc etl evidencia`) que pruebe que la corrida la escribio (archivos, copia o fecha del archivo)"}
         if cod == "VG-09":
             s = {"estado": "MEDIDO" if (vg09 or {}).get("contrato_stratio") else "NO_MEDIDO", "valor": f"contrato de {len((vg09 or {}).get('contrato_stratio') or [])} columnas"}
             fa = {"estado": "MEDIDO" if (vg09 or {}).get("contrato_fabric") else "NO_MEDIDO", "valor": f"contrato de {len((vg09 or {}).get('contrato_fabric') or [])} columnas"}
+        if sv and cod != "CP-05":
+            s = {"estado": "NO_EVALUADO", "detalle": "sin lado Stratio: " + sv["motivo"]}
+            if cod == "VG-09":        # el contrato de Fabric se obtuvo igual; no hay el de Stratio para compararlo
+                cf_ = (mf or {}).get("contrato") or {}
+                fa = {"estado": "MEDIDO" if cf_.get("columnas") else "NO_MEDIDO",
+                      "valor": f"contrato de {len(cf_.get('columnas') or [])} columnas" + ("" if cf_.get("completo") else " (incompleto)")}
         medido, dist = _medido(cod, s, fa, ms, mf, cr, cc, vg09)
         base = _base(cod, cri, s, fa, cr, cc, vg09, c["nivel"], nivel)
+        salvedad = False
+        if sv and base not in ("NO_APLICA",) and nivel >= c["nivel"]:
+            if cri == "sin_fallas":       # se juzga solo en Fabric
+                ef = fa.get("estado")
+                base = "NO_EVALUADO" if ef in (None, "NO_MEDIDO", "PENDIENTE", "NO_EVALUADO") else ("NO_CUMPLE" if ef == "ERROR" else "CUMPLE")
+            elif cri not in SOLO_FABRIC:  # exige comparar con Stratio
+                base, salvedad, dist = "NO_EVALUADO", True, []
         dd = [d for d in difs if d.get("control") == cod]
         avisos = []
         if base not in ("NO_APLICA", "NO_EVALUADO"):
@@ -319,7 +355,7 @@ def cotejo(enc, f, o, ms, mf, cr, cc, difs, vg09, anterior=None, origen_decision
                     avisos.append(f"{lado} queda en {x['estado']}: {x.get('detalle') or 'sin detalle'}")
             if dist and (base == "CUMPLE" or cod not in ("CP-01", "CP-03", "CP-02", "VG-09")):
                 avisos += [f"medicion distinta entre lados: {t}" for t in dist]
-        pal = _palabra(base, dd, avisos or (dist if base == "NO_CUMPLE" else []))
+        pal = CON_SALVEDAD[0] if salvedad else _palabra(base, dd, avisos or (dist if base == "NO_CUMPLE" else []))
         rol = _rol(cod, grupo)
         if base == "CUMPLE" and not avisos:
             dec = "Cumple: " + {"sin_fallas": "Fabric no queda en ERROR.", "sin_regresion": "Fabric no queda peor que Stratio.",
@@ -328,6 +364,9 @@ def cotejo(enc, f, o, ms, mf, cr, cc, difs, vg09, anterior=None, origen_decision
                                "informativo": "se midio en los dos lados y coincide."}.get(cri, "sin diferencias.")
         elif base == "NO_APLICA":
             dec = "No se evalua en este grupo."
+        elif salvedad:
+            dec = ("No se evaluo contra Stratio: el objeto no tiene lado Stratio. Queda NO_EVALUADO (no cuenta como cumplido) "
+                   f"con la salvedad aceptada por {sv.get('decidido_por') or 'una persona'}: {sv['motivo']}")
         elif base == "NO_EVALUADO":
             dec = "No se evaluo en esta version: no cuenta como cumplido."
         elif dd:
@@ -344,6 +383,8 @@ def cotejo(enc, f, o, ms, mf, cr, cc, difs, vg09, anterior=None, origen_decision
                **({"medicion": med} if med and (med["stratio"] is not None or med["fabric"] is not None) else {}),
                "comparacion": medido,
                "regla": base, "resultado": pal, "decision": dec}
+        if cod == "CP-05":
+            det["aplicacion"] = _cp05_aplicacion(o, fa, grupo)
         if avisos:
             det["advertencias"] = avisos
         if dd:
@@ -374,6 +415,14 @@ def cotejo(enc, f, o, ms, mf, cr, cc, difs, vg09, anterior=None, origen_decision
               "dias_distintos", "posteriores_a_fecha_ejecucion", "anteriores_a_1900")
     cols = {}
     lf = {k.lower(): k for k in pf}
+    if sv:            # solo el perfil de Fabric: no hay con que comparar (difiere_en None, no «sin diferencias»)
+        for n, b in pf.items():
+            fila = {"tipo_stratio": None, "tipo_fabric": b.get("tipo_spark")}
+            for k in CAMPOS:
+                if b.get(k) is not None:
+                    fila[k] = {"stratio": None, "fabric": b.get(k)}
+            fila["difiere_en"] = None
+            cols[n] = fila
     for n, a in ps.items():
         b = pf.get(n) or pf.get(lf.get(n.lower(), ""), {})
         fila = {"tipo_stratio": a.get("tipo_spark"), "tipo_fabric": b.get("tipo_spark")}
@@ -386,7 +435,8 @@ def cotejo(enc, f, o, ms, mf, cr, cc, difs, vg09, anterior=None, origen_decision
         fila["difiere_en"] = difc
         cols[n] = fila
     metricas = {"filas": v.get("filas") or (cr or {}).get("filas"),
-                "columnas_comparadas": len(cols), "columnas_con_alguna_diferencia": sum(1 for x in cols.values() if x["difiere_en"]),
+                "columnas_comparadas": 0 if sv else len(cols),
+                "columnas_con_alguna_diferencia": None if sv else sum(1 for x in cols.values() if x["difiere_en"]),
                 "por_columna": cols,
                 "huella_por_columna": {"iguales": (v.get("hash") or {}).get("columnas_hash_igual"),
                                        "distintas": (v.get("hash") or {}).get("columnas_hash_distinto") or []} if v.get("hash") else None,
@@ -404,14 +454,21 @@ def cotejo(enc, f, o, ms, mf, cr, cc, difs, vg09, anterior=None, origen_decision
         estado = "EN_REVISION"
     elif "por_verificar" in pals.values():
         estado = "APROBADO_CON_VERIFICACION"
-    elif "justificado" in pals.values():
+    elif "justificado" in pals.values() or CON_SALVEDAD[0] in pals.values():
         estado = "APROBADO_CON_JUSTIFICACION"
     else:
         estado = "APROBADO"
 
     fl = metricas["filas"] or {}
     h = v.get("hash") or {}
-    if h.get("igual"):
+    if sv:
+        n2f = (mf or {}).get("nivel_2") or {}
+        nf = n2f.get("filas") if n2f.get("filas") is not None else ((mf or {}).get("nivel_1") or {}).get("filas")
+        res = (f"Sin lado Stratio (salvedad: no hay donde medir). Fabric {_n(nf)} filas" +
+               (f", SHA-256 {((n2f.get('hash') or {}).get('hash_dataset') or '')[:12]}…" if n2f.get("hash") else "") +
+               f"; nivel {nivel}. Controles que exigen Stratio: NO_EVALUADO con salvedad." +
+               (f" Sin analizar: {', '.join(sin_analizar)}." if sin_analizar else ""))
+    elif h.get("igual"):
         res = f"100 % igual: {_n(fl.get('stratio'))} filas en los dos lados y la misma huella SHA-256 ({(h.get('hash_dataset_fabric') or '')[:12]}…)."
     elif nivel < 2:
         res = f"Sin veredicto: falta el nivel 2. Filas Stratio {_n(fl.get('stratio'))}, Fabric {_n(fl.get('fabric'))}."
@@ -430,10 +487,28 @@ def cotejo(enc, f, o, ms, mf, cr, cc, difs, vg09, anterior=None, origen_decision
                             "fabric": _como_se_leyo(mf, (o.get("fabric") or {}).get("ruta"), (o.get("fabric") or {}).get("referencia"))},
            "version_anterior": anterior, "verdad": "STRATIO", "nivel_alcanzado": nivel,
            "sin_analizar": sin_analizar,
+           **({"salvedad_stratio": sv} if sv else {}),
            "trazabilidad": {k: enc.get(k) for k in ("id", "trabajo", "generado_utc", "mediciones", "esperando") if enc.get(k) is not None}}
     return {"encabezado": cab,
-            "controles": {"leyenda": PALABRAS, "resumen": resumen, "detalle": detalle},
+            "controles": {"leyenda": dict(PALABRAS, **({CON_SALVEDAD[0]: CON_SALVEDAD[1]} if sv else {})), "resumen": resumen, "detalle": detalle},
             "justificaciones": just, "metricas": metricas}
+
+
+def _cp05_aplicacion(o, fa, grupo):
+    """Por que CP-05 aplica (y con que evidencia) o no aplica en esta tabla: lo lee el acta. Por defecto se exige siempre;
+    «no aplica» solo cuando no hay corrida de Fabric que citar, y entonces no bloquea."""
+    tipo = ((o or {}).get("fabric") or {}).get("tipo")
+    if grupo == "orquestador":
+        return {"aplica": False, "bloquea": False, "por_que": "orquestador: no escribe tablas; se aprueba por la ejecución"}
+    como = {"delta": "salida Delta: commit en el _delta_log dentro de la corrida validada",
+            "files": "salida en archivos: archivos escritos en OneLake dentro de la corrida validada",
+            "pg": "tabla Postgres (sin _delta_log): copia exitosa de la corrida validada con sus filas copiadas",
+            "sftp": "archivo en el SFTP: fecha de modificación dentro de la corrida validada"}.get(tipo, "evidencia de la corrida validada")
+    est = (fa or {}).get("estado")
+    if est == "NO_APLICA":
+        return {"aplica": False, "bloquea": False, "por_que": (fa or {}).get("detalle") or "sin corrida de Fabric que citar"}
+    return {"aplica": True, "bloquea": est in ("ERROR", "FALLA", "NO_EVALUADO", None), "como_se_prueba": como,
+            "por_que": "se exige siempre: prueba que lo medido es lo que escribió la corrida validada, no una escritura anterior"}
 
 
 def faltantes_cotejo(doc):
@@ -442,7 +517,8 @@ def faltantes_cotejo(doc):
     for k in ("estado", "resumen", "flujo", "grupo", "version", "objeto", "como_se_leyo"):
         if not e.get(k):
             f.append(f"encabezado.{k}")
-    for lado in ("stratio", "fabric"):
+    sv = (e.get("salvedad_stratio") or {}).get("motivo")    # sin Stratio aceptado por una persona: solo se exige Fabric
+    for lado in (("fabric",) if sv else ("stratio", "fabric")):
         x = (e.get("como_se_leyo") or {}).get(lado) or {}
         for k in ("fuente", "medido_utc", "filas"):
             if x.get(k) is None:
@@ -454,7 +530,7 @@ def faltantes_cotejo(doc):
                 continue
             if x["resultado"] == "no_evaluado":
                 f.append(f"{cod}: no evaluado")
-            for lado in ("stratio", "fabric"):
+            for lado in (("fabric",) if sv else ("stratio", "fabric")):
                 if (x.get(lado) or {}).get("estado") in (None, "NO_MEDIDO"):
                     f.append(f"{cod}: sin medicion de {lado}")
             if x["resultado"] in ("advertencia", "falla") and not x.get("diferencias"):
@@ -696,7 +772,7 @@ def flujo(enc, f, etl, ev, sem, tablas, ver, otros=None, decisiones=None):
                      for e in ent if isinstance(e.get("producida_por"), dict)} - {None, ""})
     mis_salidas = {_tabla_corta(s.get("tabla")) for s in sd}
     abajo = sorted({o_["flujo"] for o_ in (otros or []) if o_["flujo"] != n and mis_salidas & {_tabla_corta(x) for x in o_["entradas"]}}
-                   | set(dep_val.get("downstream") or []))
+                   | set(dep_val.get("downstream") or []) | set((ev.get("dependencias_medidas") or {}).get("que_dependen_de_este") or []))
     seccion = {"roles": ({"origen": "actividad Copy del pipeline (origen y destino)", "corregidos_respecto_al_validador": False,
                           "actividades_copy_fuera_del_alcance": [{"actividad": a_["actividad"], "estado": a_.get("estado"),
                                                                  **({"error": a_["error"]} if a_.get("error") else {})} for a_ in fuera]}
@@ -711,7 +787,14 @@ def flujo(enc, f, etl, ev, sem, tablas, ver, otros=None, decisiones=None):
                "salidas": sal,
                "flujos_dependientes": {"de_los_que_depende": arriba, "que_dependen_de_este": abajo,
                                        "segun_el_validador": {"upstream": dep_val.get("upstream"), "downstream": dep_val.get("downstream")},
-                                       "declaradas_en_el_trabajo": f.get("dependencias") or []}}
+                                       "declaradas_en_el_trabajo": f.get("dependencias") or [],
+                                       # medidas sobre las definiciones de Fabric (pc dependencias): directas = misma cascada,
+                                       # indirectas = alimentan sus entradas por su cuenta; «sin dependencias» solo si se midio
+                                       **({k_: ev["dependencias_medidas"].get(k_) for k_ in
+                                           ("estado", "resumen", "directas", "indirectas", "entradas_sin_productor",
+                                            "entradas_de_origen_externo", "orquestadores", "criterio", "medido_utc")}
+                                          if ev.get("dependencias_medidas") else
+                                          {"estado": "NO_MEDIDO", "resumen": "dependencias no medidas: correr `python -m pc dependencias`"})}}
     if f["grupo"] == "analitica":
         ce = {c for x in ent for c in x.get("columnas") or []}
         cs = {c for x in sal for c in x.get("columnas") or []}
@@ -750,7 +833,8 @@ def flujo(enc, f, etl, ev, sem, tablas, ver, otros=None, decisiones=None):
     # ---- tablas y semaforo
     tabs = [{"clave": o["clave"], "fabric": (o.get("fabric") or {}).get("ruta"), "stratio": (o.get("stratio") or {}).get("ruta"),
              "estado": (t or {}).get("encabezado", {}).get("estado"), "resumen": (t or {}).get("encabezado", {}).get("resumen"),
-             "sin_analizar": (t or {}).get("encabezado", {}).get("sin_analizar")} for o, t in zip(f["objetos"], tablas)]
+             "sin_analizar": (t or {}).get("encabezado", {}).get("sin_analizar"),
+             **({"salvedad_stratio": salvedad_stratio(o)} if salvedad_stratio(o) else {})} for o, t in zip(f["objetos"], tablas)]
     semaforo = None
     if sem:
         semaforo = {"estado": sem.get("estado"),

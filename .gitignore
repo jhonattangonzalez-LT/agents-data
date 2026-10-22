@@ -1,6 +1,6 @@
 # estado local y descargas: nunca se versionan
 trabajos/
-cache/
+/cache/
 lotes/
 # resultados de pruebas (pueden traer dato real); se versionan solo scripts y definiciones
 pruebas/*.json

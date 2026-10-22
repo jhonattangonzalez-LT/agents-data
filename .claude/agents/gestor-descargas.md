@@ -32,6 +32,13 @@ python -m pc descargar --trabajo T [--flujo F] [--lado FABRIC|STRATIO] [--forzar
   la ventana de la corrida. Sin VPN no se baja ni se evalúa: dilo, no lo des por cumplido.
 - Una extracción parcial (por trozos, por fechas) se dice tal cual en el manifiesto y al coordinador: el cotejo
   no puede comparar conteos totales de una tabla bajada en parte.
+- **Descarga caída** (VPN, cookie u OneLake cortan a mitad): `pc descargar` imprime «CAÍDA …» con cuántos archivos y MB
+  llegaron completos y qué particiones están enteras (`trabajos/T/descargas/caidas/<LADO>_<clave>.json`). No reintentes
+  en bucle ni sigas por tu cuenta: devuélveselo al coordinador para que pregunte si se coteja esa parte. Si la persona
+  acepta, `pc descargar --trabajo T --flujo F --lado L --parcial` registra solo lo completo; el cotejo queda con
+  faltante hasta que se registra `salvedad_parcial` (cotejo por corte sobre las particiones enteras).
+- Antes de bajar, `pc descargar` revisa disco, RAM y carga del equipo (`python -m pc recursos`); si se detiene
+  («⚠ RECURSOS»), devuélveselo al coordinador.
 - Antes de bajar se comprueba `cabe()`: tope `cache.max_gb` y `margen_libre_gb` de disco.
 
 ## Manifiesto y ciclo de vida

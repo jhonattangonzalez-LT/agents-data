@@ -30,7 +30,7 @@ def siguiente(trabajo):
     out = []
     for f in (L.leer(trabajo, "lote.json") or {}).get("flujos", []):
         n, k0 = f["nombre_fabric"], [o["clave"] for o in f["objetos"]]
-        etl = L.leer(trabajo, f"etl/veredictos/{n}.json")
+        etl = L.veredicto_etl(trabajo, f)
         sem = L.leer(trabajo, f"semaforo/{n}.json")
         cf = _v4(trabajo, f"flujos/{n}.json")
         est = (cf.get("encabezado") or {}).get("estado")

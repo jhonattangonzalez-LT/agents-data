@@ -137,7 +137,7 @@ def medir(trabajo, flujo, dias=3):
     f = L.flujo(trabajo, flujo)
     if not f:
         raise KeyError(flujo)
-    etl = L.leer(trabajo, f"etl/veredictos/{flujo}.json") or {}
+    etl = L.veredicto_etl(trabajo, f) or {}
     inv = etl.get("inventario") or {}
     corr = inv.get("correccion") or {}
     desde = _ahora() - datetime.timedelta(days=dias)
@@ -145,7 +145,7 @@ def medir(trabajo, flujo, dias=3):
     logs = {}
 
     # ---- el item y sus corridas
-    its = _buscar(flujo, ("DataPipeline", "SparkJobDefinition", "Notebook"))
+    its = _buscar(L.item_fabric(f), ("DataPipeline", "SparkJobDefinition", "Notebook"))
     item = its[0] if its else None
     doc["item"] = ({"nombre": item["displayName"], "tipo": item["type"], "id": item["id"], "workspace": item["workspaceId"]}
                    if item else None)
