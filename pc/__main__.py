@@ -685,8 +685,7 @@ def c_acta(a):
         sys.exit(2)
     ce = A.get("cotejo_exitosos") or {}
     if ce.get("exitosos"):
-        print(f"cotejo de los EXITOSOS: {sum(1 for x in ce['exitosos'] if x['entra'])} de {len(ce['exitosos'])} entran · "
-              f"{len(ce.get('excluidos') or [])} flujo(s) fuera")
+        print(f"{len(ce['exitosos'])} EXITOSOS · {sum(x['flujos'] for x in ce['exitosos'])} flujo(s) en ellos")
     for x in A.get("avisos") or []:
         print("⚠", x)
     print(f"acta: {ruta}\n{len(A['flujos'])} flujo(s) · {A['anexo_enlaces']} enlaces verificados con HEAD · {A['graficas']} gráficas")

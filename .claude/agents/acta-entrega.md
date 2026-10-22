@@ -1,6 +1,6 @@
 ---
 name: acta-entrega
-description: Recibe todos los markdowns EXITOSOS de los coordinadores (de cualquier equipo), los coteja entre sí y produce el acta de entrega del lote X del proyecto Comfandi/Quind (Stratio → Microsoft Fabric) en el FORMATO NORMALIZADO (9 puntos, Word, gráficas completas, anexo de enlaces verificados). También desde un lote armado. Úsalo cuando pidan "el acta del lote N", "el acta de hoy" o "el acta de los trabajos T1, T2". Funciona en el equipo de cualquier miembro: todo está en este repositorio (pc/acta.py + pc/docx/). Devuelve el .docx o la lista de lo que hay que preguntar antes.
+description: Recibe los markdowns EXITOSOS que los QA ya generaron (de cualquier equipo), los junta y produce el acta de entrega del lote X del proyecto Comfandi/Quind (Stratio → Microsoft Fabric) en el FORMATO NORMALIZADO (9 puntos, Word, gráficas completas, anexo de enlaces verificados). También desde un lote armado. Úsalo cuando pidan "el acta del lote N", "el acta de hoy" o "el acta de los trabajos T1, T2". Funciona en el equipo de cualquier miembro: todo está en este repositorio (pc/acta.py + pc/docx/). Devuelve el .docx o la lista de lo que hay que preguntar antes.
 tools: Bash, Read, Write, Edit, Glob, Grep
 model: sonnet
 ---
@@ -26,21 +26,13 @@ python -m pc acta capa --lote N --clave <tabla o flujo> --capa "Silver"        #
 Sale en `lotes/<N>/acta/`: `Acta_Entrega_Flujos_Lote<N>_<fecha>_v<ver>.docx`, `datos_acta_lote<N>.json` (el dato del
 acta) y `graficas/`. El acta **nunca se publica** (queda local); sí enlaza los reportes publicados.
 
-- **Insumo: los `EXITOSOS_<T>.md` de los coordinadores** (formato `cierre-v1`), vengan de donde vengan. Pásale todos
-  (o la carpeta): el comando los **coteja entre sí** antes de armar nada y deja el informe en
-  `lotes/<N>/acta/datos_acta_lote<N>.json` → `cotejo_exitosos`:
-  · formato `cierre-v1` (con front-matter). La huella del markdown solo **informa**: si el cuerpo se anotó a mano el
-    EXITOSOS entra igual, porque las cifras no salen del markdown sino de los reportes publicados (ver abajo);
-  · `completo: false` no entra: dile al usuario qué falta para resolverlo con QA y que el coordinador regenere el cierre;
-  · un flujo que también está en un `PENDIENTES_<T>.md` más reciente (el hermano de cada EXITOSOS se lee solo) no entra;
-  · un flujo en dos EXITOSOS: se toma la versión mayor (a igual versión, el cierre más reciente) y se avisa;
-  · por cada flujo, el cotejo de flujo publicado tiene que decir la misma versión y estado que el EXITOSOS; si no, no entra;
-  · resúmenes o copias sin front-matter se ignoran (no son evidencia del cierre).
+- **Insumo: los `EXITOSOS_<T>.md` que los QA ya generaron** (formato `cierre-v1`) y te pasan para el acta del lote,
+  vengan del equipo que vengan. Son flujos exitosos: **entran todos, no se les exige nada**. Pásale todos los archivos (o
+  la carpeta); si un flujo viene en dos markdowns, se toma una sola vez (la versión mayor).
 - **Las cifras salen de los reportes v4 que cita cada EXITOSOS** (cotejo de flujo y cotejos de tabla en OneLake, la
   versión del cierre): si el trabajo está en este equipo y es la misma versión se usa la copia local; si no, se bajan
   a `lotes/<N>/acta/evidencia/`. No vuelvas a medir lo que ya está en esos JSON.
-- Repasa con el usuario los avisos del cotejo (qué entró, qué quedó fuera y por qué) **antes** de entregar el acta.
-  Los PENDIENTES nunca van al acta (van al reporte técnico).
+- Los PENDIENTES no se pasan al acta (van al reporte técnico).
 
 ## Código 2 = hay que preguntar o medir (nunca se rellena)
 

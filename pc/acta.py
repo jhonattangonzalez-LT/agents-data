@@ -7,9 +7,8 @@
 De dónde salen los flujos:
   · con lotes/<N>/lote.json (lote armado con `pc lote armar`): sus expedientes, y solo con las 3 compuertas aprobadas
     y por el responsable del acta (como siempre);
-  · con --exitosos (o --trabajos): los EXITOSOS_<T>.md de los coordinadores, de cualquier equipo, COTEJADOS entre sí
-    (cotejar_exitosos: completo, PENDIENTES, repetidos) y contra el cotejo de flujo publicado (versión y estado). La huella
-    del markdown solo informa: el cuerpo se puede anotar a mano y las cifras no salen de él sino de los reportes publicados.
+  · con --exitosos (o --trabajos): los EXITOSOS_<T>.md que los QA ya generaron y le pasan al responsable del acta, de
+    cualquier equipo. Entran todos (son flujos exitosos); solo no se repite un flujo que venga en dos.
 El dato se lee de los reportes v4 que cita cada EXITOSOS (copia local del trabajo si es la misma versión; si no, de
 OneLake a lotes/<N>/acta/evidencia/) con pc/docx/lector_formato2.py;
 el .docx lo dibuja pc/docx/acta_normalizada.py (copia del generador de qa-etl-validador-agent-v2/actas, con capas
@@ -20,7 +19,6 @@ Todo queda local en lotes/<N>/acta/ (el acta nunca se publica).
 """
 import datetime
 import glob
-import hashlib
 import json
 import os
 import re
@@ -49,7 +47,7 @@ def _mods():
 
 
 def leer_md(p):
-    """Un EXITOSOS/PENDIENTES (cierre-v1): front-matter, huella comprobada y las rutas de OneLake que cita."""
+    """Un EXITOSOS (cierre-v1): su lista de flujos y las rutas de OneLake que cita."""
     s = open(p, encoding="utf8").read().replace("\r\n", "\n")      # llegado por correo o chat desde Windows
     if not s.startswith("---\n") or "\n---\n" not in s[4:]:
         raise ValueError(f"{p}: no es un cierre-v1 (sin front-matter)")
@@ -57,28 +55,21 @@ def leer_md(p):
     g = lambda k: (re.search(rf'^{k}:\s*"?([^"\n]*)"?', fm, re.M) or [None, None])[1]
     flujos = [dict(re.findall(r'(\w+): "?([^",}]*)"?', ln)) for ln in fm.splitlines() if ln.strip().startswith("- {flujo")]
     return {"ruta": p, "formato": g("formato"), "tipo": g("tipo"), "trabajo": g("trabajo"), "generado_utc": g("generado_utc"),
-            "generado_por": g("generado_por"), "completo": (g("completo") or "true").lower() != "false",
-            "huella_ok": hashlib.sha256(cuerpo.encode()).hexdigest() == g("huella_sha256"), "flujos": flujos,
+            "generado_por": g("generado_por"), "flujos": flujos,
             "rutas": [urllib.parse.unquote(x) for x in re.findall(r"selectedPath=([^&)\s]+)", cuerpo)]}
 
 
 def _mds(rutas):
-    """Archivos o carpetas (se buscan EXITOSOS_*.md y PENDIENTES_*.md adentro, en cualquier nivel)."""
+    """Archivos o carpetas (se buscan los EXITOSOS_*.md adentro, en cualquier nivel)."""
     out = []
     for r in rutas:
         r = os.path.expanduser(r)
         if os.path.isdir(r):
             out += sorted(glob.glob(os.path.join(r, "**", "EXITOSOS_*.md"), recursive=True))
-            out += sorted(glob.glob(os.path.join(r, "**", "PENDIENTES_*.md"), recursive=True))
         elif os.path.exists(r):
             out.append(r)
         else:
             raise FileNotFoundError(r)
-    # el PENDIENTES hermano de cada EXITOSOS entra al cotejo aunque no lo hayan pasado
-    for x in list(out):
-        h = os.path.join(os.path.dirname(x), os.path.basename(x).replace("EXITOSOS_", "PENDIENTES_", 1))
-        if os.path.basename(x).startswith("EXITOSOS_") and os.path.exists(h) and h not in out:
-            out.append(h)
     return list(dict.fromkeys(os.path.abspath(x) for x in out))
 
 
@@ -87,47 +78,26 @@ def _nom(p):
 
 
 def cotejar_exitosos(rutas):
-    """Coteja los markdowns entre sí antes de armar el acta: formato, completo, flujos que están también en un
-    PENDIENTES y flujos repetidos entre EXITOSOS (se toma la versión mayor; a igual versión, el cierre más reciente).
+    """Junta los EXITOSOS que los QA ya generaron y pasaron al responsable del acta: son flujos exitosos y entran todos,
+    sin exigirles nada. Solo se evita repetir un flujo que viene en dos markdowns (se toma la versión mayor).
     Devuelve ([(md, flujo)], avisos, informe)."""
-    mds, avisos, inf, elegidos = [], [], {"exitosos": [], "excluidos": [], "ignorados": []}, {}
+    avisos, inf, elegidos = [], {"exitosos": [], "ignorados": []}, {}
     for p in _mds(rutas):
         try:
-            mds.append(leer_md(p))
-        except ValueError:                     # resúmenes o copias a mano: no son evidencia del cierre
+            m = leer_md(p)
+        except ValueError:                     # sin front-matter no hay lista de flujos que leer
             inf["ignorados"].append(p)
-            avisos.append(f"{os.path.basename(p)}: no es un cierre-v1 (sin front-matter): se ignora")
-    ex = [m for m in mds if m["tipo"] == "EXITOSOS"]
-    pend = {f["flujo"]: m for m in mds if m["tipo"] == "PENDIENTES" for f in m["flujos"]}
-    for m in ex:
-        motivo = ("no es cierre-v1" if m["formato"] != "cierre-v1" else
-                  "completo: false (faltantes en salidas/cierre_faltantes.json del trabajo)" if not m["completo"] else None)
-        inf["exitosos"].append({"ruta": m["ruta"], "trabajo": m["trabajo"], "generado_utc": m["generado_utc"],
-                                "generado_por": m["generado_por"], "flujos": len(m["flujos"]), "entra": not motivo, "motivo": motivo})
-        if not motivo and not m["huella_ok"]:
-            # el cuerpo cambió despues del cierre (notas a mano, otro editor): no excluye, porque el acta no toma cifras del
-            # markdown sino de los reportes publicados, que se cotejan flujo por flujo (version y estado)
-            avisos.append(f"{_nom(m['ruta'])}: el cuerpo cambió después del cierre (huella distinta); se usa su lista de flujos "
-                          "y las cifras de los reportes publicados")
-        inf["exitosos"][-1]["huella_igual"] = m["huella_ok"]
-        if motivo:
-            avisos.append(f"{_nom(m['ruta'])}: no entra · {motivo}")
+            avisos.append(f"{_nom(p)}: sin front-matter (no trae la lista de flujos): se ignora")
             continue
+        inf["exitosos"].append({"ruta": m["ruta"], "trabajo": m["trabajo"], "generado_utc": m["generado_utc"],
+                                "generado_por": m["generado_por"], "flujos": len(m["flujos"])})
         for f in m["flujos"]:
             n = f["flujo"]
-            if n in pend and (pend[n]["generado_utc"] or "") >= (m["generado_utc"] or ""):
-                inf["excluidos"].append({"flujo": n, "motivo": f"también está en {os.path.basename(pend[n]['ruta'])} (más reciente)"})
-                avisos.append(f"{n}: está en {_nom(m['ruta'])} y en {os.path.basename(pend[n]['ruta'])} (más reciente): no entra")
-                continue
             if n in elegidos:
                 m0, f0 = elegidos[n]
-                nuevo = (int(f["version"]), m["generado_utc"] or "") > (int(f0["version"]), m0["generado_utc"] or "")
-                (m_k, f_k), (m_d, f_d) = ((m, f), (m0, f0)) if nuevo else ((m0, f0), (m, f))
-                avisos.append(f"{n}: en {_nom(m0['ruta'])} y {_nom(m['ruta'])}: se toma v{f_k['version']} de "
-                              f"{_nom(m_k['ruta'])}")
-                inf["excluidos"].append({"flujo": n, "motivo": f"repetido: v{f_d['version']} de {_nom(m_d['ruta'])}"})
-                if not nuevo:
+                if int(f["version"] or 0) <= int(f0["version"] or 0):
                     continue
+                avisos.append(f"{n}: viene en {_nom(m0['ruta'])} y en {_nom(m['ruta'])}: se toma v{f['version']}")
             elegidos[n] = (m, f)
     return list(elegidos.values()), avisos, inf
 
@@ -158,8 +128,6 @@ def _flujo(F2, md, fd, evid):
     dv4 = os.path.join(evid, t)
     cf, origen = _traer(rf, os.path.join(loc, "flujos", f"{n}.json"), os.path.join(dv4, "flujos", f"{n}.json"), ver)
     e = cf["encabezado"]
-    if str(e.get("version")) != str(ver) or (fd.get("estado") and e.get("estado") != fd["estado"]):
-        raise ValueError(f"{n}: el cierre dice v{ver} {fd.get('estado')} y el cotejo de flujo dice v{e.get('version')} {e.get('estado')}")
     links = {"flujo": rf, "tablas": {}}
     for x in cf.get("tablas") or []:
         k = x["clave"]
@@ -225,7 +193,7 @@ def datos(lote, trabajos=None, version="1.0", fecha=None, exitosos=None):
         try:
             flujos.append(_flujo(F2, md, fd, evid))
         except (ValueError, OSError) as x:
-            avisos.append(f"{fd['flujo']}: no entra · {x}")
+            avisos.append(f"{fd['flujo']}: no se pudieron leer sus reportes publicados · {x}")
             inf.setdefault("excluidos", []).append({"flujo": fd["flujo"], "motivo": str(x)})
     avisos += [x for f in flujos for x in f.pop("avisos")]
     # un flujo sin tablas propias (tablas_en, M-037) muestra las del flujo donde se cotejan: en el acta cada tabla va una

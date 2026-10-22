@@ -757,5 +757,19 @@
   "autor": "Jhonattan-LT",
   "estado": "COMPARTIDA",
   "commit": "58b80a0"
+ },
+ {
+  "id": "M-051",
+  "fecha": "2026-10-22T14:49:22+00:00",
+  "que": "El acta toma todos los EXITOSOS que le pasan los QA sin exigirles nada (sin huella, completo, PENDIENTES ni cotejo de versión); solo no repite un flujo que venga en dos",
+  "por_que": "Los EXITOSOS ya son flujos exitosos generados por los QA; el agente solo debe saber que los recibirá para armar el acta del lote",
+  "archivos": [
+   "pc/acta.py",
+   "pc/__main__.py",
+   ".claude/agents/acta-entrega.md",
+   "CLAUDE.md"
+  ],
+  "autor": "Jhonattan-LT",
+  "estado": "SIN_COMPARTIR"
  }
 ]
