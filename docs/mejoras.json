@@ -727,5 +727,20 @@
   "autor": "Jhonattan-LT",
   "estado": "COMPARTIDA",
   "commit": "f680f20"
+ },
+ {
+  "id": "M-049",
+  "fecha": "2026-10-22T14:42:49+00:00",
+  "que": "El agente acta-entrega recibe los EXITOSOS de los coordinadores (pc acta generar --exitosos carpeta|archivos), los coteja entre sí (huella SHA-256, completo, PENDIENTES más recientes, flujos repetidos, versión y estado del cotejo publicado) y baja de OneLake los reportes que citan si el trabajo no está en el equipo; muestras/agente_acta-entrega_v1.md retirado",
+  "por_que": "El acta del lote la arma un miembro con los markdowns que le mandan los demás, sin las carpetas de sus trabajos; la copia vieja del agente en muestras/ generaba el formato anterior",
+  "archivos": [
+   "pc/acta.py",
+   "pc/__main__.py",
+   ".claude/agents/acta-entrega.md",
+   "CLAUDE.md",
+   "muestras/agente_acta-entrega_v1.md"
+  ],
+  "autor": "Jhonattan-LT",
+  "estado": "SIN_COMPARTIR"
  }
 ]

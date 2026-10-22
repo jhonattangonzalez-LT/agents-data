@@ -134,8 +134,9 @@ deterministas); **sonnet** para ETL, Postgres, lote y acta; **opus** para el cot
 Cada flujo listo genera su expediente `.md` (local). El responsable arma el lote (`pc lote armar`), pasan las 3
 compuertas (revisión QA → revisión Comfandi → aprobación) y genera el acta (`pc acta generar`, local, nunca se publica).
 El acta de entrega (formato normalizado de 9 puntos) la hace el agente **acta-entrega**, en cualquier equipo, desde los
-EXITOSOS de los trabajos: `python -m pc acta generar --lote N --trabajos T1,T2` (sin `--trabajos`, desde el lote armado y
-con las 3 compuertas). Si sale «ACTA NO EMITIDA» (código 2), pregunta lo de `lotes/N/acta/preguntas.json` (capas
+EXITOSOS que mandan los coordinadores, que coteja entre sí (huella, completo, PENDIENTES, repetidos, versión publicada):
+`python -m pc acta generar --lote N --exitosos <carpeta o archivos>` (o `--trabajos T1,T2`; sin ninguno, desde el lote
+armado y con las 3 compuertas). Si sale «ACTA NO EMITIDA» (código 2), pregunta lo de `lotes/N/acta/preguntas.json` (capas
 ambiguas → `pc acta capa`, dependencias, ejemplos reales, enlaces) y regenera; nunca se rellena.
 Firmantes: solo ingesta → Erick (CDS) · solo analítica u orquestadores → Diego (DIA) · ambos → los dos (`config/acta.json`).
 

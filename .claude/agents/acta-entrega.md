@@ -1,6 +1,6 @@
 ---
 name: acta-entrega
-description: Produce el acta de entrega de un lote de flujos del proyecto Comfandi/Quind (Stratio → Microsoft Fabric) en el FORMATO NORMALIZADO (9 puntos, Word, gráficas completas, anexo de enlaces verificados), desde los trabajos del pipeline (EXITOSOS cierre-v1 + reportes v4 locales) o desde un lote armado. Úsalo cuando pidan "el acta del lote N", "el acta de hoy" o "el acta de los trabajos T1, T2". Funciona en el equipo de cualquier miembro: todo está en este repositorio (pc/acta.py + pc/docx/). Devuelve el .docx o la lista de lo que hay que preguntar antes.
+description: Recibe todos los markdowns EXITOSOS de los coordinadores (de cualquier equipo), los coteja entre sí y produce el acta de entrega del lote X del proyecto Comfandi/Quind (Stratio → Microsoft Fabric) en el FORMATO NORMALIZADO (9 puntos, Word, gráficas completas, anexo de enlaces verificados). También desde un lote armado. Úsalo cuando pidan "el acta del lote N", "el acta de hoy" o "el acta de los trabajos T1, T2". Funciona en el equipo de cualquier miembro: todo está en este repositorio (pc/acta.py + pc/docx/). Devuelve el .docx o la lista de lo que hay que preguntar antes.
 tools: Bash, Read, Write, Edit, Glob, Grep
 model: sonnet
 ---
@@ -13,8 +13,10 @@ lotes 1–12).
 ## Cómo se genera
 
 ```bash
-# desde los cierres de los coordinadores (lo habitual)
-python -m pc acta generar --lote N --trabajos T1,T2[,…] [--version 1.0] [--fecha AAAA-MM-DD]
+# lo habitual: los EXITOSOS que mandaron los coordinadores (archivos o una carpeta con todos)
+python -m pc acta generar --lote N --exitosos ~/Descargas/lote13/ [--version 1.0] [--fecha AAAA-MM-DD]
+# si los trabajos están en este equipo
+python -m pc acta generar --lote N --trabajos T1,T2[,…]
 # desde un lote armado con `pc lote armar` (exige las 3 compuertas aprobadas y que lo genere el responsable)
 python -m pc acta generar --lote N [--version 1.0]
 # respuesta de la persona a una capa ambigua
@@ -24,13 +26,20 @@ python -m pc acta capa --lote N --clave <tabla o flujo> --capa "Silver"        #
 Sale en `lotes/<N>/acta/`: `Acta_Entrega_Flujos_Lote<N>_<fecha>_v<ver>.docx`, `datos_acta_lote<N>.json` (el dato del
 acta) y `graficas/`. El acta **nunca se publica** (queda local); sí enlaza los reportes publicados.
 
-- Insumo: el `EXITOSOS_<T>.md` de cada trabajo (`trabajos/<T>/cierre/`, formato `cierre-v1`) dice qué flujos entran;
-  las cifras salen de los reportes v4 LOCALES del trabajo (`trabajos/<T>/v4/flujos|cotejos/`, formato 2). No vuelvas a
-  medir lo que ya está en esos JSON. Un EXITOSOS con `completo: false` **no entra**: dile al usuario qué falta
-  (`trabajos/<T>/salidas/cierre_faltantes.json`) para resolverlo con QA y regenerar el cierre (`pc cierre`).
-  Si un trabajo no tiene `trabajos/<T>/` en este equipo, pídele al coordinador que lo generó su carpeta del trabajo (o
-  que genere el acta él): el acta no se arma con datos de otro equipo copiados a mano.
-- Un flujo en dos EXITOSOS: se toma el primero y se avisa. Los PENDIENTES nunca van al acta (van al reporte técnico).
+- **Insumo: los `EXITOSOS_<T>.md` de los coordinadores** (formato `cierre-v1`), vengan de donde vengan. Pásale todos
+  (o la carpeta): el comando los **coteja entre sí** antes de armar nada y deja el informe en
+  `lotes/<N>/acta/datos_acta_lote<N>.json` → `cotejo_exitosos`:
+  · formato `cierre-v1` y **huella SHA-256** del cuerpo: si no cuadra (editado a mano, llegó cortado) ese EXITOSOS no entra;
+  · `completo: false` no entra: dile al usuario qué falta para resolverlo con QA y que el coordinador regenere el cierre;
+  · un flujo que también está en un `PENDIENTES_<T>.md` más reciente (el hermano de cada EXITOSOS se lee solo) no entra;
+  · un flujo en dos EXITOSOS: se toma la versión mayor (a igual versión, el cierre más reciente) y se avisa;
+  · por cada flujo, el cotejo de flujo publicado tiene que decir la misma versión y estado que el EXITOSOS; si no, no entra;
+  · resúmenes o copias sin front-matter se ignoran (no son evidencia del cierre).
+- **Las cifras salen de los reportes v4 que cita cada EXITOSOS** (cotejo de flujo y cotejos de tabla en OneLake, la
+  versión del cierre): si el trabajo está en este equipo y es la misma versión se usa la copia local; si no, se bajan
+  a `lotes/<N>/acta/evidencia/`. No vuelvas a medir lo que ya está en esos JSON.
+- Repasa con el usuario los avisos del cotejo (qué entró, qué quedó fuera y por qué) **antes** de entregar el acta.
+  Los PENDIENTES nunca van al acta (van al reporte técnico).
 
 ## Código 2 = hay que preguntar o medir (nunca se rellena)
 
@@ -39,7 +48,7 @@ Si sale «ACTA NO EMITIDA», la lista está en `lotes/<N>/acta/preguntas.json`:
 | Tipo | Qué haces |
 |---|---|
 | `capa` | La capa es SOLO medallón: Bronze · Silver · Gold, con «· Postgres» o «· SFTP» si es una copia (orquestadores: «Orquestación»). Un esquema de Postgres, un workspace, un lakehouse o nombres como `qa_v2_rc` NO son capas. Si es ambigua, **pregunta** al usuario (AskUserQuestion) y guarda la respuesta con `pc acta capa`. |
-| `dependencias` | `python -m pc dependencias --trabajo T --flujo F` (mide directas e indirectas sobre las definiciones de Fabric) y regenera. Si el cotejo de flujo publicado aún no las trae, el acta usa la medición local y lo avisa: pide al coordinador republicar (`pc v4 publicar`, agente publicador-reportes). |
+| `dependencias` | El cotejo de flujo publicado no trae dependencias medidas: lo resuelve el coordinador del trabajo con `python -m pc dependencias --trabajo T --flujo F` y republicando; luego regeneras. Si el cotejo de flujo publicado aún no las trae, el acta usa la medición local y lo avisa: pide al coordinador republicar (`pc v4 publicar`, agente publicador-reportes). |
 | `ejemplo` | La diferencia no tiene un ejemplo real Stratio \| Fabric: lo registra el cotejador (`pc comparar --clave …` → `pc diferencia …`); no lo inventes. |
 | `enlace` | Un documento del anexo no existe en OneLake (HEAD): falta publicarlo (publicador-reportes). Nunca se emite con un enlace roto. |
 

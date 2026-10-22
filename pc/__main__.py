@@ -676,13 +676,17 @@ def c_acta(a):
         print(f"capa de {a.clave}: {a.capa} · {len(dec)} capa(s) decidida(s) en el lote {a.lote}")
         return
     trabajos = [x for x in (a.trabajos or "").split(",") if x]
-    ruta, A = acta.generar(a.lote, a.version, trabajos or None, a.fecha)
+    ruta, A = acta.generar(a.lote, a.version, trabajos or None, a.fecha, a.exitosos or None)
     if ruta is None:
         print(f"ACTA NO EMITIDA · {len(A)} punto(s) para preguntar o medir antes (no se suponen) · "
               f"lotes/{a.lote}/acta/preguntas.json")
         for x in A:
             print(f"  [{x['tipo']}] {x['texto']}")
         sys.exit(2)
+    ce = A.get("cotejo_exitosos") or {}
+    if ce.get("exitosos"):
+        print(f"cotejo de los EXITOSOS: {sum(1 for x in ce['exitosos'] if x['entra'])} de {len(ce['exitosos'])} entran · "
+              f"{len(ce.get('excluidos') or [])} flujo(s) fuera")
     for x in A.get("avisos") or []:
         print("⚠", x)
     print(f"acta: {ruta}\n{len(A['flujos'])} flujo(s) · {A['anexo_enlaces']} enlaces verificados con HEAD · {A['graficas']} gráficas")
@@ -1062,6 +1066,7 @@ def main(argv=None):
     x.add_argument("accion", choices=["generar", "capa"]); x.add_argument("--lote", required=True); x.add_argument("--version", default="1.0")
     x.add_argument("--trabajos", help="T1,T2: toma los flujos de sus EXITOSOS (cierre-v1) en vez de lotes/N/lote.json")
     x.add_argument("--fecha", help="fecha del acta (por defecto hoy)")
+    x.add_argument("--exitosos", nargs="+", help="los EXITOSOS_*.md (archivos o carpetas) que se cotejan para el acta; los reportes se bajan de OneLake si el trabajo no está en este equipo")
     x.add_argument("--clave", help="capa: tabla (clave) o flujo (nombre en Fabric)"); x.add_argument("--capa", help="Bronze · Silver · Gold [· Postgres|SFTP]")
     x.set_defaults(fn=c_acta)
     x = s.add_parser("mejora", help="registro de mejoras del proceso para compartir con el equipo")
