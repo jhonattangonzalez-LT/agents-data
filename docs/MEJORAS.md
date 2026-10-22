@@ -2,13 +2,13 @@
 
 Cada mejora se comparte con el equipo (commit + push al repositorio). `SIN_COMPARTIR` = falta hacerlo.
 
-## M-051 · 2026-10-22 · SIN_COMPARTIR
+## M-051 · 2026-10-22 · COMPARTIDA
 
 **Qué:** El acta toma todos los EXITOSOS que le pasan los QA sin exigirles nada (sin huella, completo, PENDIENTES ni cotejo de versión); solo no repite un flujo que venga en dos
 
 **Por qué:** Los EXITOSOS ya son flujos exitosos generados por los QA; el agente solo debe saber que los recibirá para armar el acta del lote
 
-**Archivos:** `pc/acta.py`, `pc/__main__.py`, `.claude/agents/acta-entrega.md`, `CLAUDE.md` · por Jhonattan-LT
+**Archivos:** `pc/acta.py`, `pc/__main__.py`, `.claude/agents/acta-entrega.md`, `CLAUDE.md` · por Jhonattan-LT · compartida en 84931d6
 
 ## M-050 · 2026-10-22 · COMPARTIDA
 
