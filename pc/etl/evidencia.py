@@ -285,10 +285,13 @@ def medir(trabajo, flujo, dias=3):
             fila["nota"] = "origen fuera del lakehouse: no se mide desde Fabric"
         entradas.append(fila)
 
-    # ---- ingesta: el destino es una carpeta de Files
-    if f["grupo"] == "ingesta":
-        for o in f["objetos"]:
-            r = (o.get("fabric") or {}).get("ruta")
+    # ---- el destino es una carpeta de Files (ingesta, o analitica que escribe archivos); tablas Delta de ingesta
+    ya = {(s_.get("tabla") or s_.get("destino") or "").lower() for s_ in salidas}
+    for o in f["objetos"]:
+        r = (o.get("fabric") or {}).get("ruta")
+        if r and r.lower() in ya:
+            continue
+        if f["grupo"] == "ingesta" or (r and r.startswith("Files/")):
             if r and r.startswith("Files/"):
                 try:
                     salidas.append(dict({"destino": r, "tipo": "carpeta de archivos"}, **_carpeta(r, ini, fin)))

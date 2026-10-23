@@ -856,5 +856,18 @@
   "autor": "Jhonattan-LT",
   "estado": "COMPARTIDA",
   "commit": "232dfe8"
+ },
+ {
+  "id": "M-058",
+  "fecha": "2026-10-23T16:04:28+00:00",
+  "que": "pc v4 incompletos/publicar --flujos: cierre parcial que publica solo los flujos aprobados; la evidencia ETL arma la seccion salidas de las carpetas Files tambien en analitica",
+  "por_que": "Cerrar 11 de 13 sin esperar a los pendientes (sus reportes incompletos ya no bloquean a los aprobados) y fosfec_info quedaba incompleto porque la evidencia solo listaba salidas Files en ingesta",
+  "archivos": [
+   "pc/reportes/v4.py",
+   "pc/__main__.py",
+   "pc/etl/evidencia.py"
+  ],
+  "autor": "Jhonattan-LT",
+  "estado": "SIN_COMPARTIR"
  }
 ]

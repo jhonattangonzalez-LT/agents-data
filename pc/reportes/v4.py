@@ -752,10 +752,12 @@ def construir(trabajo):
     return h
 
 
-def incompletos(trabajo):
-    """{archivo: [lo que falta]} de los cotejos de tabla y de flujo del trabajo. Vacio = todo completo."""
+def incompletos(trabajo, flujos=None):
+    """{archivo: [lo que falta]} de los cotejos de tabla y de flujo del trabajo (o solo de `flujos`). Vacio = todo completo."""
     out = {}
     for f in (L.leer(trabajo, "lote.json") or {}).get("flujos", []):
+        if flujos and f["nombre_fabric"] not in flujos:
+            continue
         cf = L.leer(trabajo, f"v4/flujos/{f['nombre_fabric']}.json")
         x = (cf or {}).get("encabezado", {}).get("faltantes") if cf else ["no existe el cotejo de flujo"]
         if x:
@@ -768,12 +770,13 @@ def incompletos(trabajo):
     return out
 
 
-def publicar(trabajo, bucket=True, forzar_incompleto=False):
+def publicar(trabajo, bucket=True, forzar_incompleto=False, flujos=None):
     """Publica SOLO mediciones, cotejos y cotejo de flujo en OneLake reportes_v4 (reescribe en sitio la vN del ciclo)
-    y las dos mediciones al bucket v4. HEAD a todo. Log, expediente y acta quedan locales."""
+    y las dos mediciones al bucket v4. HEAD a todo. Log, expediente y acta quedan locales.
+    flujos: publica solo esos (p. ej. los aprobados de un cierre parcial); los demas no se suben ni se exigen completos."""
     from ..acceso import bucket as B
     d = L.leer(trabajo, "lote.json")
-    falta = incompletos(trabajo)
+    falta = incompletos(trabajo, flujos)
     if falta and not forzar_incompleto:
         raise RuntimeError("no se publica: informacion incompleta en " + "; ".join(f"{k}: {v[:4]}" for k, v in list(falta.items())[:8]))
     pr = _pruebas(trabajo)
@@ -787,6 +790,8 @@ def publicar(trabajo, bucket=True, forzar_incompleto=False):
         return r
     for f in d["flujos"]:
         n = f["nombre_fabric"]
+        if flujos and n not in flujos:
+            continue
         v = version(trabajo, n)
         for o in f["objetos"]:
             k = o["clave"]
