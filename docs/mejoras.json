@@ -816,7 +816,8 @@
    "pc/medir/completo.py"
   ],
   "autor": "Jhonattan-LT",
-  "estado": "SIN_COMPARTIR"
+  "estado": "COMPARTIDA",
+  "commit": "ed9cec6"
  },
  {
   "id": "M-055",
@@ -827,7 +828,8 @@
    "pc/reportes/formato2.py"
   ],
   "autor": "Jhonattan-LT",
-  "estado": "SIN_COMPARTIR"
+  "estado": "COMPARTIDA",
+  "commit": "ed9cec6"
  },
  {
   "id": "M-056",
@@ -838,6 +840,7 @@
    "pc/reportes/v4.py"
   ],
   "autor": "Jhonattan-LT",
-  "estado": "SIN_COMPARTIR"
+  "estado": "COMPARTIDA",
+  "commit": "ed9cec6"
  }
 ]
