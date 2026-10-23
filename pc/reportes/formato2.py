@@ -738,7 +738,11 @@ def flujo(enc, f, etl, ev, sem, tablas, ver, otros=None, decisiones=None):
     spg = [s for s in sal if s.get("tabla") and s.get("version_vigente") is None]
     if spg:
         copias = [a_ for a_ in (ev.get("actividades") or []) if a_.get("tipo") == "Copy"]
-        ok_ = [a_ for a_ in copias if a_.get("estado") == "Succeeded" and (a_.get("filas_copiadas") or 0) > 0]
+        # una Copy de archivo (p. ej. a SFTP) no informa filas: basta que sea exitosa; las que si informan filas deben copiar > 0
+        ok_ = [a_ for a_ in copias if a_.get("estado") == "Succeeded" and
+               (a_.get("filas_copiadas") is None or a_["filas_copiadas"] > 0)]
+        if sum(1 for a_ in ok_ if a_.get("filas_copiadas")) < len(spg):
+            ok_ = []
         for s_ in spg:
             s_["tipo"] = "tabla Postgres (sin _delta_log)"
             s_["escrita_por"] = [{"actividad": a_["actividad"], "estado": a_["estado"], "filas_copiadas": a_.get("filas_copiadas"),

@@ -462,6 +462,24 @@ def _cp05_evidencia(trabajo, f, o):
                     "detalle": "; ".join(f"{a['archivo']} escrito {a['escrito_utc']}" for a in arch) +
                                (f" fuera de la {ventana}" if fuera else f" dentro de la {ventana}"),
                     "evidencia": {"archivos_sftp": arch}, "medido_en": "fecha de modificacion del archivo en el SFTP (medida al descargarlo)"}
+    if src.get("tipo") == "files" and src.get("ruta"):
+        # carpeta de archivos sin salida en la evidencia: la fecha de modificacion de cada archivo en OneLake
+        from ..acceso import onelake as ol
+        from ..rapido import delta_remoto as dr
+        from email.utils import parsedate_to_datetime
+        ini, fin = dr.a_utc(cv.get("inicio_utc")), dr.a_utc(cv.get("fin_utc"))
+        try:
+            ps = [p for p in ol.listar(src["ruta"], True) if not p["isDirectory"]
+                  and not p["name"].rsplit("/", 1)[-1].startswith(("_", "."))]
+        except Exception:
+            ps = []
+        if ps and ini and fin:
+            arch = [{"archivo": p["name"].rsplit("/", 1)[-1], "escrito_utc": parsedate_to_datetime(p["lastModified"]).strftime("%Y-%m-%dT%H:%M:%S+00:00")} for p in ps]
+            fuera = [a for a in arch if not (ini <= dr.a_utc(a["escrito_utc"]) <= fin)]
+            return {"estado": "FALLA" if fuera else "OK",
+                    "detalle": "; ".join(f"{a['archivo']} escrito {a['escrito_utc']}" for a in arch) +
+                               (f" fuera de la {ventana}" if fuera else f" dentro de la {ventana}"),
+                    "evidencia": {"archivos": arch}, "medido_en": "fecha de modificacion de cada archivo en OneLake (listado)"}
     if src.get("tipo") == "pg":
         cop = [a for a in ev.get("actividades") or [] if a.get("tipo") == "Copy"]
         if cop and all(a.get("estado") == "Succeeded" for a in cop):

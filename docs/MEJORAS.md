@@ -2,6 +2,30 @@
 
 Cada mejora se comparte con el equipo (commit + push al repositorio). `SIN_COMPARTIR` = falta hacerlo.
 
+## M-056 · 2026-10-22 · SIN_COMPARTIR
+
+**Qué:** CP-05 de salidas en carpeta de archivos (Files) sin salida en la evidencia del ETL: se prueba con la fecha de modificacion de cada archivo en OneLake dentro de la corrida validada
+
+**Por qué:** R1022 fosfec_info: los CSV de crojas se escribieron dentro de la corrida (18:41 y 18:43 UTC) pero CP-05 quedaba NO_EVALUADO porque la evidencia del ETL no detecto la salida
+
+**Archivos:** `pc/reportes/v4.py` · por Jhonattan-LT
+
+## M-055 · 2026-10-22 · SIN_COMPARTIR
+
+**Qué:** La comprobacion de salidas Postgres acepta las Copy de archivo (SFTP) exitosas que no informan filas; las Copy a tabla siguen exigiendo filas > 0 y al menos una por salida Postgres
+
+**Por qué:** R1022: fosfec_postulacion_recurrente y validacion_cambio_doc quedaban EN_REVISION porque las Copy a SFTP reportan filas_copiadas None
+
+**Archivos:** `pc/reportes/formato2.py` · por Jhonattan-LT
+
+## M-054 · 2026-10-22 · SIN_COMPARTIR
+
+**Qué:** El medidor detecta CSV en archivos sin extension (SFTP de la ruta de QA de Fabric) por los bytes magicos PAR1, en lugar de leerlos como parquet
+
+**Por qué:** R1022: los 3 SFTP de Fabric (fosfec recurrente, aporte_cargue1/2) fallaban con 'No magic bytes' en el nivel 2
+
+**Archivos:** `pc/medir/completo.py` · por Jhonattan-LT
+
 ## M-053 · 2026-10-22 · COMPARTIDA
 
 **Qué:** Revisor del acta: solo advierte lo que el QA dejó abierto (no campos que el pipeline agregó después ni copias locales) y agrupa por enlace; R1019 pasa de 29 advertencias a 0

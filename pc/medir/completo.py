@@ -187,8 +187,19 @@ def bajar_pg_fabric(lote, clave, tabla, where=None, log=None):
     return dest, [loc], m
 
 
+def _es_texto(p):
+    """Un archivo sin extension es parquet solo si empieza con los bytes magicos PAR1."""
+    try:
+        with open(p, "rb") as f:
+            return f.read(4) != b"PAR1"
+    except OSError:
+        return False
+
+
 def _lector(locs):
     ext = {os.path.splitext(p[:-3] if p.endswith(".gz") else p)[1].lower() for p in locs}
+    if ext == {""} and locs and all(_es_texto(p) for p in locs):
+        return "csv"   # SFTP sin extension (p. ej. ruta de QA de Fabric): el contenido decide, no el nombre
     if ext <= {".parquet", ""}:
         return "parquet"
     if ext & {".csv", ".txt"}:
