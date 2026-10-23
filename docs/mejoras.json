@@ -842,5 +842,18 @@
   "autor": "Jhonattan-LT",
   "estado": "COMPARTIDA",
   "commit": "ed9cec6"
+ },
+ {
+  "id": "M-057",
+  "fecha": "2026-10-23T09:05:15+00:00",
+  "que": "Objeto con dedup_excepto en su lado (lote.json): el medidor y el cotejo leen una fila por grupo igual en todo salvo esas columnas (p. ej. un ID de corrida), y la medicion lo declara (vista.sin_repetidas_excepto)",
+  "por_que": "Una entrada cargada dos veces en QA duplico la salida de un orquestador XXL; la persona decidio medir y cotejar la version de la corrida validada como si fuera 1 a 1, con salvedad escrita, sin recortar ni cambiar umbrales en silencio",
+  "archivos": [
+   "pc/medir/completo.py",
+   "pc/__main__.py",
+   "pc/cotejo/analisis.py"
+  ],
+  "autor": "Jhonattan-LT",
+  "estado": "SIN_COMPARTIR"
  }
 ]

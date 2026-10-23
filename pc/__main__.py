@@ -591,7 +591,8 @@ def c_medir(a):
             filtro = _where(o) if (o.get(lado.lower()) or {}).get("tipo") != "pg" else None
             out, rep = C.medir(a.lote, o["clave"], lado, e["carpeta"], e["meta"], flujo=f["nombre_fabric"], grupo=f["grupo"],
                                filtro=filtro, excluir=o.get("excluir_columnas", ()), csv=(o.get(lado.lower()) or {}).get("csv"),
-                               cast_varchar=(o.get(lado.lower()) or {}).get("cast_varchar"))
+                               cast_varchar=(o.get(lado.lower()) or {}).get("cast_varchar"),
+                               dedup_excepto=(o.get(lado.lower()) or {}).get("dedup_excepto"))
             return o["clave"], lado, f"{rep['conteos']['row_count']:,} filas · hash {str(rep['hash'].get('hash_dataset'))[:12]}"
         except Exception as ex:
             traceback.print_exc(file=sys.stderr)

@@ -39,7 +39,8 @@ def abrir(trabajo, clave):
             filtro = " and ".join(([f"{c} >= '{v['desde']}'"] if v.get("desde") else []) + ([f"{c} <= '{v['hasta']}'"] if v.get("hasta") else []))
         vistas[nombre] = C.vista(con, e["carpeta"], e["meta"].get("lector", "parquet"), filtro=filtro or None,
                                  excluir=o.get("excluir_columnas", ()), tipos_pg=e["meta"].get("esquema_postgres"),
-                                 nombre=nombre, cast_varchar=src.get("cast_varchar"), csv=src.get("csv"))
+                                 nombre=nombre, cast_varchar=src.get("cast_varchar"), csv=src.get("csv"),
+                                 dedup_excepto=src.get("dedup_excepto"))
     return con, {"flujo": f["nombre_fabric"], "grupo": f["grupo"], "vistas": vistas}
 
 

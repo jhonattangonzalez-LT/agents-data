@@ -2,6 +2,14 @@
 
 Cada mejora se comparte con el equipo (commit + push al repositorio). `SIN_COMPARTIR` = falta hacerlo.
 
+## M-057 · 2026-10-23 · SIN_COMPARTIR
+
+**Qué:** Objeto con dedup_excepto en su lado (lote.json): el medidor y el cotejo leen una fila por grupo igual en todo salvo esas columnas (p. ej. un ID de corrida), y la medicion lo declara (vista.sin_repetidas_excepto)
+
+**Por qué:** Una entrada cargada dos veces en QA duplico la salida de un orquestador XXL; la persona decidio medir y cotejar la version de la corrida validada como si fuera 1 a 1, con salvedad escrita, sin recortar ni cambiar umbrales en silencio
+
+**Archivos:** `pc/medir/completo.py`, `pc/__main__.py`, `pc/cotejo/analisis.py` · por Jhonattan-LT
+
 ## M-056 · 2026-10-22 · COMPARTIDA
 
 **Qué:** CP-05 de salidas en carpeta de archivos (Files) sin salida en la evidencia del ETL: se prueba con la fecha de modificacion de cada archivo en OneLake dentro de la corrida validada

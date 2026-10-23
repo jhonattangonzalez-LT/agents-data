@@ -254,8 +254,10 @@ def conectar():
 
 
 def vista(con, carpeta, lector, archivos=None, csv=None, filtro=None, excluir=(), tipos_pg=None, nombre="T",
-          cast_varchar=None):
-    """Crea la vista `nombre` sobre lo descargado. lector: delta | parquet | csv."""
+          cast_varchar=None, dedup_excepto=None):
+    """Crea la vista `nombre` sobre lo descargado. lector: delta | parquet | csv.
+    dedup_excepto: columnas que no cuentan para repetir una fila (p. ej. un ID de corrida): deja una fila por cada grupo
+    igual en el resto, con el menor valor de esas columnas. Lo decide una persona y queda como salvedad en la medicion."""
     if lector == "delta":
         con.execute("install delta; load delta")
         base = f"delta_scan('{carpeta}')"
@@ -291,20 +293,30 @@ def vista(con, carpeta, lector, archivos=None, csv=None, filtro=None, excluir=()
              "double precision": "DOUBLE", "boolean": "BOOLEAN"}
         dec = {c["column_name"]: c["data_type"] for c in tipos_pg}
         sel = ", ".join(f"cast({motor.q(c)} as {M.get(dec.get(c), 'VARCHAR')}) as {motor.q(c)}" for c in cols if c not in fuera)
+    dd = [c for c in (dedup_excepto or ()) if c in cols and c not in fuera]
+    if dd:
+        resto = [c for c in cols if c not in fuera]
+        # se materializa una vez: una vista con group by se recalcularia en cada pasada de la medicion
+        con.execute(f"create or replace temp table {nombre}_sin_repetidas as select "
+                    f"{', '.join(motor.q(c) if c not in dd else f'min({motor.q(c)}) as {motor.q(c)}' for c in resto)} "
+                    f"from {base} group by {', '.join(motor.q(c) for c in resto if c not in dd)}")
+        base, sel = f"{nombre}_sin_repetidas", "*"
     con.execute(f"create or replace view {nombre} as select {sel} from {base}" + (f" where {filtro}" if filtro else ""))
     out = {"columnas_excluidas": fuera, "filtro": filtro, "columnas_origen": cols}
+    if dd:
+        out["sin_repetidas_excepto"] = dd
     if lector == "csv":
         out["codificacion_csv"] = codificacion
     return out
 
 
 def medir(lote, clave, plataforma, carpeta, meta, *, nombre=None, flujo=None, grupo=None, filtro=None,
-          excluir=(), csv=None, run_id=None, cast_varchar=None):
+          excluir=(), csv=None, run_id=None, cast_varchar=None, dedup_excepto=None):
     """Mide el objeto descargado y deja el reporte en lotes/<lote>/nivel2/<PLAT>/<clave>.json."""
     con = conectar()
     try:
         v = vista(con, carpeta, meta.get("lector", "parquet"), csv=csv, filtro=filtro, excluir=excluir,
-                  tipos_pg=meta.get("esquema_postgres"), cast_varchar=cast_varchar)
+                  tipos_pg=meta.get("esquema_postgres"), cast_varchar=cast_varchar, dedup_excepto=dedup_excepto)
         rep = motor.medir(con, "T", plataforma=plataforma, clave=clave, nombre=nombre or clave,
                           ubicacion=meta.get("tabla") or meta.get("ruta") or meta.get("directorio") or carpeta,
                           flujo=flujo, tipo_fuente=meta.get("lector", "parquet").upper(),
