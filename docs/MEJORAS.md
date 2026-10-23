@@ -2,13 +2,13 @@
 
 Cada mejora se comparte con el equipo (commit + push al repositorio). `SIN_COMPARTIR` = falta hacerlo.
 
-## M-057 · 2026-10-23 · SIN_COMPARTIR
+## M-057 · 2026-10-23 · COMPARTIDA
 
 **Qué:** Objeto con dedup_excepto en su lado (lote.json): el medidor y el cotejo leen una fila por grupo igual en todo salvo esas columnas (p. ej. un ID de corrida), y la medicion lo declara (vista.sin_repetidas_excepto)
 
 **Por qué:** Una entrada cargada dos veces en QA duplico la salida de un orquestador XXL; la persona decidio medir y cotejar la version de la corrida validada como si fuera 1 a 1, con salvedad escrita, sin recortar ni cambiar umbrales en silencio
 
-**Archivos:** `pc/medir/completo.py`, `pc/__main__.py`, `pc/cotejo/analisis.py` · por Jhonattan-LT
+**Archivos:** `pc/medir/completo.py`, `pc/__main__.py`, `pc/cotejo/analisis.py` · por Jhonattan-LT · compartida en 232dfe8
 
 ## M-056 · 2026-10-22 · COMPARTIDA
 
