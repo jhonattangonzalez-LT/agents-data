@@ -2,13 +2,13 @@
 
 Cada mejora se comparte con el equipo (commit + push al repositorio). `SIN_COMPARTIR` = falta hacerlo.
 
-## M-058 · 2026-10-23 · SIN_COMPARTIR
+## M-058 · 2026-10-23 · COMPARTIDA
 
 **Qué:** pc v4 incompletos/publicar --flujos: cierre parcial que publica solo los flujos aprobados; la evidencia ETL arma la seccion salidas de las carpetas Files tambien en analitica
 
 **Por qué:** Cerrar 11 de 13 sin esperar a los pendientes (sus reportes incompletos ya no bloquean a los aprobados) y fosfec_info quedaba incompleto porque la evidencia solo listaba salidas Files en ingesta
 
-**Archivos:** `pc/reportes/v4.py`, `pc/__main__.py`, `pc/etl/evidencia.py` · por Jhonattan-LT
+**Archivos:** `pc/reportes/v4.py`, `pc/__main__.py`, `pc/etl/evidencia.py` · por Jhonattan-LT · compartida en c56cec2
 
 ## M-057 · 2026-10-23 · COMPARTIDA
 

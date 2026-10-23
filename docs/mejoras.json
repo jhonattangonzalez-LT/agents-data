@@ -868,6 +868,7 @@
    "pc/etl/evidencia.py"
   ],
   "autor": "Jhonattan-LT",
-  "estado": "SIN_COMPARTIR"
+  "estado": "COMPARTIDA",
+  "commit": "c56cec2"
  }
 ]
