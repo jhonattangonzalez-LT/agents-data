@@ -5,6 +5,7 @@
   mensajes/desarrollo_analitica.md   chat para el equipo de analitica (DIA): analitica y orquestadores
   mensajes/desarrollo_ingesta.md     chat para el equipo de ingesta (CDS)
   mensajes/comfandi.md               correo para Comfandi: reglas de negocio por confirmar (A_VERIFICAR)
+  mensajes/particion_analitica.md    chat a analítica: copia particionada de un archivo de Stratio que no baja por Rocket
   mensajes/secciones.json            el pedazo de cada flujo (el panel lo muestra al elegir un flujo)
 
 Solo lo que el destinatario necesita: que flujo, que tabla, que falla o que diferencia hay, cifras de cada lado, un
@@ -249,7 +250,7 @@ def listar(trabajo):
     base = os.path.join(L.dir_lote(trabajo), "mensajes")
     out = []
     nombres = {"desarrollo_analitica": ("desarrollo", "analítica (DIA)"), "desarrollo_ingesta": ("desarrollo", "ingesta (CDS)"),
-               "comfandi": ("comfandi", "Comfandi")}
+               "comfandi": ("comfandi", "Comfandi"), "particion_analitica": ("particion", "analítica (DIA)")}
     for k, (tipo, destino) in nombres.items():
         p = os.path.join(base, f"{k}.md")
         if os.path.exists(p):
@@ -260,3 +261,70 @@ def listar(trabajo):
 
 def secciones(trabajo):
     return L.leer(trabajo, "mensajes/secciones.json", {}) or {}
+
+
+def _mb(x):
+    return f"{x:,.0f}".replace(",", ".")
+
+
+def particion(trabajo, claves=None):
+    """Mensaje corto a analítica: copia particionada (solo para pruebas) de los archivos de Stratio que no bajan por
+    Rocket. Sin `claves`, las de riesgo ALTO de `pc estimar`. Registra la solicitud en descargas/particion/<clave>.json."""
+    from .medir import estimar as E
+    t = E.tasas()
+    filas = [r for r in E.estimar(trabajo) if r["lado"] == "STRATIO" and r.get("riesgo")
+             and (r["clave"] in claves if claves else r["riesgo"] == "ALTO" and not r.get("copia_particionada"))]
+    if not filas:
+        return None
+    from .config import PAR
+    R = t.get("riesgo_rocket") or {}
+    tope = max(50, int(R.get("limite_peticion_s", 3600) * R.get("medio_fraccion", 0.4) * t["rocket_mb_s"]
+                       / max(1, PAR["rocket_hilos_por_objeto"]) // 50 * 50))
+    srcs = {o["clave"]: (f, o) for f, o in L.objetos(trabajo)}
+    items = []
+    for r in filas:
+        f, o = srcs[r["clave"]]
+        ruta = o["stratio"]["ruta"]
+        pend = L.leer(trabajo, f"rapido/STRATIO/{r['clave']}.pendiente.json") or {}
+        mayor = (f" (el mayor, `{pend['archivo_max']}`, de {_mb(r['mb_archivo_max'])} MB)" if pend.get("archivo_max") and r.get("mb_archivo_max") else "")
+        items.append(f"*{f['nombre_fabric']}* · `{ruta}` · {_mb(r['mb'])} MB en {pend.get('archivos') or '?'} archivo(s){mayor}")
+        L.guardar(trabajo, f"descargas/particion/{r['clave']}.json",
+                  {"estado": "SOLICITADA", "solicitada_utc": datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds"),
+                   "por": L.usuario(), "flujo": f["nombre_fabric"], "ruta_original": ruta, "mb": r["mb"],
+                   "archivos": pend.get("archivos"), "mb_archivo_max": r.get("mb_archivo_max"), "motivos": r.get("riesgo_motivos")})
+    txt = "\n".join([
+        f"🔧 *Apoyo para pruebas QA · copia particionada en Stratio* · {len(items)} archivo(s)", "",
+        "Hola, equipo de analítica. Para validar la migración necesitamos descargar estos datos de Stratio, pero por su tamaño "
+        "la descarga por Rocket se corta y no llega (cada archivo baja entero y, si se corta, vuelve a empezar):", "",
+        *[f"{i}. {x}" for i, x in enumerate(items, 1)], "",
+        "¿Nos ayudan a dejar una *copia particionada*, solo para nuestras pruebas?",
+        "• Mismo contenido, columnas y formato, sin filtros ni transformaciones, de la misma ejecución que la original.",
+        f"• En archivos de máximo ~{tope} MB (por fecha, por periodo o repartida en N archivos, como les quede más fácil).",
+        "• En una ruta HDFS que se lea por Rocket (p. ej. la misma ruta con el sufijo `_qa_particionado`).", "",
+        "Cuando esté, por favor indíquennos: 1) la ruta de la copia · 2) cómo se particionó · 3) el total de filas del original "
+        "y de la copia · 4) de qué ejecución o fecha salió. Con eso la descargamos y verificamos que esté completa. ¡Gracias!"])
+    pth = os.path.join(L.dir_lote(trabajo), "mensajes", "particion_analitica.md")
+    os.makedirs(os.path.dirname(pth), exist_ok=True)
+    open(pth, "w", encoding="utf8").write(txt)
+    L.bitacora(trabajo, "coordinador", "mensaje_particion", {"claves": [r["clave"] for r in filas]}, estado="AVISO",
+               salidas=[os.path.relpath(pth, L.dir_lote(trabajo))])
+    return pth
+
+
+def particion_recibida(trabajo, clave, ruta, filas_informadas=None, nota=None):
+    """Respuesta de analítica: la descarga de Stratio pasa a leer la copia. Queda a la vista (lote.json, cotejo, cierre)."""
+    d = L.leer(trabajo, "lote.json")
+    o = next((o for f in d["flujos"] for o in f["objetos"] if o["clave"] == clave), None)
+    if not o or not o.get("stratio"):
+        raise SystemExit(f"{clave}: no está en el trabajo o no tiene lado Stratio")
+    reg = L.leer(trabajo, f"descargas/particion/{clave}.json") or {}
+    cp = {"ruta": ruta, "ruta_original": o["stratio"]["ruta"], "filas_informadas": filas_informadas, "nota": nota,
+          "recibida_utc": datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds"), "por": L.usuario()}
+    o["stratio"]["copia_particionada"] = cp
+    L.guardar(trabajo, "lote.json", d)
+    L.guardar(trabajo, f"descargas/particion/{clave}.json", reg | {"estado": "RECIBIDA", **{f"copia_{k}": v for k, v in cp.items()}})
+    L.bitacora(trabajo, "coordinador", "particion_recibida", cp, estado="AVISO", clave=clave)
+    return (f"{clave}: Stratio se descargará de la copia `{ruta}` (original `{cp['ruta_original']}`).\n"
+            f"  → Al medir: las filas medidas deben ser {_m(filas_informadas) if filas_informadas else 'las que informe analítica (pedirlas)'}; "
+            "si no coinciden, no se coteja y se pregunta a analítica.\n"
+            "  → En el cotejo y en el cierre va la salvedad «Stratio leído de una copia particionada hecha por analítica» con las dos rutas.")

@@ -884,5 +884,41 @@
   "autor": "Jhonattan-LT",
   "estado": "COMPARTIDA",
   "commit": "38675a8"
+ },
+ {
+  "id": "M-060",
+  "fecha": "2026-10-29T16:49:41+00:00",
+  "que": "Revisor de consumo de tokens y modelo por agente: pc consumo (resumen/revisar/vivo/agentes), agente revisor-consumo (haiku, solo lectura) y aviso de contexto en vivo desde el hook (una vez por umbral 250/500/750 k)",
+  "por_que": "El coordinador en Opus es ~64 % del costo (contexto medio de hasta 458 k por llamada) y no había cómo medir el consumo por agente ni ver durante la ejecución cuándo compactar",
+  "archivos": [
+   "pc/consumo.py",
+   "pc/__main__.py",
+   "pc/hooks/evento.py",
+   "config/consumo.json",
+   ".claude/agents/revisor-consumo.md",
+   "CLAUDE.md",
+   "README.md"
+  ],
+  "autor": "Jhonattan-LT",
+  "estado": "SIN_COMPARTIR"
+ },
+ {
+  "id": "M-061",
+  "fecha": "2026-10-29T16:57:22+00:00",
+  "que": "Riesgo de descarga de Stratio en pc estimar (archivo mayor vs corte de Rocket sin Range, duración vs cookie, caídas previas) y mensaje corto a analítica pidiendo copia particionada (pc mensaje --para particion), con registro de la respuesta, descarga desde la copia y salvedad + cuadre de filas en el cotejo",
+  "por_que": "Los archivos grandes de Stratio se caen por Rocket (cada archivo baja entero y reinicia al cortarse) y no había forma de anticiparlo ni de pedir rápido a analítica una copia que sí baje",
+  "archivos": [
+   "pc/medir/estimar.py",
+   "pc/rapido/stratio.py",
+   "pc/mensajes.py",
+   "pc/__main__.py",
+   "pc/cache/parcial.py",
+   "pc/reportes/v4.py",
+   "config/pipeline.json",
+   "CLAUDE.md",
+   ".claude/agents/gestor-descargas.md"
+  ],
+  "autor": "Jhonattan-LT",
+  "estado": "SIN_COMPARTIR"
  }
 ]

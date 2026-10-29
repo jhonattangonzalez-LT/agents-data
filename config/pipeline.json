@@ -74,6 +74,7 @@
     "grande_gb": 5,
     "medicion_filas_pasada_s": 3000000,
     "columnas_por_pasada": 14,
+    "riesgo_rocket": {"_nota": "Rocket baja cada archivo entero en un hilo y sin Range: si se corta, ese archivo vuelve a empezar (6 intentos). Un archivo que tarda más que el límite de la petición, o una descarga más larga que la cookie, casi seguro no llega. Riesgo ALTO = pedir a analítica una copia particionada (pc mensaje --para particion).", "limite_peticion_s": 3600, "vida_cookie_s": 7200, "alto_fraccion": 0.8, "medio_fraccion": 0.4},
     "_nota_rocket": "Con 4 hilos se midio 0,55 MB/s y con 32, 2,76 MB/s; con 8 se estima ~1,1 MB/s y ~10 s por archivo repartidos en 8 hilos."
   }
 }

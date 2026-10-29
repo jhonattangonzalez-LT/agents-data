@@ -1,0 +1,19 @@
+{
+  "_fuente_precios": "Precios de lista de la API por millón de tokens (skill claude-api, tabla del 2026-10-06). Escritura de caché = 1,25× (5 min) y 2× (1 h) el precio de entrada; lectura de caché de Haiku 5.5 supuesta en 10 % de la entrada. Es un costo de REFERENCIA para comparar: los tokens sí son exactos.",
+  "precios_usd_mtok": {
+    "claude-opus-5-5":   {"entrada": 4.0,  "salida": 20.0, "cache_lectura": 0.20, "cache_5m": 5.0,   "cache_1h": 8.0},
+    "claude-sonnet-5-5": {"entrada": 2.0,  "salida": 10.0, "cache_lectura": 0.20, "cache_5m": 2.5,   "cache_1h": 4.0},
+    "claude-haiku-5-5":  {"entrada": 0.10, "salida": 0.50, "cache_lectura": 0.01, "cache_5m": 0.125, "cache_1h": 0.20},
+    "claude-haiku-4-5":  {"entrada": 1.0,  "salida": 5.0,  "cache_lectura": 0.10, "cache_5m": 1.25,  "cache_1h": 2.0},
+    "claude-fable-5-1":  {"entrada": 10.0, "salida": 50.0, "cache_lectura": 0.25, "cache_5m": 12.5,  "cache_1h": 20.0}
+  },
+  "umbrales": {
+    "contexto_aviso_tokens": [250000, 500000, 750000],
+    "contexto_medio_coordinador": 200000,
+    "reescritura_cache_grande": 100000,
+    "resultado_grande_kb": 30,
+    "agente_opus_mecanico_pct_bash_pc": 70,
+    "agente_errores_pct": 25
+  },
+  "agentes_genericos": ["general-purpose", "fork", "Explore", "claude", "Plan"]
+}

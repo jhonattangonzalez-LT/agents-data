@@ -526,6 +526,16 @@ def construir_cotejo(trabajo, f, o):
                 "descarga parcial (" + "; ".join(f"{l} {v['archivos_completos']} de {v['archivos_total']} archivos" for l, v in par.items())
                 + "): cotejar por corte las particiones completas (`pc comparar --sql`) y registrar `salvedad_parcial` en lote.json "
                   "con la decision de la persona; sin eso no se cierra")
+    # Stratio leído de una copia particionada por analítica (el original no bajaba): salvedad a la vista y las filas
+    # medidas de la copia deben ser las que analítica informó del original; si no, no se cierra
+    cp = (o.get("stratio") or {}).get("copia_particionada")
+    if cp:
+        filas_m = ((doc.get("metricas") or {}).get("filas") or {}).get("stratio")
+        doc["encabezado"]["stratio_copia_particionada"] = cp | {"filas_medidas": filas_m}
+        if filas_m is not None and cp.get("filas_informadas") != filas_m:
+            doc["encabezado"]["faltantes"].append(
+                f"copia particionada de Stratio: filas medidas {filas_m} y analítica informó {cp.get('filas_informadas') or 'nada'} "
+                "del original; confirmar con analítica antes de cotejar")
     L.guardar(trabajo, rel, doc)
     return doc
 

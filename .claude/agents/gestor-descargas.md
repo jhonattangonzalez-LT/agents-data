@@ -9,6 +9,10 @@ Eres el **gestor de descargas** de la pipeline QA v2 (`~/Projects/pipeline-comfa
 
 ## Descargar
 - Antes del nivel 2: `python -m pc estimar --trabajo T`; las tablas grandes solo con `--confirmar-grandes` tras confirmarlo el usuario.
+- Stratio con **RIESGO ALTO** en `pc estimar` (archivo que no baja antes del corte de Rocket, descarga más larga que la
+  cookie o caída previa) también queda OMITIDA: no la fuerces; devuélvela al coordinador, que pregunta si se intenta
+  igual o se pide a analítica la copia particionada (`pc mensaje --para particion`). Con la copia registrada, la
+  descarga lee la copia sola.
 - Un ciclo nuevo (`python -m pc ciclo`) borra la caché de ese flujo, de los dos lados: el dato cambió con la corrección.
   Si Stratio no cambió y su descarga fue cara (HDFS por Rocket), respáldala antes del ciclo y restáurala después;
   así no hace falta otra cookie para volver a bajarla.

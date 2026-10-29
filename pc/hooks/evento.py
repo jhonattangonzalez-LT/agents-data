@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Hook de Claude Code (proyecto): agrega UNA linea por evento y sale. Nunca bloquea ni imprime al chat,
-salvo en SessionStart (una linea con el enlace del panel).
+salvo en SessionStart (una linea con el enlace del panel) y, en PostToolUse del coordinador, un aviso de consumo
+(additionalContext, solo para el modelo) la primera vez que el contexto cruza cada umbral de config/consumo.json.
 
 Escribe en ~/.cache/pc/:
   sesiones/<session_id>.json   un coordinador: cwd, inicio, ultimo evento, activo, trabajos que toco
@@ -59,6 +60,27 @@ def _modelo(agente):
     except OSError:
         pass
     return None
+
+
+def _contexto(ruta):
+    """Tokens de contexto de la última respuesta del modelo: lee solo los últimos 256 KB de la transcripción."""
+    try:
+        with open(ruta, "rb") as f:
+            f.seek(max(0, os.path.getsize(ruta) - 262144))
+            for ln in reversed(f.read().decode("utf8", "replace").splitlines()):
+                if '"usage"' in ln and '"assistant"' in ln:
+                    u = (json.loads(ln).get("message") or {}).get("usage") or {}
+                    return u.get("input_tokens", 0) + u.get("cache_creation_input_tokens", 0) + u.get("cache_read_input_tokens", 0)
+    except Exception:
+        pass
+    return None
+
+
+def _umbrales():
+    try:
+        return json.load(open(os.path.join(RAIZ, "config", "consumo.json"), encoding="utf8"))["umbrales"]["contexto_aviso_tokens"]
+    except Exception:
+        return [250000, 500000, 750000]
 
 
 def _panel_arriba():
@@ -149,6 +171,21 @@ def main():
         if x:
             x["fin_utc"] = _ahora()
             ses["terminados"] = (ses.get("terminados") or [])[-7:] + [x]
+    aviso = None
+    if ev == "PostToolUse" and not e.get("agent_id") and e.get("transcript_path"):
+        # consumo en vivo del coordinador: el panel lo muestra y, una vez por umbral, se le avisa (no bloquea nada)
+        ctx = _contexto(e["transcript_path"])
+        if ctx:
+            ses["contexto_tokens"] = ctx
+            cruzados = [u for u in _umbrales() if ctx >= u]
+            if cruzados and cruzados[-1] > (ses.get("contexto_avisado") or 0):
+                ses["contexto_avisado"] = cruzados[-1]
+                aviso = (f"CONSUMO: el contexto de esta sesión va en {ctx // 1000} k tokens (umbral {cruzados[-1] // 1000} k); cada turno "
+                         "lo relee entero. En el próximo punto de corte (flujo cerrado, decisión tomada, antes de una espera larga) "
+                         "propón a la persona /compact o cerrar y retomar con `pc trabajo siguiente` (el estado está en disco). "
+                         "Detalle: `python -m pc consumo vivo`.")
+            elif ctx < (ses.get("contexto_avisado") or 0) // 2:
+                ses["contexto_avisado"] = 0     # se compactó: vuelve a avisar cuando crezca
     if ev == "SessionStart":
         linea["fuente"] = e.get("source")
         if not _panel_arriba():
@@ -161,6 +198,8 @@ def main():
     os.replace(tmp, ps)
     with open(os.path.join(BASE, "eventos", f"{sid}.jsonl"), "a", encoding="utf8") as f:
         f.write(json.dumps(linea, ensure_ascii=False) + "\n")
+    if aviso:
+        print(json.dumps({"hookSpecificOutput": {"hookEventName": "PostToolUse", "additionalContext": aviso}}, ensure_ascii=False))
     if ev == "SessionStart":
         a_ = ses["ave"]
         print(f"Eres el coordinador {a_['emoji']} {a_['nombre']} (sesión {sid[:8]}). Preséntate así al usuario. "

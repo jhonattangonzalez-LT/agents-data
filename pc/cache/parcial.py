@@ -68,7 +68,8 @@ def texto(inv, clave, lado):
     if inv["faltan_delta_log"]:
         t += " · falta parte del _delta_log: se leería como parquet sin deletion vectors"
     return t + ("\n  → PREGUNTAR a la persona: reintentar la descarga completa · cotejar esta parte (`pc descargar --parcial`, "
-                "cotejo por corte con salvedad) · esperar a que vuelva la VPN/cookie")
+                "cotejo por corte con salvedad) · esperar a que vuelva la VPN/cookie"
+                + (" · pedir a analítica una copia particionada (`pc mensaje --para particion`)" if lado.upper() == "STRATIO" else ""))
 
 
 def registrar(lote, plataforma, clave, inv):

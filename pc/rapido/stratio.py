@@ -30,14 +30,24 @@ def rocket_acepta_rango(archivo_muestra=None, rehacer=False):
     return r
 
 
+def _tamanos(arch, raiz):
+    """Archivos, bytes y el archivo más grande: Rocket baja cada archivo entero en un hilo (sin Range), así que el
+    más grande es el que decide si la descarga llega (pc estimar → riesgo)."""
+    g = max(arch, key=lambda x: x[1])
+    return {"archivos": len(arch), "bytes": sum(s for _, s in arch), "bytes_max": g[1],
+            "archivo_max": g[0][len(raiz.rstrip("/")) + 1:] if raiz and g[0].startswith(raiz.rstrip("/")) else g[0]}
+
+
 def medir_hdfs(ruta, desde=None, ventana=None):
-    arch = [(p, s) for p, s, _m in rocket.arbol(ruta, desde=desde) if p.endswith(".parquet")]
-    if not arch:
-        raise FileNotFoundError(f"sin parquet en {ruta} (¿CSV? ¿Stratio reescribiendo?)")
+    todos = [(p, s) for p, s, _m in rocket.arbol(ruta, desde=desde)]
+    arch = [(p, s) for p, s in todos if p.endswith(".parquet")]
+    if not todos:
+        raise FileNotFoundError(f"sin archivos en {ruta} (¿Stratio reescribiendo?)")
+    if not arch:        # CSV u otro texto: no tiene pie, el nivel 0/1 sale de la descarga
+        return {"estado": "REQUIERE_DESCARGA", "motivo": "HDFS sin parquet (CSV u otro texto)", **_tamanos(todos, ruta)}
     pr = rocket_acepta_rango(arch[0][0])
     if not pr.get("acepta"):
-        return {"estado": "REQUIERE_DESCARGA", "motivo": f"Rocket no acepta Range (HTTP {pr.get('status')})",
-                "archivos": len(arch), "bytes": sum(s for _, s in arch)}
+        return {"estado": "REQUIERE_DESCARGA", "motivo": f"Rocket no acepta Range (HTTP {pr.get('status')})", **_tamanos(arch, ruta)}
     rep = nivel01.medir_parquets(arch, lambda r, s: rocket.ArchivoRocket(r, s), "STRATIO", ruta, "HDFS_PARQUET",
                                  ventana, {"desde": desde}, hilos=8)
     return rep
@@ -68,7 +78,7 @@ def medir_sftp_parquet(directorio, patron=None):
         arch = [(f"{directorio.rstrip('/')}/{a.filename}", a.st_size) for a in todos if a.filename.endswith(".parquet")]
         if not arch:
             return {"estado": "REQUIERE_DESCARGA", "motivo": "SFTP sin parquet (CSV u otro texto: no tiene pie)",
-                    "archivos": len(todos), "bytes": sum(a.st_size for a in todos)}
+                    **_tamanos([(a.filename, a.st_size) for a in todos], "")}
         rep = nivel01.medir_parquets(arch, lambda r, s: sf.open(r, "rb"), "STRATIO", directorio, "SFTP_PARQUET", hilos=1)
     finally:
         sf.close()

@@ -420,7 +420,8 @@ def _puede_nivel2(lote, f, forzar):
 
 def _grandes(a):
     from .medir import estimar
-    return {(r["clave"], r["lado"]) for r in estimar.estimar(a.lote, a.flujo) if r["grande"]}
+    return {(r["clave"], r["lado"]) for r in estimar.estimar(a.lote, a.flujo)
+            if r["grande"] or (r.get("riesgo") == "ALTO" and not r.get("copia_particionada"))}
 
 
 def _rapido_desde_descarga(lote, f, o, carpeta, archivos, meta):
@@ -522,7 +523,8 @@ def c_descargar(a):
             if not src:
                 continue
             if (k, lado) in grandes:
-                hechos.append((k, lado, "OMITIDA: tabla grande; ver `python -m pc estimar` y repetir con --confirmar-grandes"))
+                hechos.append((k, lado, "OMITIDA: tabla grande o descarga de riesgo ALTO; ver `python -m pc estimar` y repetir con "
+                                        "--confirmar-grandes (o pedir copia particionada: `pc mensaje --para particion`)"))
                 continue
             import time as _t
             from .cache import gestor, parcial
@@ -542,6 +544,9 @@ def c_descargar(a):
                           "pg": lambda: C.bajar_pg_fabric(a.lote, k, src["ruta"], _where(o)),
                           "sftp": lambda: C.bajar_sftp_stratio(a.lote, k, src["ruta"], src.get("patron"), plataforma="FABRIC")}[src["tipo"]]
                 else:
+                    cp = src.get("copia_particionada") or {}
+                    if cp.get("ruta") and src["tipo"] == "hdfs":     # la copia que dejó analítica: misma data, en partes que sí bajan
+                        src = dict(src, ruta=cp["ruta"], desde=None, particion=None)
                     fn = {"hdfs": lambda: C.bajar_hdfs_stratio(a.lote, k, src["ruta"], src.get("desde"), particion=src.get("particion")),
                           "pg": lambda: C.bajar_pg_stratio(a.lote, k, src["ruta"], _where(o)),
                           "sftp": lambda: C.bajar_sftp_stratio(a.lote, k, src["ruta"], src.get("patron"))}[src["tipo"]]
@@ -715,6 +720,23 @@ def c_mejora(a):
             print("No hay mejoras pendientes de compartir.")
 
 
+def c_consumo(a):
+    from . import consumo as CO
+    idx = CO.indice()
+    if a.accion == "vivo":
+        print(CO.vivo(idx, a.sesion))
+        return
+    sel = CO.filtrar(idx, a.dias, a.desde, a.sesion)
+    if a.accion == "resumen":
+        print(CO.resumen(sel))
+    elif a.accion == "agentes":
+        print(CO.agentes(sel))
+    else:
+        H = CO.revisar(sel)
+        print(CO.texto_revision(H, sel))
+        print(f"→ {CO.guardar(H, sel)}")
+
+
 def c_parte(a):
     from . import parte as P
     if a.accion == "registrar":
@@ -836,6 +858,15 @@ def _mensajes(lote, flujo=None):
 
 def c_mensaje(a):
     from . import mensajes as MS
+    if a.para == "particion":
+        if a.copia:
+            for k in (a.clave or "").split(","):
+                print(MS.particion_recibida(a.lote, k, a.copia, a.filas_informadas, a.nota))
+            return
+        claves = [x for x in (a.clave or "").split(",") if x] or None
+        p = MS.particion(a.lote, claves)
+        print(open(p, encoding="utf8").read() if p else "No hay descargas de Stratio con riesgo ALTO (ver `pc estimar`).")
+        return
     hechos = MS.generar(a.lote, a.flujo, a.para)
     if not hechos:
         print("No hay nada que devolver a desarrollo ni que preguntar a Comfandi en este trabajo.")
@@ -926,9 +957,17 @@ def c_estimar(a):
         print(f"{'GRANDE ' if r['grande'] else '       '}{r['flujo'][:28]:28s} {r['clave'][:40]:40s} {r['lado']:7s} "
               f"{str(r['filas'] or '?'):>12s} filas {r['mb']:>9.1f} MB  {r['total']:>8s}  vía {r['via']}"
               + ("  (sin tamaño: medir rápido primero)" if r["sin_tamano"] else ""))
+        if r.get("riesgo") in ("ALTO", "MEDIO"):
+            print(f"       RIESGO {r['riesgo']} de que la descarga no llegue: " + " · ".join(r["riesgo_motivos"])
+                  + (f"  [copia particionada: {r['copia_particionada']}]" if r.get("copia_particionada") else ""))
     g = [r for r in filas if r["grande"]]
     if g:
         print(f"\n{len(g)} tabla(s) grande(s): el nivel 2 pide --confirmar-grandes (preguntar al usuario con la estimación).")
+    al = [r for r in filas if r.get("riesgo") == "ALTO" and not r.get("copia_particionada")]
+    if al:
+        print(f"\n{len(al)} descarga(s) de Stratio con RIESGO ALTO: PREGUNTAR a la persona: intentar igual (--confirmar-grandes) · "
+              f"pedir a analítica una copia particionada (`pc mensaje --trabajo {a.lote} --para particion --clave "
+              f"{','.join(r['clave'] for r in al)}`) · las dos (intentar mientras responden)")
 
 
 def c_codigo(a):
@@ -1079,9 +1118,17 @@ def main(argv=None):
     x = s.add_parser("mejora", help="registro de mejoras del proceso para compartir con el equipo")
     x.add_argument("accion", choices=["registrar", "pendientes", "compartida"]); x.add_argument("--que"); x.add_argument("--por-que")
     x.add_argument("--archivos"); x.add_argument("--id"); x.add_argument("--commit"); x.set_defaults(fn=c_mejora)
+    x = s.add_parser("consumo", help="revisor de tokens y modelo por agente (solo lee las transcripciones; propone, no aplica)")
+    x.add_argument("accion", choices=["resumen", "revisar", "vivo", "agentes"]); x.add_argument("--dias", type=int)
+    x.add_argument("--desde", help="AAAA-MM-DD"); x.add_argument("--sesion"); x.set_defaults(fn=c_consumo)
     x = s.add_parser("mensaje", help="mensaje listo para copiar: a desarrollo (chat) o a Comfandi (correo)")
     x.add_argument("--trabajo", "--lote", dest="lote", required=True); x.add_argument("--flujo")
-    x.add_argument("--para", choices=["desarrollo", "comfandi"]); x.set_defaults(fn=c_mensaje)
+    x.add_argument("--para", choices=["desarrollo", "comfandi", "particion"])
+    x.add_argument("--clave", help="particion: tabla(s) de Stratio, separadas por coma (sin ella: las de riesgo ALTO)")
+    x.add_argument("--copia", help="particion: ruta HDFS de la copia que dejó analítica (registra la respuesta)")
+    x.add_argument("--filas-informadas", type=int, help="particion: filas del original que informó analítica")
+    x.add_argument("--nota", help="particion: lo demás que respondió analítica (criterio de partición, fecha de la copia…)")
+    x.set_defaults(fn=c_mensaje)
     x = s.add_parser("cierre", help="markdown de cierre del coordinador: EXITOSOS y PENDIENTES (formato cierre-v1)")
     x.add_argument("--trabajo", "--lote", dest="lote", required=True)
     x.add_argument("--sin-head", action="store_true", help="no comprueba HEAD en OneLake (lo no comprobado no se cita)"); x.set_defaults(fn=c_cierre)
@@ -1122,7 +1169,7 @@ def main(argv=None):
     x.set_defaults(fn=c_codigo)
     argv, resumen = salida.activo(sys.argv[1:] if argv is None else list(argv))
     a = p.parse_args(argv)
-    sin_trabajo = a.cmd in ("lote", "acta", "mejora", "stratio", "pg", "roles", "recursos")
+    sin_trabajo = a.cmd in ("lote", "acta", "mejora", "consumo", "stratio", "pg", "roles", "recursos")
     with salida.envolver(a.cmd, None if sin_trabajo else getattr(a, "lote", None), resumen):
         a.fn(a)
 

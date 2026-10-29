@@ -1,7 +1,7 @@
 # Coordinador · Pipeline QA v2 · Comfandi / Quind (Stratio → Microsoft Fabric)
 
 En esta carpeta la sesión de chat **es el coordinador**. Recibe al usuario, hace las preguntas de cada fase,
-reparte el trabajo entre los 14 agentes de `.claude/agents/`, lleva el estado y **espera la respuesta de una persona
+reparte el trabajo entre los 15 agentes de `.claude/agents/`, lleva el estado y **espera la respuesta de una persona
 en cada decisión**. Los agentes no se llaman entre sí. Intérprete `~/Projects/.venv/bin/python` · herramientas `pc/`
 · CLI `python -m pc …`. Formato de reportes: `docs/REPORTES_V4.md`. Alcance: `docs/ALCANCE.md`.
 
@@ -57,6 +57,12 @@ en cada decisión**. Los agentes no se llaman entre sí. Intérprete `~/Projects
 - **Recursos del equipo:** `pc descargar`, `pc medir`, `pc cotejar` y `pc diferenciar` miran antes la RAM libre y la carga.
   Si se detienen (código 3, «⚠ RECURSOS»), pregunta a la persona: cerrar aplicaciones, bajar el perfil o seguir con
   `--forzar-recursos`. No lances dos agentes pesados (medición o cotejo) a la vez si el perfil es moderada o promedio.
+- **Consumo de tokens** (`pc consumo vivo|revisar|agentes`, agente **revisor-consumo**; solo lee y propone):
+  cada turno relee todo el contexto, así que el coordinador lo mantiene corto. Cuando el hook avise «CONSUMO: … k»,
+  en el próximo punto de corte (flujo cerrado, decisión tomada, antes de una espera larga) propón `/compact` o cerrar
+  y retomar con `pc trabajo siguiente`. El trabajo del pipeline va al agente que corresponde (tiene su modelo), no a
+  general-purpose ni a fork (heredan Opus). No pases `model` al lanzar un agente del pipeline. `Read` con
+  offset/limit. Un cambio de modelo de un agente es una **mejora**: se prueba en una corrida y se compara su parte.
 - **Descargas caídas:** si una descarga se corta (VPN, cookie, OneLake) y `pc descargar` imprime «CAÍDA …», pregunta:
   reintentar completa · **cotejar la parte que llegó** (`pc descargar --parcial`: solo archivos completos; cotejo por
   corte sobre las particiones enteras con `pc comparar --sql`, y `salvedad_parcial` en lote.json con la decisión) ·
@@ -73,6 +79,7 @@ en cada decisión**. Los agentes no se llaman entre sí. Intérprete `~/Projects
 | **Antes de Stratio** | estado de cada cookie (duran 2–3 h, se admiten 1 a 3) y VPN. Si quedan < 15 min o no hay VPN, **pide** antes de seguir | `pc stratio cookie` · `pc stratio vpn` |
 | **Histórico incompleto en QA** | si una entrada de Fabric en QA no tiene el histórico completo (la diferencia cae en fechas que QA no tiene), **preguntar**: cotejar solo la ventana que QA sí tiene (cotejo por corte) y dejar la salvedad «el histórico se completa en producción», o pasar a analítica con esa salvedad, o devolver. La salvedad va escrita en la diferencia y en el cierre; nunca se recorta la ventana en silencio | `pc decision` · `pc comparar --sql` |
 | **Antes de descargar** | **siempre** avisar: tablas, MB, vía y tiempo estimado. Las grandes (> 100 M filas o 5 GB) solo con confirmación | `pc estimar` → `pc descargar [--confirmar-grandes]` |
+| **Stratio con RIESGO ALTO** | `pc estimar` lo marca si el archivo más grande no alcanza a bajar en un hilo antes del corte de Rocket (sin Range: vuelve a empezar), si la descarga dura más que una cookie o si ya se cayó. Preguntar: intentar igual · **pedir a analítica una copia particionada** (mensaje corto listo, va al buzón del panel) · las dos. Cuando analítica responde, se registra la copia y la descarga la usa; en el cotejo queda la salvedad con las dos rutas y las filas de la copia deben ser las que analítica informó del original | `pc mensaje --para particion [--clave k]` · `pc mensaje --para particion --clave k --copia RUTA --filas-informadas N` |
 | **Semáforo ROJO** | presentar los motivos (cifras de cada lado) y confirmar la devolución a desarrollo | `pc decision` |
 | **Veredicto (salida del nivel 2)** | por cada diferencia pendiente, presentar el **expediente de decisión** completo y esperar: justificar · verificar · devolver · analizar más | `pc decision --trabajo T` |
 | **Verificación** | quién cierra (QA o Comfandi) y su decisión: APRUEBA · CORREGIR | `pc verificar` |
