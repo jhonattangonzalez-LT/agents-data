@@ -900,7 +900,8 @@
    "README.md"
   ],
   "autor": "Jhonattan-LT",
-  "estado": "SIN_COMPARTIR"
+  "estado": "COMPARTIDA",
+  "commit": "62a3f95"
  },
  {
   "id": "M-061",
@@ -919,6 +920,7 @@
    ".claude/agents/gestor-descargas.md"
   ],
   "autor": "Jhonattan-LT",
-  "estado": "SIN_COMPARTIR"
+  "estado": "COMPARTIDA",
+  "commit": "62a3f95"
  }
 ]

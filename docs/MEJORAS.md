@@ -2,21 +2,21 @@
 
 Cada mejora se comparte con el equipo (commit + push al repositorio). `SIN_COMPARTIR` = falta hacerlo.
 
-## M-061 · 2026-10-29 · SIN_COMPARTIR
+## M-061 · 2026-10-29 · COMPARTIDA
 
 **Qué:** Riesgo de descarga de Stratio en pc estimar (archivo mayor vs corte de Rocket sin Range, duración vs cookie, caídas previas) y mensaje corto a analítica pidiendo copia particionada (pc mensaje --para particion), con registro de la respuesta, descarga desde la copia y salvedad + cuadre de filas en el cotejo
 
 **Por qué:** Los archivos grandes de Stratio se caen por Rocket (cada archivo baja entero y reinicia al cortarse) y no había forma de anticiparlo ni de pedir rápido a analítica una copia que sí baje
 
-**Archivos:** `pc/medir/estimar.py`, `pc/rapido/stratio.py`, `pc/mensajes.py`, `pc/__main__.py`, `pc/cache/parcial.py`, `pc/reportes/v4.py`, `config/pipeline.json`, `CLAUDE.md`, `.claude/agents/gestor-descargas.md` · por Jhonattan-LT
+**Archivos:** `pc/medir/estimar.py`, `pc/rapido/stratio.py`, `pc/mensajes.py`, `pc/__main__.py`, `pc/cache/parcial.py`, `pc/reportes/v4.py`, `config/pipeline.json`, `CLAUDE.md`, `.claude/agents/gestor-descargas.md` · por Jhonattan-LT · compartida en 62a3f95
 
-## M-060 · 2026-10-29 · SIN_COMPARTIR
+## M-060 · 2026-10-29 · COMPARTIDA
 
 **Qué:** Revisor de consumo de tokens y modelo por agente: pc consumo (resumen/revisar/vivo/agentes), agente revisor-consumo (haiku, solo lectura) y aviso de contexto en vivo desde el hook (una vez por umbral 250/500/750 k)
 
 **Por qué:** El coordinador en Opus es ~64 % del costo (contexto medio de hasta 458 k por llamada) y no había cómo medir el consumo por agente ni ver durante la ejecución cuándo compactar
 
-**Archivos:** `pc/consumo.py`, `pc/__main__.py`, `pc/hooks/evento.py`, `config/consumo.json`, `.claude/agents/revisor-consumo.md`, `CLAUDE.md`, `README.md` · por Jhonattan-LT
+**Archivos:** `pc/consumo.py`, `pc/__main__.py`, `pc/hooks/evento.py`, `config/consumo.json`, `.claude/agents/revisor-consumo.md`, `CLAUDE.md`, `README.md` · por Jhonattan-LT · compartida en 62a3f95
 
 ## M-059 · 2026-10-29 · COMPARTIDA
 
