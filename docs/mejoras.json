@@ -870,5 +870,18 @@
   "autor": "Jhonattan-LT",
   "estado": "COMPARTIDA",
   "commit": "c56cec2"
+ },
+ {
+  "id": "M-059",
+  "fecha": "2026-10-29T03:57:16+00:00",
+  "que": "ROJO levantado por una persona (decisiones_flujo.json) ya no aparece como pendiente en el buzón, las tarjetas ni el siguiente paso; pc v4 publicar fusiona publicado.json en vez de sobrescribirlo al publicar por flujos",
+  "por_que": "En R1028 los flujos con ROJO justificado seguían saliendo como 'informar a desarrollo' y la publicación por flujos borraba el registro de los flujos publicados antes",
+  "archivos": [
+   "pc/coordinacion.py",
+   "pc/mensajes.py",
+   "pc/reportes/v4.py"
+  ],
+  "autor": "Jhonattan-LT",
+  "estado": "SIN_COMPARTIR"
  }
 ]

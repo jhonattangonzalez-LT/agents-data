@@ -2,6 +2,14 @@
 
 Cada mejora se comparte con el equipo (commit + push al repositorio). `SIN_COMPARTIR` = falta hacerlo.
 
+## M-059 · 2026-10-29 · SIN_COMPARTIR
+
+**Qué:** ROJO levantado por una persona (decisiones_flujo.json) ya no aparece como pendiente en el buzón, las tarjetas ni el siguiente paso; pc v4 publicar fusiona publicado.json en vez de sobrescribirlo al publicar por flujos
+
+**Por qué:** En R1028 los flujos con ROJO justificado seguían saliendo como 'informar a desarrollo' y la publicación por flujos borraba el registro de los flujos publicados antes
+
+**Archivos:** `pc/coordinacion.py`, `pc/mensajes.py`, `pc/reportes/v4.py` · por Jhonattan-LT
+
 ## M-058 · 2026-10-23 · COMPARTIDA
 
 **Qué:** pc v4 incompletos/publicar --flujos: cierre parcial que publica solo los flujos aprobados; la evidencia ETL arma la seccion salidas de las carpetas Files tambien en analitica

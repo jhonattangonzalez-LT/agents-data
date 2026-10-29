@@ -52,7 +52,8 @@ def siguiente(trabajo):
             paso = ("niveles 0 y 1 de los dos lados (avisar cookie antes de Stratio)", f"python -m pc stratio cookie && python -m pc rapido --trabajo {trabajo} --flujo {n}", "medidor-rapido-fabric / -stratio")
         elif not sem:
             paso = ("semáforo", f"python -m pc semaforo --trabajo {trabajo} --flujo {n}", "semaforo")
-        elif sem["estado"] == "ROJO":
+        elif sem["estado"] == "ROJO" and (((L.leer(trabajo, "v4/decisiones_flujo.json", {}) or {}).get(n) or {})
+                                          .get("semaforo ROJO") or {}).get("decision") != "JUSTIFICADA":
             paso = ("ROJO: informar a desarrollo con los motivos", f"python -m pc decision --trabajo {trabajo}", "coordinador")
         elif not n2:
             paso = ("estimar (avisar el tiempo) → descargar → medir nivel 2", f"python -m pc estimar --trabajo {trabajo} --flujo {n} && python -m pc descargar --trabajo {trabajo} --flujo {n} && python -m pc medir --trabajo {trabajo} --flujo {n}", "gestor-descargas / medidor-completo")
@@ -264,7 +265,8 @@ def pendientes(trabajo, clave=None):
                             "datos": {"version_stratio": rc.get("version_stratio"), "zip_fabric": rc.get("zip_fabric"), "reglas": [x]},
                             "opciones": opciones})
         sem = L.leer(trabajo, f"semaforo/{n}.json")
-        if sem and sem["estado"] == "ROJO":
+        lev = ((L.leer(trabajo, "v4/decisiones_flujo.json", {}) or {}).get(n) or {}).get("semaforo ROJO") or {}
+        if sem and sem["estado"] == "ROJO" and lev.get("decision") != "JUSTIFICADA":
             out.append({"tipo": "ROJO", "titulo": f"{n}: vuelve a desarrollo", "flujo": n, "datos": {"motivos": sem["motivos_rojo"], "ejecucion": _ejecucion(trabajo, f)},
                         "opciones": [("confirmar la devolución a desarrollo", "(se informa el motivo con las cifras)"),
                                      ("revisar antes: forzar el nivel 2", f"python -m pc descargar --trabajo {trabajo} --flujo {n} --forzar")]})

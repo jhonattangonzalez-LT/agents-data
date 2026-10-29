@@ -116,7 +116,8 @@ def seccion_desarrollo(trabajo, f):
     rc = L.leer(trabajo, f"codigo/{n}/revision.json") or {}
     devs = [(o, fi, d) for o, fi, ds in _tablas(trabajo, f) for d in ds if d.get("decision") == "DEVUELTO"]
     reglas_dev = [r for r in rc.get("reglas") or [] if r.get("decision") == "DEVOLVER"]
-    rojo = sem.get("estado") == "ROJO"
+    lev = ((L.leer(trabajo, "v4/decisiones_flujo.json", {}) or {}).get(n) or {}).get("semaforo ROJO") or {}
+    rojo = sem.get("estado") == "ROJO" and lev.get("decision") != "JUSTIFICADA"   # un ROJO levantado por una persona no va a desarrollo
     if not rojo and not devs and not reglas_dev:
         return None
     out = [f"*{n}* (Stratio `{f.get('nombre_stratio') or '—'}` · {f.get('fl') or 'sin FL'})"]

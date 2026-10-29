@@ -813,5 +813,8 @@ def publicar(trabajo, bucket=True, forzar_incompleto=False, flujos=None):
         p = os.path.join(base, "v4", "flujos", f"{n}.json")
         if os.path.exists(p):
             subir(ruta_ol("cotejo_flujo", n, v, pruebas=pr), open(p, "rb").read(), {"tipo": "cotejo_flujo", "version": v})
-    L.guardar(trabajo, "v4/publicado.json", {"utc": _ahora(), "pruebas": pr, "archivos": hechos})
+    # se fusiona con lo ya publicado (una publicacion por flujos no borra el registro de los demas flujos)
+    previo = {x.get("ruta"): x for x in ((L.leer(trabajo, "v4/publicado.json") or {}).get("archivos") or [])}
+    previo.update({x.get("ruta"): x for x in hechos})
+    L.guardar(trabajo, "v4/publicado.json", {"utc": _ahora(), "pruebas": pr, "archivos": list(previo.values())})
     return hechos
