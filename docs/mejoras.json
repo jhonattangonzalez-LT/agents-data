@@ -932,7 +932,8 @@
    "pc/reportes/v4.py"
   ],
   "autor": "Jhonattan-LT",
-  "estado": "SIN_COMPARTIR"
+  "estado": "COMPARTIDA",
+  "commit": "4e251f8"
  },
  {
   "id": "M-063",
@@ -943,7 +944,8 @@
    "pc/reportes/formato2.py"
   ],
   "autor": "Jhonattan-LT",
-  "estado": "SIN_COMPARTIR"
+  "estado": "COMPARTIDA",
+  "commit": "4e251f8"
  },
  {
   "id": "M-064",
@@ -954,7 +956,8 @@
    "pc/__main__.py"
   ],
   "autor": "Jhonattan-LT",
-  "estado": "SIN_COMPARTIR"
+  "estado": "COMPARTIDA",
+  "commit": "4e251f8"
  },
  {
   "id": "M-065",
@@ -965,6 +968,7 @@
    "pc/grafo.py"
   ],
   "autor": "Jhonattan-LT",
-  "estado": "SIN_COMPARTIR"
+  "estado": "COMPARTIDA",
+  "commit": "4e251f8"
  }
 ]

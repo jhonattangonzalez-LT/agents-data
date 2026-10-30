@@ -2,37 +2,37 @@
 
 Cada mejora se comparte con el equipo (commit + push al repositorio). `SIN_COMPARTIR` = falta hacerlo.
 
-## M-065 · 2026-10-30 · SIN_COMPARTIR
+## M-065 · 2026-10-30 · COMPARTIDA
 
 **Qué:** pc grafo construir tolera reglas de codigo con regla nula
 
 **Por qué:** pc grafo contexto fallaba con TypeError en R1029 y dejaba a los agentes sin contexto
 
-**Archivos:** `pc/grafo.py` · por Jhonattan-LT
+**Archivos:** `pc/grafo.py` · por Jhonattan-LT · compartida en 4e251f8
 
-## M-064 · 2026-10-30 · SIN_COMPARTIR
+## M-064 · 2026-10-30 · COMPARTIDA
 
 **Qué:** pc etl recoger respeta --flujos (antes recorria todo el lote y se caia por red antes de llegar al flujo pedido)
 
 **Por qué:** En R1029 recoger un solo veredicto (GCARCEF v2) fallo dos veces por TimeoutError/IncompleteRead recorriendo flujos ajenos
 
-**Archivos:** `pc/__main__.py` · por Jhonattan-LT
+**Archivos:** `pc/__main__.py` · por Jhonattan-LT · compartida en 4e251f8
 
-## M-063 · 2026-10-30 · SIN_COMPARTIR
+## M-063 · 2026-10-30 · COMPARTIDA
 
 **Qué:** Cotejo de flujo: el control 'el validador ETL probo la corrida validada' acepta una corrida lanzada por QA con parametros (el v10 no los pasa por flujo) cuando hay validacion estatica posterior PASA, la corrida esta Completed y la persona registro salvedad_etl en lote.json; la salvedad queda a la vista
 
 **Por qué:** R1029 FL-0005: la pipeline necesita PERIODO; la corrida manual ddd9316a no podia probarse por ninguna de las dos vias y la persona decidio aceptarla con salvedad
 
-**Archivos:** `pc/reportes/formato2.py` · por Jhonattan-LT
+**Archivos:** `pc/reportes/formato2.py` · por Jhonattan-LT · compartida en 4e251f8
 
-## M-062 · 2026-10-29 · SIN_COMPARTIR
+## M-062 · 2026-10-29 · COMPARTIDA
 
 **Qué:** El cotejo v4 acepta salvedad_parcial (decisión de la persona en lote.json) cuando la copia particionada de Stratio no trae el total del original informado por analítica; la salvedad queda a la vista en el encabezado
 
 **Por qué:** R1029 FL-0516: analítica dejó la copia sin el conteo del original (1 archivo de 2,59 GB, ilegible por Rocket); la persona decidió cerrar con salvedad (datos completos en producción) y la herramienta no lo permitía
 
-**Archivos:** `pc/reportes/v4.py` · por Jhonattan-LT
+**Archivos:** `pc/reportes/v4.py` · por Jhonattan-LT · compartida en 4e251f8
 
 ## M-061 · 2026-10-29 · COMPARTIDA
 
