@@ -261,6 +261,11 @@ def c_etl(a):
         for lz in hist:                       # el lanzamiento mas reciente de cada flujo
             for fl_ in lz["flujos"]:
                 ultimo[fl_] = lz
+        if a.flujos:                          # acotar a los flujos pedidos (evita recorrer todo el lote)
+            pedidos = {s_.strip() for s_ in a.flujos.split(",") if s_.strip()}
+            ultimo = {k_: v_ for k_, v_ in ultimo.items() if k_ in pedidos}
+            if not ultimo:
+                raise SystemExit(f"sin lanzamientos para {', '.join(sorted(pedidos))}")
         vs = {}
         for fl_, lz in ultimo.items():
             vs.update({k_: (v_, lz) for k_, v_ in V.veredictos([fl_], desde_utc=lz["lanzado_utc"]).items()})

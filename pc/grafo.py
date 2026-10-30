@@ -82,7 +82,7 @@ def construir(trabajo, guardar=True):
         if rc:
             g.nodos[fid]["datos"]["codigo"] = rc.get("veredicto")
             for r in rc.get("reglas") or []:
-                rid = g.n(f"R:{n}/{r['id']}", "regla", r.get("regla", "")[:120], resultado=r.get("resultado"),
+                rid = g.n(f"R:{n}/{r['id']}", "regla", (r.get("regla") or "")[:120], resultado=r.get("resultado"),
                           clase=r.get("clase"), porque=r.get("porque"),
                           stratio=r.get("stratio"), fabric=r.get("fabric"), impacto=r.get("impacto"), decision=r.get("decision"))
                 g.a(fid, "tiene_regla", rid)

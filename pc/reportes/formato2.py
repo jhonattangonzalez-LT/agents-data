@@ -581,6 +581,8 @@ def flujo(enc, f, etl, ev, sem, tablas, ver, otros=None, decisiones=None):
             "corrida_validada": ({"run_id": cv.get("run_id"), "estado": cv.get("estado"), "inicio_utc": cv.get("inicio_utc"),
                                   "fin_utc": cv.get("fin_utc"), "duracion_s": dur,
                                   "lanzada_por": (f"orquestador {orq.get('nombre')} (corrida {pad['run_id']})" if pad else
+                                                  "fuera del validador ETL (salvedad: " + f["salvedad_etl"]["decision"] + ")"
+                                                  if (f.get("salvedad_etl") or {}).get("decision") else
                                                   "validador ETL de QA" if etl.get("lanzamiento") and not str(etl.get("lanzamiento")).startswith("orq") else
                                                   "directa (sin orquestador)"),
                                   "por_que_esta": cv.get("criterio"), "falla": cv.get("falla")} if cv else None),
@@ -609,7 +611,12 @@ def flujo(enc, f, etl, ev, sem, tablas, ver, otros=None, decisiones=None):
     por_ejecucion = despues and bool(cita.get("coincide_con_la_validada")) and raw.get("se_ejecuto") is not False
     por_orquestador = (despues and raw.get("se_ejecuto") is False and bool(orq.get("corrida_que_invoco_al_flujo"))
                        and bool(raw.get("pasa_validacion")))
-    probo = por_ejecucion or por_orquestador
+    # corrida lanzada por QA con parametros (el validador no los pasa por flujo): validacion estatica posterior a la
+    # corrida + evidencia medida, solo con la salvedad que decidio la persona (`salvedad_etl` del flujo en lote.json)
+    sal_etl = f.get("salvedad_etl")
+    por_salvedad = (not (por_ejecucion or por_orquestador) and bool(sal_etl) and despues and raw.get("se_ejecuto") is False
+                    and bool(raw.get("pasa_validacion")) and cv.get("estado") == "Completed")
+    probo = por_ejecucion or por_orquestador or por_salvedad
     pruebas = []
     for p in raw.get("pruebas") or []:
         q = {"prueba": p.get("prueba") if p.get("prueba") != "(sin nombre)" else "actividad_o_objeto_sin_prueba",
@@ -620,12 +627,16 @@ def flujo(enc, f, etl, ev, sem, tablas, ver, otros=None, decisiones=None):
            "conteo": raw.get("resumen"), "valido_la_corrida_aprobada": probo,
            "modo": ("ejecuto y probo la corrida" if por_ejecucion else
                     "validacion estatica posterior a la corrida del orquestador + evidencia medida" if por_orquestador else
+                    "validacion estatica posterior a una corrida lanzada fuera del validador + evidencia medida (con salvedad)"
+                    if por_salvedad else
                     "no corresponde a la corrida validada"),
            "pruebas": pruebas, "omitidas": [p for p in pruebas if p["resultado"] == "OMITIDO"],
            "advertencias": r.get("advertencias") or [], "bloqueantes": r.get("bloqueantes") or []}
     if not probo:
         val["nota"] = ("Las pruebas del validador (antes/despues de ejecutar) NO corresponden a la corrida validada: " +
                        (f"el validador corrio a las {gen} y la corrida validada es la de {cv.get('inicio_utc')}." if gen else "no hay veredicto del validador."))
+    if por_salvedad:
+        val["salvedad"] = sal_etl
     ejec["validador"] = val
     chk("El validador ETL probo la corrida validada", "CUMPLE" if probo else "NO_CUMPLE",
         f"validador {gen} · corrida validada {cv.get('inicio_utc')}–{cv.get('fin_utc')} · " + val["modo"] +
