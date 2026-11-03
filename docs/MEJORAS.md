@@ -2,6 +2,46 @@
 
 Cada mejora se comparte con el equipo (commit + push al repositorio). `SIN_COMPARTIR` = falta hacerlo.
 
+## M-070 · 2026-11-03 · SIN_COMPARTIR
+
+**Qué:** pc acta lee los APROBADOS_FL-*.md (formato anterior, sin front-matter) desde su tabla de flujos; un mismo flujo con FL distinto en dos archivos cuenta en cada uno; un cotejo de flujo sin corrida validada queda como hallazgo; el lector tolera informativas (ID-02/ID-05) sin filas_afectadas
+
+**Por qué:** Lote 15: 26 APROBADOS de un QA quedaban fuera del acta y 4 flujos se caían por un TypeError del lector, no por error del QA
+
+**Archivos:** `pc/acta.py`, `pc/docx/lector_formato2.py` · por Jhonattan-LT
+
+## M-069 · 2026-11-03 · SIN_COMPARTIR
+
+**Qué:** pc v4 publicar no sube nada si una ruta de reportes_v4 ya tiene evidencia de otro trabajo u otro FL (encabezado.trabajo / flujo.fl): lista los choques y solo una persona fuerza con --forzar-ajeno
+
+**Por qué:** Lote 15: las rutas solo distinguen flujo y versión; el trabajo de neteo (FL-0506) sobrescribió el cotejo de flujo de FL-0511 (06B) y publicó una v2 con FL-0506 en la carpeta de FL-0514 (08), y R1028 pisó la v2 de neteo de facturación 09
+
+**Archivos:** `pc/reportes/v4.py`, `pc/__main__.py` · por Jhonattan-LT
+
+## M-068 · 2026-10-30 · SIN_COMPARTIR
+
+**Qué:** pc cierre lista en EXITOSOS todas las reglas de código DISTINTA/SOLO_* aceptadas (antes solo las que tenían salvedad), con su decisión cuando no hay salvedad
+
+**Por qué:** R1030: R8, R9 y R10 de SSF mora (lógica) estaban ACEPTADAS en el JSON publicado pero no salían en el EXITOSOS (decía 2 reglas en vez de 5)
+
+**Archivos:** `pc/cierre.py` · por Jhonattan-LT
+
+## M-067 · 2026-10-30 · SIN_COMPARTIR
+
+**Qué:** Cotejo de flujo: (a) acepta un bloqueante del validador ETL que una persona marcó como falso (salvedad_etl.bloqueantes_falsos con decidido_por); queda visible y la comprobación sale JUSTIFICADO. (b) Una plantilla sin resolver de la Variable Library ({fecha_corte}) no se trata como salida Postgres. (c) La evidencia ETL de salidas SFTP llena archivos_escritos_en_la_corrida con la Copy que las escribió
+
+**Por qué:** R1030 bd_corbanca: el v10 leía la ruta del sink CRB_OUT_ como entrada y daba NO_PASA, y la plantilla silver.credito_corbanco_crb_out_{fecha_corte} disparaba la comprobación de Postgres; SSF mora salía con None archivos
+
+**Archivos:** `pc/reportes/formato2.py`, `pc/etl/evidencia.py` · por Jhonattan-LT
+
+## M-066 · 2026-10-30 · SIN_COMPARTIR
+
+**Qué:** pc etl evidencia registra como salidas los archivos SFTP que escribe una actividad Copy en la ruta de QA (no bloquea), con la Copy que los escribió, su estado y los bytes
+
+**Por qué:** En R1030 (tableros_ssf_moraempresas) las salidas SFTP salían vacías en la evidencia y v4 incompletos no dejaba publicar el cotejo de flujo
+
+**Archivos:** `pc/etl/evidencia.py` · por Jhonattan-LT
+
 ## M-065 · 2026-10-30 · COMPARTIDA
 
 **Qué:** pc grafo construir tolera reglas de codigo con regla nula

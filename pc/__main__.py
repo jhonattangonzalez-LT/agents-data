@@ -844,7 +844,7 @@ def c_v4(a):
             for k, v in falta.items():
                 print(f"{k}:\n  - " + "\n  - ".join(v))
             raise SystemExit(f"NO SE PUBLICA: {len(falta)} archivo(s) con informacion incompleta (pc v4 incompletos --trabajo {a.lote})")
-        for h in v4.publicar(a.lote, bucket=not a.sin_bucket, flujos=fl):
+        for h in v4.publicar(a.lote, bucket=not a.sin_bucket, flujos=fl, forzar_ajeno=a.forzar_ajeno):
             print(f"{'OK ' if h['head_ok'] else 'MAL'} {h['tipo']:16s} v{h.get('version')} {h['ruta']}"
                   + ("  + bucket" if h.get("bucket") else "") + (f"  bucket ERROR {h['bucket_error']}" if h.get("bucket_error") else ""))
         L.bitacora(a.lote, "publicador-reportes", "publicar_v4", None)
@@ -1073,7 +1073,8 @@ def main(argv=None):
     x.set_defaults(fn=c_revision)
     x = s.add_parser("v4"); x.add_argument("accion", choices=["construir", "publicar", "incompletos"])
     x.add_argument("--trabajo", "--lote", dest="lote", required=True); x.add_argument("--sin-bucket", action="store_true")
-    x.add_argument("--flujos", help="solo estos flujos (coma): cierre parcial con los aprobados"); x.set_defaults(fn=c_v4)
+    x.add_argument("--flujos", help="solo estos flujos (coma): cierre parcial con los aprobados")
+    x.add_argument("--forzar-ajeno", action="store_true", help="publicar aunque la ruta tenga evidencia de otro trabajo u otro FL (solo con confirmacion de una persona)"); x.set_defaults(fn=c_v4)
     x = s.add_parser("diferencia", help="el cotejador registra una diferencia exacta (max 5 ejemplos)")
     x.add_argument("--trabajo", "--lote", dest="lote", required=True); x.add_argument("--clave", required=True)
     x.add_argument("--control", required=True); x.add_argument("--tipo"); x.add_argument("--descripcion")

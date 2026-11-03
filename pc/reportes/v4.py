@@ -21,6 +21,7 @@ import os
 import re
 import shutil
 import uuid
+from concurrent.futures import ThreadPoolExecutor
 
 from .. import lote as L
 from ..acceso import onelake as ol
@@ -783,24 +784,39 @@ def incompletos(trabajo, flujos=None):
     return out
 
 
-def publicar(trabajo, bucket=True, forzar_incompleto=False, flujos=None):
+def ajenos(planes):
+    """Las rutas que ya existen en OneLake con evidencia de OTRO trabajo u OTRO FL. Las rutas de reportes_v4 solo
+    distinguen flujo/tabla y version: dos trabajos que validan el mismo flujo de Fabric escriben el mismo archivo y el
+    ultimo pisa al otro (lote 15: el 06B de FL-0511 quedo con el contenido de FL-0506). [(ruta, publicado, local)]"""
+    def quien(doc):
+        e = doc.get("encabezado") or {}
+        return {"trabajo": e.get("trabajo"), "fl": (e.get("flujo") or {}).get("fl")}
+
+    def uno(p):
+        dest, datos = p[0], p[1]
+        if not ol.head(dest):
+            return None
+        pub, loc = quien(json.loads(ol.leer(dest))), quien(json.loads(datos))
+        # sin dato del lado publicado (reportes viejos sin trabajo/fl) no se puede afirmar que sea ajeno
+        if any(pub[k] and loc[k] and pub[k] != loc[k] for k in ("trabajo", "fl")):
+            return dest, pub, loc
+    with ThreadPoolExecutor(8) as ex:
+        return [x for x in ex.map(uno, planes) if x]
+
+
+def publicar(trabajo, bucket=True, forzar_incompleto=False, flujos=None, forzar_ajeno=False):
     """Publica SOLO mediciones, cotejos y cotejo de flujo en OneLake reportes_v4 (reescribe en sitio la vN del ciclo)
     y las dos mediciones al bucket v4. HEAD a todo. Log, expediente y acta quedan locales.
-    flujos: publica solo esos (p. ej. los aprobados de un cierre parcial); los demas no se suben ni se exigen completos."""
+    flujos: publica solo esos (p. ej. los aprobados de un cierre parcial); los demas no se suben ni se exigen completos.
+    Antes de subir nada se mira cada ruta: si ya tiene evidencia de otro trabajo u otro FL no se publica ningun archivo
+    (forzar_ajeno solo con la confirmacion de una persona: pisa la evidencia de otro QA)."""
     from ..acceso import bucket as B
     d = L.leer(trabajo, "lote.json")
     falta = incompletos(trabajo, flujos)
     if falta and not forzar_incompleto:
         raise RuntimeError("no se publica: informacion incompleta en " + "; ".join(f"{k}: {v[:4]}" for k, v in list(falta.items())[:8]))
     pr = _pruebas(trabajo)
-    base, hechos = L.dir_lote(trabajo), []
-
-    def subir(dest, datos, extra):
-        ol.escribir(dest, datos)
-        h = ol.head(dest)
-        r = dict({"ruta": dest, "head_ok": bool(h) and h["bytes"] == len(datos)}, **extra)
-        hechos.append(r)
-        return r
+    base, hechos, planes = L.dir_lote(trabajo), [], []      # planes: (ruta OneLake, datos, extra, lado para el bucket)
     for f in d["flujos"]:
         n = f["nombre_fabric"]
         if flujos and n not in flujos:
@@ -811,21 +827,32 @@ def publicar(trabajo, bucket=True, forzar_incompleto=False, flujos=None):
             for lado in ("STRATIO", "FABRIC"):
                 p = os.path.join(base, "v4", "mediciones", lado, f"{k}.json")
                 if os.path.exists(p):
-                    datos = open(p, "rb").read()
-                    r = subir(ruta_ol("medicion", k, v, lado, pr), datos, {"tipo": f"medicion_{lado.lower()}", "version": v})
-                    if bucket:
-                        blob = f"v4/{'_pruebas/' if pr else ''}qa/{k}/medicion_{lado.lower()}_{k}_v{v}.json"
-                        try:
-                            B.subir(lado, blob, datos, sobrescribir=True)
-                            r["bucket"] = f"{B.CONT[lado]}/{blob}"
-                        except Exception as e:
-                            r["bucket_error"] = f"{type(e).__name__}: {str(e)[:120]}"
+                    planes.append((ruta_ol("medicion", k, v, lado, pr), open(p, "rb").read(),
+                                   {"tipo": f"medicion_{lado.lower()}", "version": v}, (lado, k, v)))
             p = os.path.join(base, "v4", "cotejos", f"{k}.json")
             if os.path.exists(p):
-                subir(ruta_ol("cotejo", k, v, pruebas=pr), open(p, "rb").read(), {"tipo": "cotejo", "version": v})
+                planes.append((ruta_ol("cotejo", k, v, pruebas=pr), open(p, "rb").read(), {"tipo": "cotejo", "version": v}, None))
         p = os.path.join(base, "v4", "flujos", f"{n}.json")
         if os.path.exists(p):
-            subir(ruta_ol("cotejo_flujo", n, v, pruebas=pr), open(p, "rb").read(), {"tipo": "cotejo_flujo", "version": v})
+            planes.append((ruta_ol("cotejo_flujo", n, v, pruebas=pr), open(p, "rb").read(), {"tipo": "cotejo_flujo", "version": v}, None))
+    choques = [] if forzar_ajeno else ajenos(planes)
+    if choques:
+        raise RuntimeError("no se publica: estas rutas ya tienen evidencia de otro trabajo u otro FL (se pisaria la de otro "
+                           "QA). Revisa si el flujo ya esta cerrado por otro FL; solo con confirmacion de una persona: "
+                           "--forzar-ajeno.\n" + "\n".join(f"  {r}: publicado {p} · local {l}" for r, p, l in choques))
+    for dest, datos, extra, med in planes:
+        ol.escribir(dest, datos)
+        h = ol.head(dest)
+        r = dict({"ruta": dest, "head_ok": bool(h) and h["bytes"] == len(datos)}, **extra)
+        hechos.append(r)
+        if med and bucket:
+            lado, k, v = med
+            blob = f"v4/{'_pruebas/' if pr else ''}qa/{k}/medicion_{lado.lower()}_{k}_v{v}.json"
+            try:
+                B.subir(lado, blob, datos, sobrescribir=True)
+                r["bucket"] = f"{B.CONT[lado]}/{blob}"
+            except Exception as e:
+                r["bucket_error"] = f"{type(e).__name__}: {str(e)[:120]}"
     # se fusiona con lo ya publicado (una publicacion por flujos no borra el registro de los demas flujos)
     previo = {x.get("ruta"): x for x in ((L.leer(trabajo, "v4/publicado.json") or {}).get("archivos") or [])}
     previo.update({x.get("ruta"): x for x in hechos})

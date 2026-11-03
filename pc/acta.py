@@ -48,11 +48,42 @@ def _mods():
     return GN, CAPAS, F2
 
 
+def leer_aprobados(p, s):
+    """Un APROBADOS_FL-*.md (formato anterior al cierre-v1, sin front-matter): los flujos salen de la tabla «Resumen de los
+    flujos» (FL | Flujo (Fabric) | Flujo (Stratio) | Grupo | Tablas | Estado …) y la versión y el trabajo, del «Detalle del
+    flujo · FL · `flujo` (trabajo `t`, ciclo vN)». Se lee tal cual lo escribió el QA: no se completa nada."""
+    if not re.search(r"^\| *FL *\| *Flujo \(Fabric\) *\|", s, re.M):
+        raise ValueError(f"{p}: no es un cierre-v1 (sin front-matter) ni un APROBADOS con tabla de flujos")
+    det = {m[1]: (m[2], m[3]) for m in re.finditer(r"Detalle del flujo · FL-\d+ · `([^`]+)` \(trabajo `([^`]+)`, ciclo v(\d+)\)", s)}
+    rutas = [urllib.parse.unquote(x) for x in re.findall(r"selectedPath=([^&)\s]+)", s)]
+    flujos = []
+    for ln in s.split("## 2.")[0].splitlines():
+        c = [x.strip() for x in ln.strip().strip("|").split("|")]
+        if len(c) < 6 or not re.fullmatch(r"FL-\d{4}", c[0]):
+            continue
+        n = c[1].strip("`")
+        t, ver = det.get(n, (None, None))
+        if ver is None:                                        # sin detalle: la versión del cotejo de flujo que cita
+            v = [re.search(r"_v(\d+)\.json$", r) for r in rutas if f"/cotejo_flujo_{n}_v" in r]
+            ver = max((int(x[1]) for x in v if x), default=None)
+        flujos.append({"flujo": n, "stratio": re.sub(r"`| \(Rocket.*", "", c[2]), "fl": c[0],
+                       "grupo": c[3].replace("analítica", "analitica"), "version": str(ver or ""),
+                       "estado": next((x.replace("\\_", "_") for x in c[4:] if re.match(r"APROBADO|DEVUELTO|EN_", x.replace("\\", ""))), ""),
+                       "trabajo": t})
+    trabajo = next((f["trabajo"] for f in flujos if f["trabajo"]), os.path.splitext(os.path.basename(p))[0])
+    qa = re.search(r"QA: ([^·\n]+)", s)
+    fecha = re.search(r"\((\d{2})-(\d{2})-(\d{4})\)", s.splitlines()[0])
+    return {"ruta": p, "formato": "aprobados", "tipo": "APROBADOS", "trabajo": trabajo,
+            "generado_utc": f"{fecha[3]}-{fecha[2]}-{fecha[1]}" if fecha else None,
+            "generado_por": qa[1].strip() if qa else None, "flujos": flujos, "rutas": rutas}
+
+
 def leer_md(p):
-    """Un EXITOSOS (cierre-v1): su lista de flujos y las rutas de OneLake que cita."""
+    """Un EXITOSOS (cierre-v1): su lista de flujos y las rutas de OneLake que cita. Un APROBADOS_FL-*.md (formato anterior)
+    se lee con leer_aprobados."""
     s = open(p, encoding="utf8").read().replace("\r\n", "\n")      # llegado por correo o chat desde Windows
     if not s.startswith("---\n") or "\n---\n" not in s[4:]:
-        raise ValueError(f"{p}: no es un cierre-v1 (sin front-matter)")
+        return leer_aprobados(p, s)
     fm, cuerpo = s[4:].split("\n---\n", 1)
     g = lambda k: (re.search(rf'^{k}:\s*"?([^"\n]*)"?', fm, re.M) or [None, None])[1]
     flujos = [dict(re.findall(r'(\w+): "?([^",}]*)"?', ln)) for ln in fm.splitlines() if ln.strip().startswith("- {flujo")]
@@ -67,7 +98,8 @@ def _mds(rutas):
     for r in rutas:
         r = os.path.expanduser(r)
         if os.path.isdir(r):
-            out += sorted(glob.glob(os.path.join(r, "**", "EXITOSOS_*.md"), recursive=True))
+            out += sorted(glob.glob(os.path.join(r, "**", "EXITOSOS_*.md"), recursive=True) +
+                          glob.glob(os.path.join(r, "**", "APROBADOS_*.md"), recursive=True))
         elif os.path.exists(r):
             out.append(r)
         else:
@@ -81,7 +113,8 @@ def _nom(p):
 
 def cotejar_exitosos(rutas):
     """Junta los EXITOSOS que los QA ya generaron y pasaron al responsable del acta: son flujos exitosos y entran todos,
-    sin exigirles nada. Solo se evita repetir un flujo que viene en dos markdowns (se toma la versión mayor).
+    sin exigirles nada. Solo se evita repetir un flujo que viene en dos markdowns con el MISMO FL (se toma la versión
+    mayor); con FL distinto cada archivo cuenta por sí mismo (lo decide quien lo validó, no el acta).
     Devuelve ([(md, flujo)], avisos, informe)."""
     avisos, inf, elegidos = [], {"exitosos": [], "ignorados": []}, {}
     for p in _mds(rutas):
@@ -94,12 +127,12 @@ def cotejar_exitosos(rutas):
         inf["exitosos"].append({"ruta": m["ruta"], "trabajo": m["trabajo"], "generado_utc": m["generado_utc"],
                                 "generado_por": m["generado_por"], "flujos": len(m["flujos"])})
         for f in m["flujos"]:
-            n = f["flujo"]
+            n = (f["flujo"], f.get("fl"))
             if n in elegidos:
                 m0, f0 = elegidos[n]
                 if int(f["version"] or 0) <= int(f0["version"] or 0):
                     continue
-                avisos.append(f"{n}: viene en {_nom(m0['ruta'])} y en {_nom(m['ruta'])}: se toma v{f['version']}")
+                avisos.append(f"{n[0]} ({n[1]}): viene en {_nom(m0["ruta"])} y en {_nom(m['ruta'])}: se toma v{f['version']}")
             elegidos[n] = (m, f)
     return list(elegidos.values()), avisos, inf
 
@@ -165,6 +198,12 @@ def _flujo(F2, md, fd, evid):
         lote_flujo = T.flujo(t, n) or {}
     except Exception:                                      # el trabajo no esta en este equipo: basta el cierre
         lote_flujo = {}
+    if not (cf.get("ejecucion") or {}).get("corrida_validada"):
+        for k, (co, rc, vk) in cotejos.items():
+            hall += RV.cotejo(md, n, k, vk, co, rc, flujos_ok, verificado, None)
+        hall.append(RV.hallazgo(md, n, None, "Cotejo del flujo", rf, "el cotejo del flujo no trae la corrida validada "
+                                "(ejecucion.corrida_validada vacío): el flujo no entra al acta hasta publicarlo con su corrida", None, ver))
+        raise LookupError(hall)
     try:
         f = F2.flujo(dv4, n, links, lote_flujo)
     except (AssertionError, KeyError, TypeError) as x:

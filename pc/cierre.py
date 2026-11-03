@@ -205,7 +205,7 @@ def generar(trabajo, comprobar_head=True):
         comp_ = [c for c in x["cf"].get("comprobaciones") or [] if c.get("resultado") == "JUSTIFICADO"]
         quien |= {_quien((c.get("decision") or {})["decidido_por"]) for c in comp_ if (c.get("decision") or {}).get("decidido_por")}
         cod_ = [r_ for r_ in (L.leer(trabajo, f"codigo/{x['flujo']}/revision.json") or {}).get("reglas") or []
-                if r_.get("decision") == "ACEPTADA" and r_.get("salvedad")]
+                if r_.get("decision") == "ACEPTADA" and (r_.get("salvedad") or r_.get("resultado") not in ("IGUAL", "EQUIVALENTE"))]
         for r_ in cod_:          # quien acepto la regla: el ultimo comentario ACEPTADA
             c_ = next((c for c in reversed(r_.get("comentarios") or []) if c.get("decision") == "ACEPTADA"), None)
             if c_ and c_.get("por"):
@@ -219,7 +219,7 @@ def generar(trabajo, comprobar_head=True):
         else:
             por = "; ".join(t for t in (f"{len(js_)} diferencia(s) de tablas con causa medida" if js_ else "",
                                          f"{len(comp_)} comprobación(es) del flujo justificadas" if comp_ else "",
-                                         f"{len(cod_)} regla(s) de código aceptadas con salvedad" if cod_ else "",
+                                         f"{len(cod_)} regla(s) de código aceptadas" if cod_ else "",
                                          f"tablas cotejadas en `{x['f']['tablas_en']}`" if x["f"].get("tablas_en") else "") if t) + " (ver 2.2)"
         if x["estado"] == "APROBADO_CON_JUSTIFICACION" and not quien:
             falta(x, "quién decidió las justificaciones")
@@ -258,10 +258,15 @@ def generar(trabajo, comprobar_head=True):
                 out.append(f"  - Causa{' medida' if d_.get('causa_medida') else ''}: {d_.get('causa')}")
         for r_ in (L.leer(trabajo, f"codigo/{x['flujo']}/revision.json") or {}).get("reglas") or []:
             s_ = r_.get("salvedad")
-            if r_.get("decision") == "ACEPTADA" and s_:
+            if r_.get("decision") == "ACEPTADA" and (s_ or r_.get("resultado") not in ("IGUAL", "EQUIVALENTE")):
                 hay = True
-                out.append(f"- **{x['flujo']} · código {r_['id']}** · {r_.get('regla')} · {r_.get('resultado')} · ACEPTADA con salvedad")
-                out.append(f"  - Salvedad: {s_.get('motivo') if isinstance(s_, dict) else s_}")
+                out.append(f"- **{x['flujo']} · código {r_['id']}** · {r_.get('regla')} · {r_.get('resultado')} · ACEPTADA"
+                           + (" con salvedad" if s_ else ""))
+                if s_:
+                    out.append(f"  - Salvedad: {s_.get('motivo') if isinstance(s_, dict) else s_}")
+                c_ = next((c for c in reversed(r_.get("comentarios") or []) if c.get("decision") == "ACEPTADA"), None)
+                if c_ and c_.get("comentario") and not s_:
+                    out.append(f"  - Decisión: {c_['comentario']}")
     if not hay:
         out.append("Sin justificaciones: todos los flujos exitosos cumplen sin diferencias.")
 

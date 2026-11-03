@@ -614,8 +614,15 @@ def flujo(enc, f, etl, ev, sem, tablas, ver, otros=None, decisiones=None):
     # corrida lanzada por QA con parametros (el validador no los pasa por flujo): validacion estatica posterior a la
     # corrida + evidencia medida, solo con la salvedad que decidio la persona (`salvedad_etl` del flujo en lote.json)
     sal_etl = f.get("salvedad_etl")
+    # bloqueantes que una persona marco como falsos (p. ej. la ruta del sink leida como entrada): se citan por un texto
+    # de su detalle en `salvedad_etl.bloqueantes_falsos`; solo cuentan con `decidido_por` y siguen visibles en el reporte
+    marcas = [b.get("texto") for b in (sal_etl or {}).get("bloqueantes_falsos") or [] if b.get("texto")] if (sal_etl or {}).get("decidido_por") else []
+    bloq_todos = r.get("bloqueantes") or []
+    bloq_falsos = [b for b in bloq_todos if any(m in str(b.get("detalle")) for m in marcas)]
+    bloq = [b for b in bloq_todos if b not in bloq_falsos]
+    pasa = bool(raw.get("pasa_validacion")) or (bool(bloq_falsos) and not bloq)
     por_salvedad = (not (por_ejecucion or por_orquestador) and bool(sal_etl) and despues and raw.get("se_ejecuto") is False
-                    and bool(raw.get("pasa_validacion")) and cv.get("estado") == "Completed")
+                    and pasa and cv.get("estado") == "Completed")
     probo = por_ejecucion or por_orquestador or por_salvedad
     pruebas = []
     for p in raw.get("pruebas") or []:
@@ -631,7 +638,10 @@ def flujo(enc, f, etl, ev, sem, tablas, ver, otros=None, decisiones=None):
                     if por_salvedad else
                     "no corresponde a la corrida validada"),
            "pruebas": pruebas, "omitidas": [p for p in pruebas if p["resultado"] == "OMITIDO"],
-           "advertencias": r.get("advertencias") or [], "bloqueantes": r.get("bloqueantes") or []}
+           "advertencias": r.get("advertencias") or [], "bloqueantes": bloq}
+    if bloq_falsos:
+        val["bloqueantes_falsos_decididos"] = {"bloqueantes": bloq_falsos, "decision": sal_etl.get("bloqueantes_falsos"),
+                                               "decidido_por": sal_etl.get("decidido_por"), "utc": sal_etl.get("utc")}
     if not probo:
         val["nota"] = ("Las pruebas del validador (antes/despues de ejecutar) NO corresponden a la corrida validada: " +
                        (f"el validador corrio a las {gen} y la corrida validada es la de {cv.get('inicio_utc')}." if gen else "no hay veredicto del validador."))
@@ -641,8 +651,10 @@ def flujo(enc, f, etl, ev, sem, tablas, ver, otros=None, decisiones=None):
     chk("El validador ETL probo la corrida validada", "CUMPLE" if probo else "NO_CUMPLE",
         f"validador {gen} · corrida validada {cv.get('inicio_utc')}–{cv.get('fin_utc')} · " + val["modo"] +
         (" (el validador no re-ejecuta lo que corre un orquestador; la corrida se prueba con la evidencia de Fabric)" if por_orquestador else ""))
-    chk("El validador no reporta bloqueantes", "CUMPLE" if not val["bloqueantes"] else "NO_CUMPLE",
-        f"{len(val['bloqueantes'])} bloqueante(s), {len(val['advertencias'])} advertencia(s)")
+    chk("El validador no reporta bloqueantes",
+        "NO_CUMPLE" if val["bloqueantes"] else "JUSTIFICADO" if bloq_falsos else "CUMPLE",
+        f"{len(val['bloqueantes'])} bloqueante(s), {len(val['advertencias'])} advertencia(s)" +
+        (f"; {len(bloq_falsos)} marcado(s) como falso(s) por {sal_etl.get('decidido_por')} ({sal_etl.get('utc')})" if bloq_falsos else ""))
 
     # ---- entradas y salidas
     band = {x["ruta"]: x for x in (corr.get("entradas") or []) + (corr.get("salidas") or [])}
@@ -746,7 +758,8 @@ def flujo(enc, f, etl, ev, sem, tablas, ver, otros=None, decisiones=None):
             f"cambiaron despues: {camb} (la salida ya no refleja la entrada vigente)" if camb else
             "ninguna entrada (tabla o carpeta) fue escrita despues de iniciar la corrida")
     # salidas Postgres: no tienen _delta_log; las escribe una actividad Copy de la corrida (se prueba con sus filas copiadas)
-    spg = [s for s in sal if s.get("tabla") and s.get("version_vigente") is None]
+    # una plantilla sin resolver de la Variable Library (p. ej. «tabla_{fecha_corte}») no es una tabla Postgres
+    spg = [s for s in sal if s.get("tabla") and s.get("version_vigente") is None and "{" not in s["tabla"]]
     if spg:
         copias = [a_ for a_ in (ev.get("actividades") or []) if a_.get("tipo") == "Copy"]
         # una Copy de archivo (p. ej. a SFTP) no informa filas: basta que sea exitosa; las que si informan filas deben copiar > 0

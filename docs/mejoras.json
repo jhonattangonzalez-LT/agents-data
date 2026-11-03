@@ -970,5 +970,63 @@
   "autor": "Jhonattan-LT",
   "estado": "COMPARTIDA",
   "commit": "4e251f8"
+ },
+ {
+  "id": "M-066",
+  "fecha": "2026-10-30T19:43:10+00:00",
+  "que": "pc etl evidencia registra como salidas los archivos SFTP que escribe una actividad Copy en la ruta de QA (no bloquea), con la Copy que los escribió, su estado y los bytes",
+  "por_que": "En R1030 (tableros_ssf_moraempresas) las salidas SFTP salían vacías en la evidencia y v4 incompletos no dejaba publicar el cotejo de flujo",
+  "archivos": [
+   "pc/etl/evidencia.py"
+  ],
+  "autor": "Jhonattan-LT",
+  "estado": "SIN_COMPARTIR"
+ },
+ {
+  "id": "M-067",
+  "fecha": "2026-10-30T20:56:32+00:00",
+  "que": "Cotejo de flujo: (a) acepta un bloqueante del validador ETL que una persona marcó como falso (salvedad_etl.bloqueantes_falsos con decidido_por); queda visible y la comprobación sale JUSTIFICADO. (b) Una plantilla sin resolver de la Variable Library ({fecha_corte}) no se trata como salida Postgres. (c) La evidencia ETL de salidas SFTP llena archivos_escritos_en_la_corrida con la Copy que las escribió",
+  "por_que": "R1030 bd_corbanca: el v10 leía la ruta del sink CRB_OUT_ como entrada y daba NO_PASA, y la plantilla silver.credito_corbanco_crb_out_{fecha_corte} disparaba la comprobación de Postgres; SSF mora salía con None archivos",
+  "archivos": [
+   "pc/reportes/formato2.py",
+   "pc/etl/evidencia.py"
+  ],
+  "autor": "Jhonattan-LT",
+  "estado": "SIN_COMPARTIR"
+ },
+ {
+  "id": "M-068",
+  "fecha": "2026-10-30T21:23:44+00:00",
+  "que": "pc cierre lista en EXITOSOS todas las reglas de código DISTINTA/SOLO_* aceptadas (antes solo las que tenían salvedad), con su decisión cuando no hay salvedad",
+  "por_que": "R1030: R8, R9 y R10 de SSF mora (lógica) estaban ACEPTADAS en el JSON publicado pero no salían en el EXITOSOS (decía 2 reglas en vez de 5)",
+  "archivos": [
+   "pc/cierre.py"
+  ],
+  "autor": "Jhonattan-LT",
+  "estado": "SIN_COMPARTIR"
+ },
+ {
+  "id": "M-069",
+  "fecha": "2026-11-03T14:11:20+00:00",
+  "que": "pc v4 publicar no sube nada si una ruta de reportes_v4 ya tiene evidencia de otro trabajo u otro FL (encabezado.trabajo / flujo.fl): lista los choques y solo una persona fuerza con --forzar-ajeno",
+  "por_que": "Lote 15: las rutas solo distinguen flujo y versión; el trabajo de neteo (FL-0506) sobrescribió el cotejo de flujo de FL-0511 (06B) y publicó una v2 con FL-0506 en la carpeta de FL-0514 (08), y R1028 pisó la v2 de neteo de facturación 09",
+  "archivos": [
+   "pc/reportes/v4.py",
+   "pc/__main__.py"
+  ],
+  "autor": "Jhonattan-LT",
+  "estado": "SIN_COMPARTIR"
+ },
+ {
+  "id": "M-070",
+  "fecha": "2026-11-03T14:11:20+00:00",
+  "que": "pc acta lee los APROBADOS_FL-*.md (formato anterior, sin front-matter) desde su tabla de flujos; un mismo flujo con FL distinto en dos archivos cuenta en cada uno; un cotejo de flujo sin corrida validada queda como hallazgo; el lector tolera informativas (ID-02/ID-05) sin filas_afectadas",
+  "por_que": "Lote 15: 26 APROBADOS de un QA quedaban fuera del acta y 4 flujos se caían por un TypeError del lector, no por error del QA",
+  "archivos": [
+   "pc/acta.py",
+   "pc/docx/lector_formato2.py"
+  ],
+  "autor": "Jhonattan-LT",
+  "estado": "SIN_COMPARTIR"
  }
 ]

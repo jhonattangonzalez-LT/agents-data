@@ -210,6 +210,19 @@ def medir(trabajo, flujo, dias=3):
                                                                                _iso(dr.a_utc(cita))[:19] == validada["inicio_utc"][:19])}
     if validada and item and item["type"] == "DataPipeline":
         doc["actividades"] = _actividades(item["workspaceId"], validada["run_id"], desde)
+    # salidas SFTP (archivos que una actividad Copy escribe en la ruta de QA): el destino sale del sink de la Copy
+    for x in corr.get("salidas") or []:
+        r_ = x.get("ruta") or ""
+        if x.get("bandera") == "SftpLocation" and r_.startswith("/") and "." in r_.rsplit("/", 1)[-1]:
+            nom = r_.rsplit("/", 1)[-1]
+            cp = next((a_ for a_ in (doc.get("actividades") or []) if a_.get("tipo") == "Copy" and nom.rsplit(".", 1)[0] in a_.get("actividad", "")), None)
+            salidas.append({"destino": r_, "tipo": "archivo SFTP (ruta de QA, no bloquea)",
+                            "escrita_por_la_corrida_validada": bool(cp and cp.get("estado") == "Succeeded"),
+                            "archivos_escritos_en_la_corrida": 1 if cp and cp.get("estado") == "Succeeded" else 0,
+                            "particiones_escritas_en_la_corrida": "no aplica (archivo)",
+                            "archivos_escritos_despues_de_la_corrida": "no medido (SFTP sin listado de versiones)",
+                            "nota": (f"escrito por la actividad Copy {cp['actividad']} ({cp.get('estado')}) de {cp.get('inicio_utc')} a {cp.get('fin_utc')}; "
+                                     f"{cp.get('bytes_escritos')} bytes" if cp else "ninguna Copy de la corrida lo escribe")})
     for s in salidas:
         if s.get("commits_recientes") is not None and validada:
             en = [c for c in s["commits_recientes"] if _dentro(c["utc"], validada)]

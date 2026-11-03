@@ -135,7 +135,9 @@ def detalle(c, clave):
             "columna": j.get("columna"), "filas_afectadas": j["filas_afectadas"], "decision": j["decision"],
             "causa_medida": j.get("causa_medida"), "decidido_por": dp["quien"], "decidido_utc": dp["utc"],
             "misma_causa_que": prev, "misma_cifra_que": ref,
-            "diferencia": enmascarar(f"{dif} Filas afectadas: {n(j['filas_afectadas'])}.", clave),
+            # una informativa por columna (ID-02, ID-05) no cuenta filas afectadas: se omite la cifra, no se inventa
+            "diferencia": enmascarar(f"{dif} Filas afectadas: {n(j['filas_afectadas'])}." if j["filas_afectadas"] is not None
+                                     else dif, clave),
             "ejemplo": ejemplo_txt(ej, clave), "ejemplo_real": ejemplo_real(ej),
             "ejemplos_json": len(j.get("ejemplos") or []),
             # la causa con la que quedó aprobada (la vigente del cotejo), resumida; el detalle queda en el cotejo enlazado
