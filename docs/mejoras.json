@@ -980,7 +980,8 @@
    "pc/etl/evidencia.py"
   ],
   "autor": "Jhonattan-LT",
-  "estado": "SIN_COMPARTIR"
+  "estado": "COMPARTIDA",
+  "commit": "8c1292a"
  },
  {
   "id": "M-067",
@@ -992,7 +993,8 @@
    "pc/etl/evidencia.py"
   ],
   "autor": "Jhonattan-LT",
-  "estado": "SIN_COMPARTIR"
+  "estado": "COMPARTIDA",
+  "commit": "8c1292a"
  },
  {
   "id": "M-068",
@@ -1003,7 +1005,8 @@
    "pc/cierre.py"
   ],
   "autor": "Jhonattan-LT",
-  "estado": "SIN_COMPARTIR"
+  "estado": "COMPARTIDA",
+  "commit": "8c1292a"
  },
  {
   "id": "M-069",
@@ -1015,7 +1018,8 @@
    "pc/__main__.py"
   ],
   "autor": "Jhonattan-LT",
-  "estado": "SIN_COMPARTIR"
+  "estado": "COMPARTIDA",
+  "commit": "8c1292a"
  },
  {
   "id": "M-070",
@@ -1027,6 +1031,7 @@
    "pc/docx/lector_formato2.py"
   ],
   "autor": "Jhonattan-LT",
-  "estado": "SIN_COMPARTIR"
+  "estado": "COMPARTIDA",
+  "commit": "8c1292a"
  }
 ]
